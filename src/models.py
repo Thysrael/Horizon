@@ -172,8 +172,10 @@ class EmailConfig(BaseModel):
     """Email configuration for updates/subscriptions."""
     imap_server: str
     imap_port: int = 993
+    imap_enabled: bool = True
     smtp_server: str
     smtp_port: int = 465
+    smtp_username: Optional[str] = None
     email_address: str
     password_env: str = "EMAIL_PASSWORD"
     sender_name: str = "Horizon Daily"

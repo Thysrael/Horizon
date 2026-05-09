@@ -272,6 +272,8 @@ Email delivery is optional and disabled unless `email.enabled` is `true`. Horizo
     "enabled": true,
     "smtp_server": "smtp.qq.com",
     "smtp_port": 465,
+    "smtp_username": null,
+    "imap_enabled": true,
     "imap_server": "imap.qq.com",
     "imap_port": 993,
     "email_address": "xxx@qq.com",
@@ -285,11 +287,34 @@ Email delivery is optional and disabled unless `email.enabled` is `true`. Horizo
 
 - `enabled`: Turns email subscription handling and daily email delivery on or off.
 - `smtp_server` / `smtp_port`: SMTP server used to send emails.
-- `imap_server` / `imap_port`: IMAP server used to scan incoming subscription requests.
+- `smtp_username`: Optional SMTP login username. If omitted, Horizon uses `email_address`.
+- `imap_enabled`: Turns IMAP subscribe/unsubscribe checks on or off. Set it to `false` for send-only SMTP providers.
+- `imap_server` / `imap_port`: IMAP server used to scan incoming subscription requests when `imap_enabled` is `true`.
 - `email_address`: Sender account and mailbox checked for subscription requests.
 - `password_env`: Environment variable containing the email password or app password. Defaults to `EMAIL_PASSWORD`.
 - `sender_name`: Display name shown in sent emails.
 - `subscribe_keyword` / `unsubscribe_keyword`: Keywords Horizon looks for in incoming email subjects.
+
+Resend SMTP example:
+
+```json
+{
+  "email": {
+    "enabled": true,
+    "smtp_server": "smtp.resend.com",
+    "smtp_port": 465,
+    "smtp_username": "resend",
+    "password_env": "RESEND_API_KEY",
+    "imap_enabled": false,
+    "imap_server": "",
+    "imap_port": 993,
+    "email_address": "noreply@example.com",
+    "sender_name": "Horizon Daily"
+  }
+}
+```
+
+Set `RESEND_API_KEY` in `.env`. Recipients are loaded from `data/subscribers.json`.
 
 ## Webhook Notification
 

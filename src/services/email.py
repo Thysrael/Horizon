@@ -46,7 +46,7 @@ class EmailManager:
 
     def check_subscriptions(self, storage_manager):
         """Checks inbox for subscription requests and updates subscriber list."""
-        if not self.config.enabled:
+        if not self.config.enabled or not self.config.imap_enabled:
             return
 
         try:
@@ -179,7 +179,7 @@ class EmailManager:
             with smtplib.SMTP_SSL(
                 self.config.smtp_server, self.config.smtp_port
             ) as server:
-                server.login(self.config.email_address, self.pwd)
+                server.login(self.config.smtp_username or self.config.email_address, self.pwd)
 
                 for subscriber in subscribers:
                     msg = MIMEMultipart("alternative")
@@ -208,7 +208,7 @@ class EmailManager:
             with smtplib.SMTP_SSL(
                 self.config.smtp_server, self.config.smtp_port
             ) as server:
-                server.login(self.config.email_address, self.pwd)
+                server.login(self.config.smtp_username or self.config.email_address, self.pwd)
 
                 msg = MIMEText(body)
                 msg["Subject"] = subject

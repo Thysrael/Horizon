@@ -54,7 +54,12 @@ class HorizonOrchestrator:
         self.console.print("[bold cyan]🌅 Horizon - Starting aggregation...[/bold cyan]\n")
 
         # Check email subscriptions if configured
-        if self.email_manager and self.config.email and self.config.email.enabled:
+        if (
+            self.email_manager
+            and self.config.email
+            and self.config.email.enabled
+            and self.config.email.imap_enabled
+        ):
             self.console.print("📧 Checking for new email subscriptions...")
             self.email_manager.check_subscriptions(self.storage)
 
