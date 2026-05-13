@@ -18,6 +18,7 @@ from .scrapers.rss import RSSScraper
 from .scrapers.reddit import RedditScraper
 from .scrapers.telegram import TelegramScraper
 from .scrapers.twitter import TwitterScraper
+from .scrapers.openbb import OpenBBScraper
 from .ai.client import create_ai_client
 from .ai.analyzer import ContentAnalyzer
 from .ai.summarizer import DailySummarizer
@@ -267,6 +268,11 @@ class HorizonOrchestrator:
                 twitter_scraper = TwitterScraper(self.config.sources.twitter, client)
                 tasks.append(self._fetch_with_progress("Twitter", twitter_scraper, since))
 
+            # OpenBB (financial news / filings via the OpenBB Platform SDK)
+            if self.config.sources.openbb and self.config.sources.openbb.enabled:
+                openbb_scraper = OpenBBScraper(self.config.sources.openbb, client)
+                tasks.append(self._fetch_with_progress("OpenBB", openbb_scraper, since))
+
             # Fetch all concurrently
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -317,6 +323,8 @@ class HorizonOrchestrator:
             return f"@{meta['channel']}"
         if meta.get("repo"):
             return meta["repo"]
+        if meta.get("watchlist"):
+            return meta["watchlist"]
         return item.author or "unknown"
 
     def merge_cross_source_duplicates(self, items: List[ContentItem]) -> List[ContentItem]:
