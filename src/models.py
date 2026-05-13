@@ -14,6 +14,7 @@ class SourceType(str, Enum):
     REDDIT = "reddit"
     TELEGRAM = "telegram"
     TWITTER = "twitter"
+    OPENBB = "openbb"
 
 
 class ContentItem(BaseModel):
@@ -145,6 +146,39 @@ class TwitterConfig(BaseModel):
     reply_min_likes: int = 0
 
 
+class OpenBBWatchlist(BaseModel):
+    """A named watchlist of tickers fetched from one OpenBB provider.
+
+    Each watchlist produces one news.company() call per run, so group
+    symbols by provider rather than creating one watchlist per symbol.
+    """
+
+    name: str
+    symbols: List[str] = Field(default_factory=list)
+    enabled: bool = True
+    provider: str = "yfinance"
+    fetch_limit: int = 20
+    category: Optional[str] = None
+
+
+class OpenBBConfig(BaseModel):
+    """OpenBB Platform source configuration.
+
+    Uses the installed `openbb` SDK to fetch news and filings for a set of
+    tickers. The SDK is an optional dependency; if it is not installed the
+    scraper will no-op with a console warning rather than crash the run.
+
+    Provider credentials (FMP, Benzinga, Polygon, Intrinio, Tiingo, etc.)
+    are resolved by openbb from environment variables / its own user
+    settings file, so Horizon does not need to pass them explicitly.
+    """
+
+    enabled: bool = True
+    watchlists: List[OpenBBWatchlist] = Field(default_factory=list)
+    fetch_filings: bool = False
+    filings_provider: str = "sec"
+
+
 class SourcesConfig(BaseModel):
     """All sources configuration."""
 
@@ -154,6 +188,7 @@ class SourcesConfig(BaseModel):
     reddit: RedditConfig = Field(default_factory=RedditConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     twitter: Optional[TwitterConfig] = None
+    openbb: Optional[OpenBBConfig] = None
 
 
 class WebhookConfig(BaseModel):
