@@ -139,6 +139,9 @@ class OpenAIClient(AIClient):
         self.temperature = config.temperature
         self.max_tokens = config.max_tokens
         self.provider = config.provider.value
+        # Some newer models (e.g. Claude Opus 4.7 on Bedrock Converse) reject
+        # `temperature`. We learn this on first 400 and stop sending it.
+        self._supports_temperature = True
 
     async def complete(
         self,
@@ -165,20 +168,28 @@ class OpenAIClient(AIClient):
         if self.provider in self._TEMP_CLAMP and temperature <= 0:
             temperature = 0.01
 
-        request_kwargs = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user}
-            ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-        }
-
-        if self.provider not in self._NO_RESPONSE_FORMAT:
-            request_kwargs["response_format"] = {"type": "json_object"}
-
-        response = await self.client.chat.completions.create(**request_kwargs)
+        try:
+            response = await self._do_request(
+                system=system,
+                user=user,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                include_temperature=self._supports_temperature,
+            )
+        except Exception as exc:
+            if self._supports_temperature and self._is_temperature_unsupported(
+                str(exc)
+            ):
+                self._supports_temperature = False
+                response = await self._do_request(
+                    system=system,
+                    user=user,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    include_temperature=False,
+                )
+            else:
+                raise
         usage = getattr(response, "usage", None)
         if usage is not None:
             record_usage(
@@ -187,6 +198,38 @@ class OpenAIClient(AIClient):
                 output_tokens=getattr(usage, "completion_tokens", 0),
             )
         return response.choices[0].message.content
+
+    async def _do_request(
+        self,
+        *,
+        system: str,
+        user: str,
+        temperature: float,
+        max_tokens: int,
+        include_temperature: bool,
+    ):
+        request_kwargs = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            "max_tokens": max_tokens,
+        }
+        if include_temperature:
+            request_kwargs["temperature"] = temperature
+        if self.provider not in self._NO_RESPONSE_FORMAT:
+            request_kwargs["response_format"] = {"type": "json_object"}
+        return await self.client.chat.completions.create(**request_kwargs)
+
+    @staticmethod
+    def _is_temperature_unsupported(message: str) -> bool:
+        lowered = message.lower()
+        return "temperature" in lowered and (
+            "deprecated" in lowered
+            or "not support" in lowered
+            or "unsupported" in lowered
+        )
 
 
 class AzureOpenAIClient(AIClient):
