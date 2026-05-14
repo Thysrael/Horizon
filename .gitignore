@@ -40,6 +40,9 @@ ENV/
 data/seen.json
 data/summaries/*.md
 data/subscribers.json
+data/mcp.secrets.json
+data/mcp-secrets.json
+data/mcp-runs/
 
 docs/_posts/*.md
 

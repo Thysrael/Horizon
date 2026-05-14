@@ -99,6 +99,14 @@
           "symbols": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA"]
         }
       ]
+    },
+    "ossinsight": {
+      "enabled": false,
+      "period": "past_24_hours",
+      "languages": ["All", "Python", "TypeScript"],
+      "keywords": [],
+      "min_stars": 10,
+      "max_items": 30
     }
   },
   "filtering": {

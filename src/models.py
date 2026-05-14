@@ -16,6 +16,7 @@ class SourceType(str, Enum):
     TELEGRAM = "telegram"
     TWITTER = "twitter"
     OPENBB = "openbb"
+    OSSINSIGHT = "ossinsight"
 
 
 class ContentItem(BaseModel):
@@ -189,6 +190,27 @@ class OpenBBConfig(BaseModel):
     filings_provider: str = "sec"
 
 
+class OSSInsightConfig(BaseModel):
+    """OSS Insight trending repos source configuration.
+
+    Pulls top star-gain repositories from the OSS Insight public API and
+    emits them as ContentItems. Optional `keywords` filter limits results
+    to repos whose description, repo name, or collection names contain at
+    least one of the listed substrings (case-insensitive). Leave
+    `keywords` empty to ingest everything trending in the configured
+    languages.
+    """
+
+    enabled: bool = False
+    period: str = "past_24_hours"  # past_24_hours, past_28_days
+    languages: List[str] = Field(
+        default_factory=lambda: ["All", "Python", "TypeScript"]
+    )
+    keywords: List[str] = Field(default_factory=list)
+    min_stars: int = 5
+    max_items: int = 30
+
+
 class SourcesConfig(BaseModel):
     """All sources configuration."""
 
@@ -199,6 +221,7 @@ class SourcesConfig(BaseModel):
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     twitter: Optional[TwitterConfig] = None
     openbb: Optional[OpenBBConfig] = None
+    ossinsight: OSSInsightConfig = Field(default_factory=OSSInsightConfig)
 
 
 class WebhookConfig(BaseModel):

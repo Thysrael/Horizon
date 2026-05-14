@@ -320,6 +320,33 @@ uv pip install --only-binary=:all: openbb openbb-benzinga
 
 OpenBB provider credentials are handled by the OpenBB SDK itself, using its own environment variables or user settings. Horizon does not pass those secrets through `data/config.json`.
 
+### OSS Insight (Trending GitHub Repos)
+
+Pulls top star-gain repositories from the [OSS Insight](https://ossinsight.io) public API, which aggregates GitHub WatchEvents. Useful for surfacing repos that are gaining stars right now without needing to scrape GitHub Trending or query BigQuery.
+
+```json
+{
+  "sources": {
+    "ossinsight": {
+      "enabled": true,
+      "period": "past_24_hours",
+      "languages": ["All", "Python", "TypeScript"],
+      "keywords": [],
+      "min_stars": 10,
+      "max_items": 30
+    }
+  }
+}
+```
+
+- `period` — time window for star-gain ranking. Supported: `past_24_hours`, `past_28_days`. (`past_7_days` is currently broken upstream.)
+- `languages` — primary language buckets to query. Use `"All"` for the full ranking, or any GitHub language label such as `"Python"`, `"TypeScript"`, `"Rust"`, `"Jupyter Notebook"`. The scraper fans out one request per language and merges results.
+- `keywords` — optional case-insensitive substrings matched against `description`, `collection_names`, and `repo_name`. Only repos containing at least one keyword pass through. Leave empty to ingest everything trending.
+- `min_stars` — drop repos with fewer than this many stars gained in the period.
+- `max_items` — final cap after merging and sorting by `stars_gained` descending.
+
+No API key is required.
+
 ## Filtering
 
 Content is scored 0-10:
