@@ -2,9 +2,8 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
-
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from typing import Optional, List, Dict, Any, Union
+from pydantic import BaseModel, HttpUrl, Field, field_validator
 
 
 class SourceType(str, Enum):

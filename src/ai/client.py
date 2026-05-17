@@ -3,11 +3,11 @@
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
-
+from openai import AsyncAzureOpenAI, AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
 from google.genai import types
-from openai import AsyncAzureOpenAI, AsyncOpenAI
+
 
 from ..models import AIConfig, AIProvider
 from .tokens import record_usage
@@ -91,7 +91,7 @@ class AnthropicClient(AIClient):
             max_tokens=max_tokens,
             temperature=temperature,
             system=system,
-            messages=[{"role": "user", "content": user}],
+            messages=[{"role": "user", "content": user}]
         )
         usage = getattr(message, "usage", None)
         if usage is not None:
@@ -425,8 +425,8 @@ class GeminiClient(AIClient):
                 system_instruction=system,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-                response_mime_type="application/json",
-            ),
+                response_mime_type="application/json"
+            )
         )
         usage = getattr(response, "usage_metadata", None)
         if usage is not None:
