@@ -5,9 +5,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from anthropic import AsyncAnthropic
-from openai import AsyncOpenAI, AsyncAzureOpenAI
 from google import genai
 from google.genai import types
+from openai import AsyncAzureOpenAI, AsyncOpenAI
 
 from ..models import AIConfig, AIProvider
 from .tokens import record_usage
@@ -51,7 +51,10 @@ class AnthropicClient(AIClient):
 
         api_key = os.getenv(config.api_key_env)
         if not api_key:
-            raise ValueError(f"Missing API key: {config.api_key_env}")
+            if config.provider.value == "ollama":
+                api_key = "ollama"
+            else:
+                raise ValueError(f"Missing API key: {config.api_key_env}")
 
         kwargs = {"api_key": api_key}
         if config.base_url:
@@ -88,7 +91,7 @@ class AnthropicClient(AIClient):
             max_tokens=max_tokens,
             temperature=temperature,
             system=system,
-            messages=[{"role": "user", "content": user}]
+            messages=[{"role": "user", "content": user}],
         )
         usage = getattr(message, "usage", None)
         if usage is not None:
@@ -109,6 +112,7 @@ class OpenAIClient(AIClient):
         "deepseek": "https://api.deepseek.com",
         "doubao": "https://ark.cn-beijing.volces.com/api/v3",
         "minimax": "https://api.minimax.io/v1",
+        "ollama": "http://localhost:11434/v1",
     }
 
     # Providers that don't support response_format
@@ -127,7 +131,10 @@ class OpenAIClient(AIClient):
 
         api_key = os.getenv(config.api_key_env)
         if not api_key:
-            raise ValueError(f"Missing API key: {config.api_key_env}")
+            if config.provider == AIProvider.OLLAMA:
+                api_key = "no_key"  # Ollama doesn't require an API key
+            else:
+                raise ValueError(f"Missing API key: {config.api_key_env}")
 
         kwargs = {"api_key": api_key}
         base_url = config.base_url or self._DEFAULT_BASE_URLS.get(config.provider.value)
@@ -255,7 +262,10 @@ class AzureOpenAIClient(AIClient):
 
         api_key = os.getenv(config.api_key_env)
         if not api_key:
-            raise ValueError(f"Missing API key: {config.api_key_env}")
+            if config.provider.value == "ollama":
+                api_key = "ollama"
+            else:
+                raise ValueError(f"Missing API key: {config.api_key_env}")
         if not config.azure_endpoint_env:
             raise ValueError("azure_endpoint_env is required for azure provider")
         azure_endpoint = os.getenv(config.azure_endpoint_env)
@@ -377,7 +387,10 @@ class GeminiClient(AIClient):
 
         api_key = os.getenv(config.api_key_env)
         if not api_key:
-            raise ValueError(f"Missing API key: {config.api_key_env}")
+            if config.provider.value == "ollama":
+                api_key = "ollama"
+            else:
+                raise ValueError(f"Missing API key: {config.api_key_env}")
 
         self.client = genai.Client(api_key=api_key)
         self.model = config.model
@@ -412,8 +425,8 @@ class GeminiClient(AIClient):
                 system_instruction=system,
                 temperature=temperature,
                 max_output_tokens=max_tokens,
-                response_mime_type="application/json"
-            )
+                response_mime_type="application/json",
+            ),
         )
         usage = getattr(response, "usage_metadata", None)
         if usage is not None:
@@ -448,6 +461,7 @@ def create_ai_client(config: AIConfig) -> AIClient:
         AIProvider.DOUBAO,
         AIProvider.MINIMAX,
         AIProvider.DEEPSEEK,
+        AIProvider.OLLAMA,
     }:
         return OpenAIClient(config)
     else:
