@@ -173,7 +173,7 @@ flowchart LR
 
 ```bash
 git clone https://github.com/Thysrael/Horizon.git
-cd horizon
+cd Horizon
 
 # Install with uv (recommended)
 uv sync
@@ -203,7 +203,7 @@ uv pip install --only-binary=:all: openbb openbb-benzinga
 
 ```bash
 git clone https://github.com/Thysrael/Horizon.git
-cd horizon
+cd Horizon
 
 # Configure environment
 cp .env.example .env
