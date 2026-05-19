@@ -4,7 +4,7 @@
     "provider": "deepseek",
     "model": "deepseek-v4-flash",
     "base_url": "https://api.deepseek.com",
-    "api_key_env": "OPENAI_API_KEY",
+    "api_key_env": "DEEPSEEK_API_KEY",
     "temperature": 0.3,
     "max_tokens": 8192,
     "languages": [
