@@ -211,10 +211,10 @@ cp data/config.example.json data/config.json
 # 编辑 .env 和 data/config.json，填入你的 API 密钥和偏好设置
 
 # 使用 Docker Compose 运行
-docker-compose run --rm horizon
+docker compose run --rm horizon
 
 # 或自定义时间窗口
-docker-compose run --rm horizon --hours 48
+docker compose run --rm horizon --hours 48
 ```
 
 ### 2. 配置
@@ -270,8 +270,8 @@ uv run horizon --hours 48   # 抓取最近 48 小时的内容
 #### 使用 Docker
 
 ```bash
-docker-compose run --rm horizon              # 使用默认 24 小时窗口
-docker-compose run --rm horizon --hours 48   # 抓取最近 48 小时的内容
+docker compose run --rm horizon              # 使用默认 24 小时窗口
+docker compose run --rm horizon --hours 48   # 抓取最近 48 小时的内容
 ```
 
 生成的日报将保存在 `data/summaries/` 目录中。

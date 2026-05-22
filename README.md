@@ -211,10 +211,10 @@ cp data/config.example.json data/config.json
 # Edit .env and data/config.json with your API keys and preferences
 
 # Run with Docker Compose
-docker-compose run --rm horizon
+docker compose run --rm horizon
 
 # Or run with custom time window
-docker-compose run --rm horizon --hours 48
+docker compose run --rm horizon --hours 48
 ```
 
 ### 2. Configure
@@ -270,8 +270,8 @@ uv run horizon --hours 48  # Fetch from last 48 hours
 #### With Docker
 
 ```bash
-docker-compose run --rm horizon           # Run with default 24h window
-docker-compose run --rm horizon --hours 48  # Fetch from last 48 hours
+docker compose run --rm horizon           # Run with default 24h window
+docker compose run --rm horizon --hours 48  # Fetch from last 48 hours
 ```
 
 The generated report will be saved to `data/summaries/`.
