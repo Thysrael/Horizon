@@ -1,9 +1,14 @@
 """Unit tests for daily summary rendering."""
 
+import asyncio
 from datetime import datetime, timezone
 
 from src.ai.summarizer import DailySummarizer
 from src.models import ContentItem, SourceType
+
+
+def _run_async(coro):
+    return asyncio.run(coro)
 
 
 def _make_item(idx: int) -> ContentItem:
@@ -98,3 +103,38 @@ def test_generate_webhook_item_uses_localized_discussion_label():
     )
 
     assert "[社区讨论](https://www.reddit.com/r/python/comments/abc123/test/)" in result
+
+
+def test_generate_summary_zh_uses_localized_selection_header_and_numeric_date():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+
+    result = _run_async(
+        summarizer.generate_summary(
+            [item],
+            date="2026-04-25",
+            total_fetched=10,
+            language="zh",
+        )
+    )
+
+    assert "> 从 10 条内容中筛选出 1 条重要资讯。" in result
+    assert "rss · tester · 4月25日 08:00" in result
+    assert "From 10 items" not in result
+    assert "Apr 25, 08:00" not in result
+
+
+def test_generate_empty_summary_zh_uses_localized_analyzed_line():
+    summarizer = DailySummarizer()
+
+    result = _run_async(
+        summarizer.generate_summary(
+            [],
+            date="2026-04-25",
+            total_fetched=10,
+            language="zh",
+        )
+    )
+
+    assert "> 已分析 10 条内容，但没有达到重要性阈值的条目。" in result
+    assert "Analyzed 10 items" not in result

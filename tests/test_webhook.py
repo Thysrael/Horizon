@@ -224,6 +224,55 @@ class TestWebhookMarkdownFormatting:
         assert "- [Example A](https://example.com/a)" in result
         assert "- [Example B](https://example.com/b)" in result
 
+    def test_details_references_with_unsafe_href_remain_plain_text(self):
+        summary = """## Item
+
+<details><summary>References</summary>
+<ul>
+<li><a href="javascript:alert(1)">click [me](https://evil.example)</a></li>
+</ul>
+</details>
+"""
+
+        result = _format_markdown_for_webhook(summary)
+
+        assert "javascript:alert(1)" not in result
+        assert "[click](javascript:alert(1))" not in result
+        assert "- click \\[me\\]\\(https://evil.example\\)" in result
+
+    def test_details_references_with_malformed_http_href_remain_plain_text(self):
+        summary = """## Item
+
+<details><summary>References</summary>
+<ul>
+<li><a href="https://safe.example/) [bad](javascript:alert(1))">click</a></li>
+</ul>
+</details>
+"""
+
+        result = _format_markdown_for_webhook(summary)
+
+        assert "javascript:alert(1)" not in result
+        assert "[click](https://safe.example/)" not in result
+        assert "- click" in result
+
+    def test_details_references_allow_balanced_parentheses_in_href(self):
+        summary = """## Item
+
+<details><summary>References</summary>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Colossus_(supercomputer)">Colossus</a></li>
+</ul>
+</details>
+"""
+
+        result = _format_markdown_for_webhook(summary)
+
+        assert (
+            "- [Colossus](https://en.wikipedia.org/wiki/Colossus_(supercomputer))"
+            in result
+        )
+
     def test_prepare_variables_changes_summary_for_any_post_body(self):
         summary = "<details><summary>References</summary><ul><li>Plain item</li></ul></details>"
         variables = {"summary": summary, "date": "2026-04-24"}

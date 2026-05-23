@@ -16,6 +16,7 @@ try:
 except ImportError:
     markdown = None
 
+from ..ai.markdown_utils import clean_app_summary_markdown
 from ..models import EmailConfig
 
 logger = logging.getLogger(__name__)
@@ -155,7 +156,8 @@ class EmailManager:
         if not self.config.enabled or not subscribers:
             return
 
-        safe_summary = html.escape(summary_md)
+        cleaned_summary = clean_app_summary_markdown(summary_md)
+        safe_summary = html.escape(cleaned_summary)
         html_content = (
             markdown.markdown(safe_summary)
             if markdown
@@ -202,7 +204,7 @@ class EmailManager:
                     )
                     msg["To"] = subscriber
 
-                    text_part = MIMEText(summary_md, "plain")
+                    text_part = MIMEText(cleaned_summary, "plain")
                     html_part = MIMEText(html_body, "html")
 
                     msg.attach(text_part)

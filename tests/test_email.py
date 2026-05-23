@@ -97,6 +97,72 @@ def test_send_daily_summary_escapes_raw_html(monkeypatch):
     assert "&lt;img src=x" in html_body
 
 
+def test_send_daily_summary_cleans_app_generated_markdown_html(monkeypatch):
+    monkeypatch.setenv("EMAIL_PASSWORD", "secret")
+    monkeypatch.setattr("src.services.email.smtplib.SMTP_SSL", FakeSMTP)
+    FakeSMTP.instances = []
+
+    manager = EmailManager(_email_config())
+    summary = """# Daily
+
+<a id="item-1"></a>
+## Item
+
+<details><summary>参考链接</summary>
+<ul>
+<li><a href="https://example.com/a">Example A</a></li>
+<li><a href="https://example.com/b">Example B</a></li>
+</ul>
+</details>
+"""
+
+    manager.send_daily_summary(summary, "Daily", ["user@example.com"])
+
+    message = FakeSMTP.instances[0].messages[0]
+    text_body = message.get_payload()[0].get_payload(decode=True).decode()
+    html_body = message.get_payload()[1].get_payload(decode=True).decode()
+
+    assert '<a id="item-1"></a>' not in text_body
+    assert "<details>" not in text_body
+    assert "<summary>" not in text_body
+    assert "**参考链接**" in text_body
+    assert "- [Example A](https://example.com/a)" in text_body
+
+    assert '&lt;a id="item-1"&gt;&lt;/a&gt;' not in html_body
+    assert "&lt;details&gt;" not in html_body
+    assert "&lt;summary&gt;" not in html_body
+    assert "<strong>参考链接</strong>" in html_body
+    assert '<a href="https://example.com/a">Example A</a>' in html_body
+    assert '<a href="https://example.com/b">Example B</a>' in html_body
+
+
+def test_send_daily_summary_does_not_link_unsafe_details_href(monkeypatch):
+    monkeypatch.setenv("EMAIL_PASSWORD", "secret")
+    monkeypatch.setattr("src.services.email.smtplib.SMTP_SSL", FakeSMTP)
+    FakeSMTP.instances = []
+
+    manager = EmailManager(_email_config())
+    summary = """# Daily
+
+<details><summary>References</summary>
+<ul>
+<li><a href="javascript:alert(1)">click [me](https://evil.example)</a></li>
+</ul>
+</details>
+"""
+
+    manager.send_daily_summary(summary, "Daily", ["user@example.com"])
+
+    message = FakeSMTP.instances[0].messages[0]
+    text_body = message.get_payload()[0].get_payload(decode=True).decode()
+    html_body = message.get_payload()[1].get_payload(decode=True).decode()
+
+    assert 'href="javascript:alert(1)"' not in html_body
+    assert "[click](javascript:alert(1))" not in text_body
+    assert "- click \\[me\\]\\(https://evil.example\\)" in text_body
+    assert "click [me](https://evil.example)" in html_body
+
+
 def test_check_subscriptions_skips_imap_when_disabled(monkeypatch):
     monkeypatch.setenv("EMAIL_PASSWORD", "secret")
     monkeypatch.setattr("src.services.email.imaplib.IMAP4_SSL", FakeIMAP)

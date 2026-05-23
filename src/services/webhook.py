@@ -1,6 +1,5 @@
 """Webhook notification service for Horizon."""
 
-import html
 import json
 import logging
 import os
@@ -11,6 +10,7 @@ from typing import Any, List, Optional, Union, cast
 from urllib.parse import urlparse
 import httpx
 
+from ..ai.markdown_utils import clean_app_summary_markdown
 from ..models import ContentItem, WebhookConfig
 from ..ai.summarizer import DailySummarizer
 
@@ -19,19 +19,6 @@ logger = logging.getLogger(__name__)
 
 # Pattern: #{key} or #{key?param1=val1&param2=val2}
 _PLACEHOLDER_RE = re.compile(r"#\{(\w+)(\?\w+=[^}]+)?\}")
-_DETAILS_RE = re.compile(
-    r"<details>\s*<summary>(.*?)</summary>\s*(.*?)\s*</details>",
-    re.IGNORECASE | re.DOTALL,
-)
-_LI_LINK_RE = re.compile(
-    r"<li>\s*<a\s+[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>\s*</li>",
-    re.IGNORECASE | re.DOTALL,
-)
-_LI_RE = re.compile(r"<li>\s*(.*?)\s*</li>", re.IGNORECASE | re.DOTALL)
-_ANCHOR_ID_RE = re.compile(
-    r"<a\s+[^>]*id=[\"'][^\"']+[\"'][^>]*>\s*</a>", re.IGNORECASE
-)
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
 _SENSITIVE_HEADER_RE = re.compile(
     r"(authorization|token|secret|signature|key|password)", re.IGNORECASE
 )
@@ -124,48 +111,9 @@ def _render(
     return template
 
 
-def _strip_html_tags(value: str) -> str:
-    """Remove simple HTML tags and decode HTML entities."""
-    return html.unescape(_HTML_TAG_RE.sub("", value)).strip()
-
-
-def _convert_details_to_markdown(value: str) -> str:
-    """Convert HTML details blocks into plain Markdown sections.
-
-    Feishu card Markdown does not render HTML disclosure widgets, so references
-    are flattened to a heading plus Markdown links before webhook delivery.
-    """
-
-    def _replace(match: re.Match) -> str:
-        title = _strip_html_tags(match.group(1)) or "References"
-        body = match.group(2)
-        items: list[str] = []
-
-        for href, label in _LI_LINK_RE.findall(body):
-            clean_label = _strip_html_tags(label)
-            clean_href = html.unescape(href).strip()
-            if clean_label and clean_href:
-                items.append(f"- [{clean_label}]({clean_href})")
-
-        if not items:
-            for item in _LI_RE.findall(body):
-                clean_item = _strip_html_tags(item)
-                if clean_item:
-                    items.append(f"- {clean_item}")
-
-        if not items:
-            fallback = _strip_html_tags(body)
-            return f"**{title}**\n\n{fallback}" if fallback else f"**{title}**"
-
-        return f"**{title}**\n\n" + "\n".join(items)
-
-    return _DETAILS_RE.sub(_replace, value)
-
-
 def _format_markdown_for_webhook(value: str) -> str:
     """Flatten HTML constructs that chat/webhook Markdown often cannot render."""
-    value = _ANCHOR_ID_RE.sub("", value)
-    return _convert_details_to_markdown(value)
+    return clean_app_summary_markdown(value)
 
 
 def _prepare_variables_for_body(
