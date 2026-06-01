@@ -15,7 +15,7 @@ from src.models import AIConfig, AIProvider
 def _make_config(**overrides) -> AIConfig:
     defaults = {
         "provider": AIProvider.MINIMAX,
-        "model": "MiniMax-M2.7",
+        "model": "MiniMax-M3",
         "api_key_env": "MINIMAX_API_KEY",
         "temperature": 0.3,
         "max_tokens": 4096,
@@ -28,7 +28,7 @@ class TestOpenAIClientInit:
     def test_creates_instance_with_valid_config(self, monkeypatch):
         monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
         client = OpenAIClient(_make_config())
-        assert client.model == "MiniMax-M2.7"
+        assert client.model == "MiniMax-M3"
         assert client.max_tokens == 4096
         assert client.provider == "minimax"
 
@@ -100,7 +100,7 @@ class TestOpenAIClientComplete:
 
         assert result == '{"score": 8}'
         call_kwargs = mock_create.call_args[1]
-        assert call_kwargs["model"] == "MiniMax-M2.7"
+        assert call_kwargs["model"] == "MiniMax-M3"
         # response_format should NOT be present (MiniMax doesn't support it)
         assert "response_format" not in call_kwargs
 

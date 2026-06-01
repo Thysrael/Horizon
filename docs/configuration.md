@@ -99,14 +99,14 @@ Set `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in your `.env`. The `mode
 {
   "ai": {
     "provider": "minimax",
-    "model": "MiniMax-M2.7",
+    "model": "MiniMax-M3",
     "api_key_env": "MINIMAX_API_KEY",
     "throttle_sec": 0
   }
 }
 ```
 
-Available models: `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`, `MiniMax-M2.5`, `MiniMax-M2.5-highspeed`
+Available models: `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`
 
 **Aliyun DashScope** (OpenAI-compatible):
 
