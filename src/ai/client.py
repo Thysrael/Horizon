@@ -45,11 +45,17 @@ def _resolve_api_key(config: AIConfig, *, fallback: Optional[str] = None) -> str
 
 
 def _missing_api_key_message(config: AIConfig) -> str:
-    expected_env = _DEFAULT_API_KEY_ENVS.get(config.provider, config.api_key_env)
-    setup_hint = (
-        f"Set {expected_env}=your_api_key in .env or your shell, then set "
-        f'ai.api_key_env to "{expected_env}" in data/config.json.'
-    )
+    expected_env = _DEFAULT_API_KEY_ENVS.get(config.provider)
+    if expected_env:
+        setup_hint = (
+            f"Set {expected_env}=your_api_key in .env or your shell, then set "
+            f'ai.api_key_env to "{expected_env}" in data/config.json.'
+        )
+    else:
+        setup_hint = (
+            "Set the provider API key in .env or your shell, then set "
+            "ai.api_key_env to that environment variable name in data/config.json."
+        )
 
     if _looks_like_api_key_value(config.api_key_env):
         return (
@@ -58,7 +64,7 @@ def _missing_api_key_message(config: AIConfig) -> str:
         )
 
     return (
-        f"Missing API key environment variable: {config.api_key_env}. "
+        "Missing API key environment variable configured by ai.api_key_env. "
         "ai.api_key_env should contain the environment variable name, not the "
         f"key value. {setup_hint}"
     )

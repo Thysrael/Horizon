@@ -50,6 +50,18 @@ class TestOpenAIClientInit:
         assert "environment variable name" in message
         assert "MINIMAX_API_KEY" in message
 
+    def test_does_not_echo_identifier_shaped_api_key(self, monkeypatch):
+        literal_key = "a2c9f1b4e6d7a3c0b5e8d1f9a4c2e6b8"
+        monkeypatch.delenv(literal_key, raising=False)
+
+        with pytest.raises(ValueError) as exc:
+            OpenAIClient(_make_config(api_key_env=literal_key))
+
+        message = str(exc.value)
+        assert literal_key not in message
+        assert "api_key_env" in message
+        assert "MINIMAX_API_KEY" in message
+
     def test_uses_provider_default_base_url(self, monkeypatch):
         monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
         client = OpenAIClient(_make_config())
