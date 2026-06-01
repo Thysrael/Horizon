@@ -50,7 +50,8 @@ class ContentEnricher:
                 try:
                     await self._enrich_item(item)
                 except Exception as e:
-                    print(f"Error enriching item {item.id}: {e}")
+                    print(f"Error enriching item {item.id}: {e}, falling back to translation")
+                    await self._translate_item(item)
             progress.advance(progress_task)
 
         with Progress(
@@ -192,9 +193,10 @@ class ContentEnricher:
         # Parse JSON response with robust fallback
         result = self._parse_json_response(response)
         if result is None:
-            # Gracefully degrade: skip enrichment instead of raising
-            # (raising would trigger retries that won't help with a parse error)
-            print(f"Warning: could not parse enrichment response for {item.id}, skipping enrichment")
+            # Gracefully degrade: fall back to a lightweight translation
+            # instead of dropping the item untranslated.
+            print(f"Warning: could not parse enrichment response for {item.id}, falling back to translation")
+            await self._translate_item(item)
             return
 
         # Combine structured sub-fields into per-language detailed_summary
@@ -233,3 +235,25 @@ class ContentEnricher:
         item.metadata["detailed_summary"] = item.metadata.get("detailed_summary_en", "")
         item.metadata["background"] = item.metadata.get("background_en", "")
         item.metadata["community_discussion"] = item.metadata.get("community_discussion_en", "")
+
+    async def _translate_item(self, item: ContentItem) -> None:
+        """Lightweight translation fallback: when full enrichment fails, at least
+        translate the title and summary to Chinese so the item is not dropped."""
+        try:
+            response = await self.client.complete(
+                system="You are a translator. Translate to Simplified Chinese. Return only valid JSON, no other text.",
+                user=(
+                    f'Title: {item.title}\n'
+                    f'Summary: {item.ai_summary or item.title}\n\n'
+                    'Return JSON:\n'
+                    '{"title_zh": "<中文标题>", "summary_zh": "<用中文写1-2句摘要>"}'
+                ),
+            )
+            result = self._parse_json_response(response)
+            if result:
+                if result.get("title_zh"):
+                    item.metadata["title_zh"] = result["title_zh"]
+                if result.get("summary_zh"):
+                    item.metadata["detailed_summary_zh"] = result["summary_zh"]
+        except Exception:
+            pass
