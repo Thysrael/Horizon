@@ -1,6 +1,7 @@
 """AI client abstraction supporting multiple providers."""
 
 import os
+import re
 from abc import ABC, abstractmethod
 from typing import Optional
 from openai import AsyncAzureOpenAI, AsyncOpenAI
@@ -11,6 +12,62 @@ from google.genai import types
 
 from ..models import AIConfig, AIProvider
 from .tokens import record_usage
+
+
+_ENV_VAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_SECRET_PREFIXES = (
+    "sk-",
+    "sk_",
+    "AIza",
+    "xai-",
+    "gsk_",
+    "hf_",
+)
+_DEFAULT_API_KEY_ENVS = {
+    AIProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
+    AIProvider.OPENAI: "OPENAI_API_KEY",
+    AIProvider.AZURE: "AZURE_OPENAI_API_KEY",
+    AIProvider.ALI: "DASHSCOPE_API_KEY",
+    AIProvider.GEMINI: "GOOGLE_API_KEY",
+    AIProvider.DOUBAO: "DOUBAO_API_KEY",
+    AIProvider.MINIMAX: "MINIMAX_API_KEY",
+    AIProvider.DEEPSEEK: "DEEPSEEK_API_KEY",
+}
+
+
+def _resolve_api_key(config: AIConfig, *, fallback: Optional[str] = None) -> str:
+    api_key = os.getenv(config.api_key_env)
+    if api_key:
+        return api_key
+    if fallback is not None:
+        return fallback
+    raise ValueError(_missing_api_key_message(config))
+
+
+def _missing_api_key_message(config: AIConfig) -> str:
+    expected_env = _DEFAULT_API_KEY_ENVS.get(config.provider, config.api_key_env)
+    setup_hint = (
+        f"Set {expected_env}=your_api_key in .env or your shell, then set "
+        f'ai.api_key_env to "{expected_env}" in data/config.json.'
+    )
+
+    if _looks_like_api_key_value(config.api_key_env):
+        return (
+            "Missing API key: ai.api_key_env must be an environment variable "
+            f"name, not the API key value. {setup_hint}"
+        )
+
+    return (
+        f"Missing API key environment variable: {config.api_key_env}. "
+        "ai.api_key_env should contain the environment variable name, not the "
+        f"key value. {setup_hint}"
+    )
+
+
+def _looks_like_api_key_value(value: str) -> bool:
+    if value.startswith(_SECRET_PREFIXES):
+        return True
+    return not bool(_ENV_VAR_RE.fullmatch(value))
 
 
 class AIClient(ABC):
@@ -49,12 +106,7 @@ class AnthropicClient(AIClient):
         """
         self.config = config
 
-        api_key = os.getenv(config.api_key_env)
-        if not api_key:
-            if config.provider.value == "ollama":
-                api_key = "ollama"
-            else:
-                raise ValueError(f"Missing API key: {config.api_key_env}")
+        api_key = _resolve_api_key(config)
 
         kwargs = {"api_key": api_key}
         if config.base_url:
@@ -129,12 +181,8 @@ class OpenAIClient(AIClient):
         """
         self.config = config
 
-        api_key = os.getenv(config.api_key_env)
-        if not api_key:
-            if config.provider == AIProvider.OLLAMA:
-                api_key = "no_key"  # Ollama doesn't require an API key
-            else:
-                raise ValueError(f"Missing API key: {config.api_key_env}")
+        fallback = "no_key" if config.provider == AIProvider.OLLAMA else None
+        api_key = _resolve_api_key(config, fallback=fallback)
 
         kwargs = {"api_key": api_key}
         base_url = config.base_url or self._DEFAULT_BASE_URLS.get(config.provider.value)
@@ -260,12 +308,7 @@ class AzureOpenAIClient(AIClient):
         """
         self.config = config
 
-        api_key = os.getenv(config.api_key_env)
-        if not api_key:
-            if config.provider.value == "ollama":
-                api_key = "ollama"
-            else:
-                raise ValueError(f"Missing API key: {config.api_key_env}")
+        api_key = _resolve_api_key(config)
         if not config.azure_endpoint_env:
             raise ValueError("azure_endpoint_env is required for azure provider")
         azure_endpoint = os.getenv(config.azure_endpoint_env)
@@ -385,12 +428,7 @@ class GeminiClient(AIClient):
         """
         self.config = config
 
-        api_key = os.getenv(config.api_key_env)
-        if not api_key:
-            if config.provider.value == "ollama":
-                api_key = "ollama"
-            else:
-                raise ValueError(f"Missing API key: {config.api_key_env}")
+        api_key = _resolve_api_key(config)
 
         self.client = genai.Client(api_key=api_key)
         self.model = config.model

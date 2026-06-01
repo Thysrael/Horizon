@@ -37,6 +37,19 @@ class TestOpenAIClientInit:
         with pytest.raises(ValueError, match="Missing API key"):
             OpenAIClient(_make_config())
 
+    def test_rejects_literal_api_key_in_api_key_env_without_leaking_it(self, monkeypatch):
+        literal_key = "sk-test1234567890"
+        monkeypatch.delenv(literal_key, raising=False)
+
+        with pytest.raises(ValueError) as exc:
+            OpenAIClient(_make_config(api_key_env=literal_key))
+
+        message = str(exc.value)
+        assert literal_key not in message
+        assert "api_key_env" in message
+        assert "environment variable name" in message
+        assert "MINIMAX_API_KEY" in message
+
     def test_uses_provider_default_base_url(self, monkeypatch):
         monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
         client = OpenAIClient(_make_config())

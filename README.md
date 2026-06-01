@@ -254,6 +254,25 @@ Minimal manual configuration:
 }
 ```
 
+`api_key_env` must be the name of an environment variable, not the API key
+itself. Put the real secret in `.env`:
+
+```bash
+OPENAI_API_KEY=sk-your-key
+```
+
+For Gemini, use `GOOGLE_API_KEY`:
+
+```jsonc
+{
+  "ai": {
+    "provider": "gemini",
+    "model": "gemini-2.0-flash",
+    "api_key_env": "GOOGLE_API_KEY"
+  }
+}
+```
+
 Any string value in `data/config.json` can reference environment variables with `${VAR_NAME}`. This is useful for values such as `ai.base_url`, private RSS feed URLs, webhook endpoints, or custom header templates.
 
 For the full reference, see the [Configuration Guide](docs/configuration.md).

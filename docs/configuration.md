@@ -11,6 +11,32 @@ Horizon is configured through two files: a `.env` file for API keys and a `data/
 
 Configure which AI model scores and summarizes your content.
 
+`api_key_env` is always an environment variable name, not the API key value.
+Store secrets in `.env` or your shell environment, then point `api_key_env` at
+that variable:
+
+```bash
+OPENAI_API_KEY=sk-your-key
+GOOGLE_API_KEY=your-gemini-key
+```
+
+When Horizon starts, environment variables have priority because
+`data/config.json` does not store the secret. For local VS Code runs, create
+`.env` in the repository root and launch Horizon from that same root directory.
+
+Common API key variable names:
+
+| Provider | `api_key_env` value |
+| --- | --- |
+| Anthropic | `ANTHROPIC_API_KEY` |
+| OpenAI | `OPENAI_API_KEY` |
+| Azure OpenAI | `AZURE_OPENAI_API_KEY` |
+| Gemini | `GOOGLE_API_KEY` |
+| MiniMax | `MINIMAX_API_KEY` |
+| Aliyun DashScope | `DASHSCOPE_API_KEY` |
+| Doubao | `DOUBAO_API_KEY` |
+| DeepSeek | `DEEPSEEK_API_KEY` |
+
 **Anthropic Claude**:
 
 ```json
@@ -32,6 +58,19 @@ Configure which AI model scores and summarizes your content.
     "provider": "openai",
     "model": "gpt-4",
     "api_key_env": "OPENAI_API_KEY",
+    "throttle_sec": 0
+  }
+}
+```
+
+**Gemini**:
+
+```json
+{
+  "ai": {
+    "provider": "gemini",
+    "model": "gemini-2.0-flash",
+    "api_key_env": "GOOGLE_API_KEY",
     "throttle_sec": 0
   }
 }
