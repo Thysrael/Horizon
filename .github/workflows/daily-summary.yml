@@ -2,7 +2,7 @@ name: Daily Horizon Summary
 
 on:
   schedule:
-    - cron: '0 0 * * 2,4'  # Runs Tue/Thu at 08:00 Asia/Shanghai
+    - cron: '0 0 * * 1,4'  # Runs Mon/Thu at 08:00 Asia/Shanghai
   workflow_dispatch:      # Allow manual trigger
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           LWN_KEY: ${{ secrets.LWN_KEY }}
           HORIZON_WEBHOOK_URL: ${{ secrets.HORIZON_WEBHOOK_URL }}
-        run: uv run horizon --hours 48
+        run: uv run horizon --hours 96
 
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
