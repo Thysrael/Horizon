@@ -30,10 +30,17 @@ class ContentAnalyzer:
         lines = "\n".join(f"- {value}" for value in cleaned)
         return f"{title}:\n{lines}"
 
+    @staticmethod
+    def _has_effective_scoring_preferences(scoring: ScoringConfig) -> bool:
+        list_fields = (scoring.primary, scoring.secondary, scoring.boost, scoring.downrank)
+        return any(value and value.strip() for values in list_fields for value in values) or bool(
+            scoring.notes and scoring.notes.strip()
+        )
+
     def _build_system_prompt(self) -> str:
         """Return the analysis prompt, optionally refined by user scoring preferences."""
         scoring = self.scoring_config
-        if not scoring:
+        if not scoring or not self._has_effective_scoring_preferences(scoring):
             return CONTENT_ANALYSIS_SYSTEM
 
         sections = [

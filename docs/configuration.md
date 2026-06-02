@@ -451,6 +451,8 @@ Horizon's default scorer uses a generic technical-news rubric. You can optionall
 - `downrank`: Qualities that should lower an item's score.
 - `notes`: Free-form preference guidance.
 
+All fields except `profile_name` are optional; empty arrays and `null` notes are ignored.
+
 The profile refines the default rubric; it does not replace basic quality checks such as novelty, substance, relevance, and discussion quality.
 
 ## Environment Variable Substitution

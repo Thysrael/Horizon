@@ -103,6 +103,13 @@ def test_build_system_prompt_without_scoring_uses_base_prompt():
     assert analyzer._build_system_prompt() == CONTENT_ANALYSIS_SYSTEM
 
 
+def test_build_system_prompt_with_empty_scoring_profile_uses_base_prompt():
+    scoring = ScoringConfig(profile_name="default")
+    analyzer = ContentAnalyzer(SimpleNamespace(), scoring_config=scoring)
+
+    assert analyzer._build_system_prompt() == CONTENT_ANALYSIS_SYSTEM
+
+
 def test_build_system_prompt_includes_personal_scoring_profile():
     scoring = ScoringConfig(
         profile_name="personal",
