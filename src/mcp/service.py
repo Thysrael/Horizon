@@ -280,7 +280,10 @@ class HorizonPipelineService:
             raise HorizonMcpError(code="HZ_EMPTY_INPUT", message="No items available for scoring.")
 
         ai_client = ctx.runtime.create_ai_client(ctx.config.ai)
-        analyzer = ctx.runtime.ContentAnalyzer(ai_client)
+        analyzer = ctx.runtime.ContentAnalyzer(
+            ai_client,
+            scoring_config=getattr(ctx.config, "scoring", None),
+        )
         scored_items = await analyzer.analyze_batch(items)
 
         self.run_store.save_items(run_id, "scored", items_to_dicts(scored_items))

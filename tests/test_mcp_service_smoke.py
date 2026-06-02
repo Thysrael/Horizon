@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from src.models import ContentItem, SourceType
 from src.mcp.server import hz_get_metrics
-from src.mcp.service import HorizonPipelineService
+from src.mcp.service import HorizonPipelineService, PipelineContext
 
 
 def make_item(item_id: str, score: float | None = None) -> ContentItem:
@@ -142,3 +142,49 @@ def test_filter_items_uses_public_topic_dedup_api(tmp_path: Path, monkeypatch) -
     assert result["kept"] == 1
     assert result["removed_by_topic_dedup"] == 1
     assert service.run_store.load_items("run-topic-dedup", "filtered")[0]["id"] == "item-1"
+
+
+def test_score_items_passes_scoring_config_to_analyzer(tmp_path, monkeypatch):
+    captured = {}
+
+    class FakeAnalyzer:
+        def __init__(self, ai_client, scoring_config=None):
+            captured["ai_client"] = ai_client
+            captured["scoring_config"] = scoring_config
+
+        async def analyze_batch(self, items):
+            for item in items:
+                item.ai_score = 8.0
+            return items
+
+    scoring = SimpleNamespace(profile_name="personal")
+    config = SimpleNamespace(
+        ai=SimpleNamespace(),
+        scoring=scoring,
+        filtering=SimpleNamespace(ai_score_threshold=7.0),
+    )
+    runtime = SimpleNamespace(
+        create_ai_client=lambda ai: "client",
+        ContentAnalyzer=FakeAnalyzer,
+    )
+
+    service = HorizonPipelineService(runs_root=tmp_path / "runs")
+    run_id = service.run_store.create_run("test-run")
+    service.run_store.save_items(run_id, "raw", [make_item("item-1").model_dump(mode="json")])
+
+    monkeypatch.setattr(
+        service,
+        "_load_stage_items",
+        lambda **kwargs: ([make_item("item-1")], PipelineContext(
+            horizon_path=tmp_path,
+            config_path=tmp_path / "config.json",
+            runtime=runtime,
+            config=config,
+        )),
+    )
+
+    result = asyncio.run(service.score_items(run_id=run_id))
+
+    assert result["scored"] == 1
+    assert captured["ai_client"] == "client"
+    assert captured["scoring_config"] is scoring
