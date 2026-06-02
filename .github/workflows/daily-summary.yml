@@ -1,9 +1,8 @@
 name: Daily Horizon Summary
 
 on:
-  # schedule:
-  #   - cron: '0 0 */2 * *'  # Runs every 2 days at 00:00 UTC
-  #     timezone: 'Asia/Shanghai'
+  schedule:
+    - cron: '0 0 * * *'  # Runs daily at 08:00 Asia/Shanghai
   workflow_dispatch:      # Allow manual trigger
 
 jobs:
@@ -27,8 +26,15 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Prepare GitHub Actions config
-        run: cp data/config.github.json data/config.json
+      - name: Prepare Horizon config
+        env:
+          HORIZON_CONFIG_JSON: ${{ secrets.HORIZON_CONFIG_JSON }}
+        run: |
+          if [ -n "$HORIZON_CONFIG_JSON" ]; then
+            printf '%s' "$HORIZON_CONFIG_JSON" > data/config.json
+          else
+            cp data/config.github.json data/config.json
+          fi
 
       - name: Run Horizon
         env:
@@ -37,13 +43,17 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           LWN_KEY: ${{ secrets.LWN_KEY }}
+          HORIZON_WEBHOOK_URL: ${{ secrets.HORIZON_WEBHOOK_URL }}
         run: uv run horizon --hours 48
 
       - name: Set current date as environment variable
         run: echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Deploy to GitHub Pages
+        if: ${{ vars.HORIZON_DEPLOY_PAGES == 'true' }}
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
