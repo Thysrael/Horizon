@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, ClassVar
 from pydantic import BaseModel, HttpUrl, Field, field_validator
 
 
@@ -319,12 +319,58 @@ class FilteringConfig(BaseModel):
 class ScoringConfig(BaseModel):
     """Optional user preferences that refine AI content scoring."""
 
+    MAX_PROFILE_NAME_LENGTH: ClassVar[int] = 80
+    MAX_LIST_ITEMS: ClassVar[int] = 12
+    MAX_LIST_ITEM_LENGTH: ClassVar[int] = 160
+    MAX_NOTES_LENGTH: ClassVar[int] = 600
+
     profile_name: str = "default"
     primary: List[str] = Field(default_factory=list)
     secondary: List[str] = Field(default_factory=list)
     boost: List[str] = Field(default_factory=list)
     downrank: List[str] = Field(default_factory=list)
     notes: Optional[str] = None
+
+    @field_validator("profile_name")
+    @classmethod
+    def validate_profile_name(cls, v: str) -> str:
+        value = v.strip()
+        if not value:
+            return "default"
+        if len(value) > cls.MAX_PROFILE_NAME_LENGTH:
+            raise ValueError(
+                f"scoring.profile_name must be at most {cls.MAX_PROFILE_NAME_LENGTH} characters"
+            )
+        return value
+
+    @field_validator("primary", "secondary", "boost", "downrank")
+    @classmethod
+    def validate_preference_list(cls, v: List[str]) -> List[str]:
+        cleaned = [item.strip() for item in v if item and item.strip()]
+        if len(cleaned) > cls.MAX_LIST_ITEMS:
+            raise ValueError(
+                f"scoring preference lists must contain at most {cls.MAX_LIST_ITEMS} non-empty items"
+            )
+        for item in cleaned:
+            if len(item) > cls.MAX_LIST_ITEM_LENGTH:
+                raise ValueError(
+                    f"scoring preference items must be at most {cls.MAX_LIST_ITEM_LENGTH} characters"
+                )
+        return cleaned
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        value = v.strip()
+        if not value:
+            return None
+        if len(value) > cls.MAX_NOTES_LENGTH:
+            raise ValueError(
+                f"scoring.notes must be at most {cls.MAX_NOTES_LENGTH} characters"
+            )
+        return value
 
 
 class Config(BaseModel):

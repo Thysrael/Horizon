@@ -1,7 +1,9 @@
 import json
 import pytest
 from pathlib import Path
+from pydantic import ValidationError
 from src.storage.manager import StorageManager, ConfigError, _expand_env_vars
+from src.models import ScoringConfig
 
 def test_load_config_missing_file(tmp_path):
     storage = StorageManager(data_dir=str(tmp_path))
@@ -159,3 +161,26 @@ def test_load_config_accepts_scoring_profile(tmp_path):
     assert config.scoring.boost == ["durable mental models"]
     assert config.scoring.downrank == ["generic AI hype"]
     assert config.scoring.notes == "Prefer cognitive value first."
+
+
+def test_scoring_profile_trims_blank_preferences():
+    scoring = ScoringConfig(
+        profile_name="  personal  ",
+        primary=[" cognitive value ", "", "   "],
+        notes="   ",
+    )
+
+    assert scoring.profile_name == "personal"
+    assert scoring.primary == ["cognitive value"]
+    assert scoring.notes is None
+
+
+def test_scoring_profile_rejects_unbounded_prompt_content():
+    with pytest.raises(ValidationError, match="at most 12"):
+        ScoringConfig(primary=[f"signal {i}" for i in range(13)])
+
+    with pytest.raises(ValidationError, match="at most 160"):
+        ScoringConfig(boost=["x" * 161])
+
+    with pytest.raises(ValidationError, match="at most 600"):
+        ScoringConfig(notes="x" * 601)

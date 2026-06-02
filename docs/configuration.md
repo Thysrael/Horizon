@@ -451,7 +451,7 @@ Horizon's default scorer uses a generic technical-news rubric. You can optionall
 - `downrank`: Qualities that should lower an item's score.
 - `notes`: Free-form preference guidance.
 
-All fields except `profile_name` are optional; empty arrays and `null` notes are ignored.
+All fields except `profile_name` are optional; empty arrays, blank strings, and `null` notes are ignored. Each preference list accepts up to 12 non-empty items, each item can be up to 160 characters, `notes` can be up to 600 characters, and `profile_name` can be up to 80 characters.
 
 The profile refines the default rubric; it does not replace basic quality checks such as novelty, substance, relevance, and discussion quality.
 
