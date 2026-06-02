@@ -408,6 +408,51 @@ Content is scored 0-10:
 - `ai_score_threshold`: Only include content scoring >= this value
 - `time_window_hours`: Fetch content from last N hours
 
+## Personal Scoring Profile
+
+Horizon's default scorer uses a generic technical-news rubric. You can optionally add a top-level `scoring` block to refine that rubric toward your own interests without changing the output schema.
+
+```json
+{
+  "scoring": {
+    "profile_name": "personal",
+    "primary": [
+      "cognitive value",
+      "paradigm shifts",
+      "transferable insights"
+    ],
+    "secondary": [
+      "engineering usefulness",
+      "automation workflows",
+      "developer productivity"
+    ],
+    "boost": [
+      "changes how I think about AI, products, engineering, or work",
+      "contains durable mental models or decision frameworks",
+      "reveals a structural trend or shift",
+      "has actionable engineering or automation lessons"
+    ],
+    "downrank": [
+      "generic AI hype",
+      "thin product announcements",
+      "funding news without technical or strategic signal",
+      "tutorials without novelty",
+      "engagement without substance"
+    ],
+    "notes": "Prefer cognitive value first, practical engineering value second."
+  }
+}
+```
+
+- `profile_name`: Human-readable name for the profile.
+- `primary`: Strongest signals for 8-10 scores.
+- `secondary`: Supporting signals for high scores.
+- `boost`: Specific qualities that should raise an item's score.
+- `downrank`: Qualities that should lower an item's score.
+- `notes`: Free-form preference guidance.
+
+The profile refines the default rubric; it does not replace basic quality checks such as novelty, substance, relevance, and discussion quality.
+
 ## Environment Variable Substitution
 
 Any string value in `data/config.json` supports `${VAR_NAME}` syntax. Variables are expanded at runtime from the environment (including values loaded from `.env`). This lets you keep secrets, tenant-specific endpoints, and private URLs out of the checked-in JSON file.

@@ -52,6 +52,12 @@ After scoring, items are filtered by `filtering.ai_score_threshold` (default: `7
 
 Items scoring 9.0 or above are featured in the "Today's Highlights" section of the summary.
 
+## Optional Personal Scoring
+
+If `data/config.json` includes a top-level `scoring` block, Horizon appends that profile to the AI scoring prompt. The model still returns the same fields: `score`, `reason`, `summary`, and `tags`.
+
+Personal scoring is useful when your daily brief should optimize for a specific lens, such as cognitive value, product strategy, engineering usefulness, or automation ideas. The `reason` field should mention the preference that affected the score when relevant.
+
 ## Enrichment
 
 Items that pass the score threshold go through a second AI pass for enrichment (`src/ai/enricher.py`):
