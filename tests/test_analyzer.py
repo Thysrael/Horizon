@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 import src.ai.analyzer as analyzer_module
 from src.ai.analyzer import ContentAnalyzer
-from src.models import ContentItem, SourceType
+from src.ai.prompts import CONTENT_ANALYSIS_SYSTEM
+from src.models import ContentItem, ScoringConfig, SourceType
 
 
 def _make_item(item_id: str) -> ContentItem:
@@ -94,3 +95,36 @@ def test_analyze_batch_concurrent_preserves_order(monkeypatch):
     result = asyncio.run(analyzer.analyze_batch(items))
 
     assert [item.id for item in result] == [item.id for item in items]
+
+
+def test_build_system_prompt_without_scoring_uses_base_prompt():
+    analyzer = ContentAnalyzer(SimpleNamespace())
+
+    assert analyzer._build_system_prompt() == CONTENT_ANALYSIS_SYSTEM
+
+
+def test_build_system_prompt_includes_personal_scoring_profile():
+    scoring = ScoringConfig(
+        profile_name="personal",
+        primary=["cognitive value", "paradigm shifts"],
+        secondary=["engineering usefulness"],
+        boost=["durable mental models"],
+        downrank=["generic AI hype"],
+        notes="Prefer cognitive value first.",
+    )
+    analyzer = ContentAnalyzer(SimpleNamespace(), scoring_config=scoring)
+
+    prompt = analyzer._build_system_prompt()
+
+    assert CONTENT_ANALYSIS_SYSTEM in prompt
+    assert "Personal scoring profile: personal" in prompt
+    assert "Primary high-score signals" in prompt
+    assert "- cognitive value" in prompt
+    assert "- paradigm shifts" in prompt
+    assert "Secondary high-score signals" in prompt
+    assert "- engineering usefulness" in prompt
+    assert "Boost when content matches" in prompt
+    assert "- durable mental models" in prompt
+    assert "Downrank when content is" in prompt
+    assert "- generic AI hype" in prompt
+    assert "Prefer cognitive value first." in prompt

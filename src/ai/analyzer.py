@@ -10,7 +10,7 @@ from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCo
 from .client import AIClient
 from .prompts import CONTENT_ANALYSIS_SYSTEM, CONTENT_ANALYSIS_USER
 from .utils import parse_json_response
-from ..models import ContentItem
+from ..models import ContentItem, ScoringConfig
 
 DEFAULT_THROTTLE_SEC = 0.0
 
@@ -18,8 +18,41 @@ DEFAULT_THROTTLE_SEC = 0.0
 class ContentAnalyzer:
     """Analyzes content items using AI to determine importance."""
 
-    def __init__(self, ai_client: AIClient):
+    def __init__(self, ai_client: AIClient, scoring_config: ScoringConfig | None = None):
         self.client = ai_client
+        self.scoring_config = scoring_config
+
+    @staticmethod
+    def _format_list_section(title: str, values: List[str]) -> str:
+        cleaned = [value.strip() for value in values if value and value.strip()]
+        if not cleaned:
+            return ""
+        lines = "\n".join(f"- {value}" for value in cleaned)
+        return f"{title}:\n{lines}"
+
+    def _build_system_prompt(self) -> str:
+        """Return the analysis prompt, optionally refined by user scoring preferences."""
+        scoring = self.scoring_config
+        if not scoring:
+            return CONTENT_ANALYSIS_SYSTEM
+
+        sections = [
+            f"Personal scoring profile: {scoring.profile_name}",
+            "Use this profile to refine, not replace, the generic rubric above.",
+            "Primary high-score signals should be treated as the strongest reasons to score content 8-10.",
+            self._format_list_section("Primary high-score signals", scoring.primary),
+            "Secondary high-score signals can raise a good item when quality and relevance are also strong.",
+            self._format_list_section("Secondary high-score signals", scoring.secondary),
+            self._format_list_section("Boost when content matches", scoring.boost),
+            self._format_list_section("Downrank when content is", scoring.downrank),
+        ]
+        if scoring.notes and scoring.notes.strip():
+            sections.append(f"Additional preference notes: {scoring.notes.strip()}")
+        sections.append(
+            "When these preferences affect the score, mention the matched cognitive or practical signal in the JSON reason field."
+        )
+        profile_text = "\n\n".join(section for section in sections if section)
+        return f"{CONTENT_ANALYSIS_SYSTEM.rstrip()}\n\n{profile_text}\n"
 
     @staticmethod
     def _parse_json_response(response: str) -> Optional[dict]:
@@ -141,7 +174,7 @@ class ContentAnalyzer:
 
         # Get AI completion
         response = await self.client.complete(
-            system=CONTENT_ANALYSIS_SYSTEM,
+            system=self._build_system_prompt(),
             user=user_prompt,
         )
 
