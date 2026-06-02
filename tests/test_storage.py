@@ -126,3 +126,36 @@ def test_load_config_expands_env_vars_in_ai_base_url(tmp_path, monkeypatch):
     storage = StorageManager(data_dir=str(tmp_path))
     config = storage.load_config()
     assert config.ai.base_url == "https://private-proxy.example/v1"
+
+
+def test_load_config_accepts_scoring_profile(tmp_path):
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps({
+        "version": "1.0",
+        "ai": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "api_key_env": "OPENAI_API_KEY",
+        },
+        "sources": {"hackernews": {"enabled": True}},
+        "filtering": {"ai_score_threshold": 7.0, "time_window_hours": 24},
+        "scoring": {
+            "profile_name": "personal",
+            "primary": ["cognitive value", "paradigm shifts"],
+            "secondary": ["engineering usefulness"],
+            "boost": ["durable mental models"],
+            "downrank": ["generic AI hype"],
+            "notes": "Prefer cognitive value first.",
+        },
+    }), encoding="utf-8")
+
+    storage = StorageManager(data_dir=str(tmp_path))
+    config = storage.load_config()
+
+    assert config.scoring is not None
+    assert config.scoring.profile_name == "personal"
+    assert config.scoring.primary == ["cognitive value", "paradigm shifts"]
+    assert config.scoring.secondary == ["engineering usefulness"]
+    assert config.scoring.boost == ["durable mental models"]
+    assert config.scoring.downrank == ["generic AI hype"]
+    assert config.scoring.notes == "Prefer cognitive value first."

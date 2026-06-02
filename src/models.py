@@ -316,6 +316,17 @@ class FilteringConfig(BaseModel):
     time_window_hours: int = 24
 
 
+class ScoringConfig(BaseModel):
+    """Optional user preferences that refine AI content scoring."""
+
+    profile_name: str = "default"
+    primary: List[str] = Field(default_factory=list)
+    secondary: List[str] = Field(default_factory=list)
+    boost: List[str] = Field(default_factory=list)
+    downrank: List[str] = Field(default_factory=list)
+    notes: Optional[str] = None
+
+
 class Config(BaseModel):
     """Main configuration model."""
 
@@ -323,5 +334,6 @@ class Config(BaseModel):
     ai: AIConfig
     sources: SourcesConfig
     filtering: FilteringConfig
+    scoring: Optional[ScoringConfig] = None
     email: Optional[EmailConfig] = None
     webhook: Optional[WebhookConfig] = None
