@@ -242,6 +242,10 @@ class WebhookConfig(BaseModel):
     fallback_layout: str = (
         "markdown"  # Layout to use when the requested layout is unsupported
     )
+    message_title: Optional[str] = None  # Optional fixed title for webhook messages
+    max_items: Optional[int] = None  # Optional cap for summary_and_items item messages
+    pages_url: Optional[str] = None  # Optional GitHub Pages or public summary URL
+    send_interval_sec: Optional[float] = None  # Optional delay between multi-message sends
     languages: Optional[List[str]] = (
         None  # Optional language filter for webhook delivery; defaults to all AI languages
     )
@@ -289,6 +293,20 @@ class WebhookConfig(BaseModel):
             raise ValueError(
                 f"webhook.overview_position must be one of {allowed}, got '{v}'"
             )
+        return v
+
+    @field_validator("max_items")
+    @classmethod
+    def validate_max_items(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("webhook.max_items must be greater than 0")
+        return v
+
+    @field_validator("send_interval_sec")
+    @classmethod
+    def validate_send_interval_sec(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError("webhook.send_interval_sec must be greater than or equal to 0")
         return v
 
 

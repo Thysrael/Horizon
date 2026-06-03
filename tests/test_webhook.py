@@ -834,7 +834,10 @@ class TestSendDailySummary:
         items = [_make_item()]
         summary = "# Horizon Daily\nTest summary"
 
-        with patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify:
+        with (
+            patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify,
+            patch("src.services.webhook.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             _run_async(
                 notifier.send_daily_summary(
                     summary=summary,
@@ -949,7 +952,10 @@ class TestSendDailySummary:
             _make_item(title="Item B", url="https://example.com/b"),
         ]
 
-        with patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify:
+        with (
+            patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify,
+            patch("src.services.webhook.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
             _run_async(
                 notifier.send_daily_summary(
                     summary="# Full summary",
@@ -975,6 +981,66 @@ class TestSendDailySummary:
             assert second_vars["item_url"] == "https://example.com/test"
             assert third_vars["message_kind"] == "overview"
             assert third_vars["message_title"] == "Horizon 2026-04-24 Overview"
+        del os.environ[_TEST_URL_ENV]
+
+    def test_feishu_summary_and_items_keeps_titles_top_three_and_pages_link(self):
+        """Feishu summary_and_items keeps original titles, sends top 3, and links Pages."""
+        os.environ[_TEST_URL_ENV] = _TEST_URL
+        config = WebhookConfig(
+            enabled=True,
+            url_env=_TEST_URL_ENV,
+            delivery="summary_and_items",
+            overview_position="last",
+            platform="feishu",
+        )
+        notifier = WebhookNotifier(config)
+        summarizer = DailySummarizer()
+        items = [
+            _make_item(title="Score 7", url="https://example.com/7", score=7.0),
+            _make_item(title="Score 9", url="https://example.com/9", score=9.0),
+            _make_item(title="Score 8.5", url="https://example.com/85", score=8.5),
+            _make_item(title="Score 8", url="https://example.com/8", score=8.0),
+        ]
+
+        with (
+            patch.object(notifier, "notify", new_callable=AsyncMock) as mock_notify,
+            patch("src.services.webhook.asyncio.sleep", new_callable=AsyncMock) as mock_sleep,
+        ):
+            _run_async(
+                notifier.send_daily_summary(
+                    summary="# Full summary",
+                    important_items=items,
+                    all_items_count=20,
+                    date="2026-04-24",
+                    lang="zh",
+                    summarizer=summarizer,
+                )
+            )
+
+            assert mock_notify.call_count == 4
+            sent_vars = [call[0][0] for call in mock_notify.call_args_list]
+            assert [vars["message_title"] for vars in sent_vars] == [
+                "3/3 Score 8",
+                "2/3 Score 8.5",
+                "1/3 Score 9",
+                "Horizon 2026-04-24 总览",
+            ]
+
+            item_vars = [vars for vars in sent_vars if vars["message_kind"] == "item"]
+            assert [vars["item_title"] for vars in item_vars] == [
+                "Score 8",
+                "Score 8.5",
+                "Score 9",
+            ]
+            assert all("Horizon 每日速递" in vars["summary"] for vars in item_vars)
+            assert all("AI summary" in vars["summary"] for vars in item_vars)
+
+            overview_vars = sent_vars[-1]
+            assert overview_vars["message_kind"] == "overview"
+            assert "https://yonoel.github.io/Horizon/" in overview_vars["summary"]
+            assert "Score 7" not in overview_vars["summary"]
+            assert mock_sleep.call_count == 3
+            assert all(call[0][0] == 1.5 for call in mock_sleep.call_args_list)
         del os.environ[_TEST_URL_ENV]
 
     def test_feishu_collapsible_layout_builds_single_card_message(self):

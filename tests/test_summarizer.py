@@ -60,6 +60,21 @@ def test_generate_webhook_item_renders_single_item_detail():
     assert "**Tags**: `#AI`, `#News`" in result
 
 
+def test_generate_webhook_item_includes_ai_comment_from_reason():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+    item.ai_reason = "This matters because it changes the AI tooling baseline."
+
+    result = summarizer.generate_webhook_item(
+        item,
+        language="en",
+        index=1,
+        total=1,
+    )
+
+    assert "**AI Comment**: This matters because it changes the AI tooling baseline." in result
+
+
 def test_generate_webhook_item_includes_discussion_link_when_distinct():
     summarizer = DailySummarizer()
     item = _make_item(1)

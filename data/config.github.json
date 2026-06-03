@@ -121,6 +121,10 @@
     "platform": "generic",
     "layout": "markdown",
     "fallback_layout": "markdown",
+    "message_title": null,
+    "max_items": null,
+    "pages_url": null,
+    "send_interval_sec": null,
     "languages": null,
     "request_body": {
       "msg_type": "interactive",

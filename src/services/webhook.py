@@ -1,5 +1,6 @@
 """Webhook notification service for Horizon."""
 
+import asyncio
 import json
 import logging
 import os
@@ -15,6 +16,10 @@ from ..models import ContentItem, WebhookConfig
 from ..ai.summarizer import DailySummarizer
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_FEISHU_MAX_ITEMS = 3
+_DEFAULT_PAGES_URL = "https://yonoel.github.io/Horizon/"
+_DEFAULT_FEISHU_SEND_INTERVAL_SEC = 1.5
 
 
 # Pattern: #{key} or #{key?param1=val1&param2=val2}
@@ -147,6 +152,79 @@ def _text(value: str) -> dict[str, str]:
 def _markdown(content: str) -> dict[str, str]:
     """Build a Feishu Markdown component."""
     return {"tag": "markdown", "content": content}
+
+
+def _rank_items_for_webhook(
+    items: List[ContentItem], max_items: int | None
+) -> List[ContentItem]:
+    """Return highest-scored webhook items, preserving input order for score ties."""
+    ranked_items = sorted(
+        enumerate(items),
+        key=lambda item: (
+            item[1].ai_score if item[1].ai_score is not None else -1,
+            -item[0],
+        ),
+        reverse=True,
+    )
+    selected = [item for _, item in ranked_items]
+    if max_items is not None:
+        selected = selected[:max_items]
+    return selected
+
+
+def _append_pages_link(summary: str, pages_url: str | None, lang: str) -> str:
+    """Append a public summary link to webhook overview text when configured."""
+    if not pages_url:
+        return summary
+
+    label = "完整 GitHub Pages 版" if lang == "zh" else "Full GitHub Pages version"
+    return f"{summary}\n\n---\n\n[{label}]({pages_url})"
+
+
+def _default_message_title(config: WebhookConfig) -> str | None:
+    """Resolve an optional fixed webhook message title."""
+    return getattr(config, "message_title", None)
+
+
+def _default_max_items(config: WebhookConfig) -> int | None:
+    """Resolve an optional item cap for webhook delivery."""
+    configured_max_items = getattr(config, "max_items", None)
+    if configured_max_items is not None:
+        return configured_max_items
+    if _is_feishu_platform(getattr(config, "platform", "")):
+        return _DEFAULT_FEISHU_MAX_ITEMS
+    return None
+
+
+def _default_pages_url(config: WebhookConfig) -> str | None:
+    """Resolve an optional published summary URL for webhook overview messages."""
+    configured_url = getattr(config, "pages_url", None)
+    if configured_url:
+        return configured_url
+    env_url = os.getenv("HORIZON_PAGES_URL")
+    if env_url:
+        return env_url
+    if _is_feishu_platform(getattr(config, "platform", "")):
+        return _DEFAULT_PAGES_URL
+    return None
+
+
+def _prepend_feishu_keyword(content: str, lang: str) -> str:
+    """Add a Feishu keyword to item bodies while keeping card titles unchanged."""
+    keyword = "Horizon 每日速递" if lang == "zh" else "Horizon Daily"
+    if keyword in content:
+        return content
+    return f"{keyword}\n\n{content}"
+
+
+def _send_interval_seconds(config: WebhookConfig) -> float:
+    """Resolve delay between multi-message webhook sends."""
+    configured_interval = getattr(config, "send_interval_sec", None)
+    if configured_interval is not None:
+        return configured_interval
+    if _is_feishu_platform(getattr(config, "platform", "")):
+        return _DEFAULT_FEISHU_SEND_INTERVAL_SEC
+    return 0.0
 
 
 def _collapsible_panel(title: str, content: str) -> dict[str, Any]:
@@ -488,38 +566,54 @@ class WebhookNotifier:
 
         delivery = getattr(self.config, "delivery", "summary")
         if delivery == "summary_and_items":
+            max_items = _default_max_items(self.config)
+            selected_items = _rank_items_for_webhook(important_items, max_items)
+            fixed_message_title = _default_message_title(self.config)
             item_messages: List[dict[str, Any]] = []
             overview = summarizer.generate_webhook_overview(
-                important_items,
+                selected_items,
                 date,
                 all_items_count,
                 language=lang,
             )
+            overview = _append_pages_link(
+                overview,
+                _default_pages_url(self.config),
+                lang,
+            )
             overview_message = {
                 **base_vars,
                 "message_title": (
-                    f"Horizon {date} 总览"
-                    if lang == "zh"
-                    else f"Horizon {date} Overview"
+                    fixed_message_title
+                    or (
+                        f"Horizon {date} 总览"
+                        if lang == "zh"
+                        else f"Horizon {date} Overview"
+                    )
                 ),
                 "message_kind": "overview",
                 "summary": overview,
             }
-            for item_index, item in enumerate(important_items, start=1):
+            for item_index, item in enumerate(selected_items, start=1):
                 title = str(item.metadata.get(f"title_{lang}") or item.title)
                 item_summary = summarizer.generate_webhook_item(
                     item,
                     language=lang,
                     index=item_index,
-                    total=len(important_items),
+                    total=len(selected_items),
                 )
+                if _is_feishu_platform(getattr(self.config, "platform", "")):
+                    item_summary = _prepend_feishu_keyword(item_summary, lang)
                 item_messages.append(
                     {
                         **base_vars,
-                        "message_title": f"{item_index}/{len(important_items)} {title}",
+                        "message_title": (
+                            fixed_message_title
+                            or f"{item_index}/{len(selected_items)} {title}"
+                        ),
                         "message_kind": "item",
                         "item_index": item_index,
-                        "item_count": len(important_items),
+                        "item_count": len(selected_items),
                         "item_title": title,
                         "item_url": str(item.url),
                         "item_score": item.ai_score or "",
@@ -744,7 +838,10 @@ class WebhookNotifier:
             return
 
         self.console.print(f"🔔 Sending {lang.upper()} webhook notification...")
-        for message in messages:
+        send_interval_sec = _send_interval_seconds(self.config)
+        for index, message in enumerate(messages):
+            if index > 0 and send_interval_sec > 0:
+                await asyncio.sleep(send_interval_sec)
             await self.notify(message)
 
     async def send_failure(

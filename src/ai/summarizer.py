@@ -23,6 +23,7 @@ LABELS = {
         "source": "Source",
         "background": "Background",
         "discussion": "Discussion",
+        "ai_comment": "AI Comment",
         "references": "References",
         "tags": "Tags",
         "selected_items": "From {total} items, {selected} important content pieces were selected",
@@ -43,6 +44,7 @@ LABELS = {
         "source": "来源",
         "background": "背景",
         "discussion": "社区讨论",
+        "ai_comment": "AI 评论",
         "references": "参考链接",
         "tags": "标签",
         "selected_items": "从 {total} 条内容中筛选出 {selected} 条重要资讯。",
@@ -157,8 +159,18 @@ class DailySummarizer:
     ) -> str:
         """Generate one item message for multi-message webhook delivery."""
         labels = LABELS.get(language, LABELS["en"])
-        prefix = f"第 {index}/{total} 条\n\n" if language == "zh" else f"Item {index}/{total}\n\n"
-        return prefix + self._format_item(item, labels, language, index).rstrip("-\n ")
+        prefix = (
+            f"第 {index}/{total} 条\n\n"
+            if language == "zh"
+            else f"Item {index}/{total}\n\n"
+        )
+        body = self._format_item(item, labels, language, index).rstrip("-\n ")
+        ai_comment = item.ai_reason or ""
+        if ai_comment:
+            if language == "zh":
+                ai_comment = _pangu(ai_comment)
+            body = f"{body}\n\n**{labels['ai_comment']}**: {ai_comment}"
+        return prefix + body
 
     def _format_item(self, item: ContentItem, labels: dict, language: str, index: int) -> str:
         """Format a single ContentItem into Markdown."""
