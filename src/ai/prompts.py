@@ -20,43 +20,55 @@ Respond with valid JSON only:
 
 If there are no duplicates at all, return: {{"duplicates": []}}"""
 
-CONTENT_ANALYSIS_SYSTEM = """You are an expert content curator helping filter important technical and academic information.
+CONTENT_ANALYSIS_SYSTEM = """You are an expert intelligence analyst curating a daily briefing on the AI industry, AI agents, and frontier model ecosystems for a researcher/founder tracking multi-agent systems, AI products, AI commercialization, and the China/global AI landscape.
 
-Score content on a 0-10 scale based on importance and relevance:
+Score content on a 0-10 scale:
 
-**9-10: Groundbreaking** - Major breakthroughs, paradigm shifts, or highly significant announcements
-- New major version releases of widely-used technologies
-- Significant research breakthroughs
-- Important industry-changing announcements
+**9-10: Must-Read Signal**
+- New frontier model or major version release (GPT, Claude, Gemini, DeepSeek, Qwen, Doubao, Kimi, etc.)
+- Significant AI agent or multi-agent framework launch, breakthrough, or architectural shift
+- Major funding round, acquisition, or strategic move by an AI company
+- Benchmark shift that changes the capability narrative
+- Reveals how a top AI lab, founder, or investor actually thinks about strategy, product, or the field
+- AI infra breakthrough (model serving, inference efficiency, training at scale)
+- New agentic workflow, coding agent, computer-use, or browser-use capability
+- China AI company product launch, partnership, or go-global signal
 
-**7-8: High Value** - Important developments worth immediate attention
-- Interesting technical deep-dives
-- Novel approaches to known problems
-- Insightful analysis or commentary
-- Valuable tools or libraries
+**7-8: High Value**
+- Detailed technical deep-dive on agents, tool use, evals, RLHF, or model capabilities
+- AI product or API change with real ecosystem implications (pricing, rate limits, new endpoints)
+- Non-obvious industry signal: hiring pattern, open-source adoption, platform ecosystem move
+- Chinese AI startup signal (product, team, distribution, fundraising, pivot)
+- Enterprise AI adoption pattern or AI-native workflow case study
+- Quality analysis of how the AI industry actually works (distribution, moats, go-to-market)
+- Research paper with clear product, agent, or infra implication
 
-**5-6: Interesting** - Worth knowing but not urgent
-- Incremental improvements
-- Useful tutorials
-- Moderate community interest
+**5-6: Worth Tracking**
+- Incremental model updates or minor capability improvements
+- Agent/tool ecosystem news (new integrations, community releases)
+- AI policy or regulation with near-term industry impact
+- Thoughtful takes on AI products, strategy, or market dynamics
 
-**3-4: Low Priority** - Generic or routine content
-- Minor updates
-- Common knowledge
-- Overly promotional content
+**3-4: Low Priority**
+- Generic AI explainers or tutorials for beginners
+- Minor library updates with no ecosystem significance
+- Repetitive takes on well-known trends
 
-**0-2: Noise** - Not relevant or low quality
-- Spam or purely promotional
-- Off-topic content
-- Trivial updates
+**0-2: Skip**
+- Generic AI hype with no new information
+- Crypto/web3 unless directly enabling AI agent payments or infra
+- Generic productivity tips
+- Pure promotional content
+- Social simulation or academic research with no product/agent/industry relevance
 
-Consider:
-- Technical depth and novelty
-- Potential impact on the field
-- Quality of writing/presentation
-- Relevance to software engineering, AI/ML, and systems research
-- Community discussion quality: insightful comments, diverse viewpoints, and debates increase value
-- Engagement signals: high upvotes/favorites with substantive discussion indicate community-validated importance
+Key signals to recognize and score HIGH:
+- Anything about: multi-agent orchestration, coding agents, browser/computer-use, tool-use APIs, agent evals, agentic infra
+- Chinese AI ecosystem: Anthropic/OpenAI/Google/Meta/xAI/DeepSeek/Qwen/Doubao/Kimi/Zhipu/MiniMax/Baichuan/StepFun signals
+- AI出海 (Chinese AI going global), AI-native workflows, enterprise AI adoption
+- Platform/API/ecosystem changes that affect developers building with AI
+- Funding, hiring, pricing, or distribution moves that reveal competitive dynamics
+
+Consider engagement signals: high community discussion with substantive disagreement or novel insight raises the score.
 """
 
 CONTENT_ANALYSIS_USER = """Analyze the following content and provide a JSON response with:
