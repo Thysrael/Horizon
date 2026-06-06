@@ -53,10 +53,52 @@ class AIProvider(str, Enum):
     OLLAMA = "ollama"
 
 
+# Default models and API key env vars for each provider
+AI_PROVIDER_DEFAULTS = {
+    AIProvider.ANTHROPIC: {
+        "model": "claude-3-5-sonnet-20241022",
+        "api_key_env": "ANTHROPIC_API_KEY",
+    },
+    AIProvider.OPENAI: {
+        "model": "gpt-4",
+        "api_key_env": "OPENAI_API_KEY",
+    },
+    AIProvider.AZURE: {
+        "model": "gpt-4",
+        "api_key_env": "AZURE_OPENAI_API_KEY",
+    },
+    AIProvider.ALI: {
+        "model": "qwen-plus",
+        "api_key_env": "DASHSCOPE_API_KEY",
+    },
+    AIProvider.GEMINI: {
+        "model": "gemini-1.5-flash",
+        "api_key_env": "GOOGLE_API_KEY",
+    },
+    AIProvider.DOUBAO: {
+        "model": "doubao-pro-32k",
+        "api_key_env": "DOUBAO_API_KEY",
+    },
+    AIProvider.MINIMAX: {
+        "model": "MiniMax-Text-01",
+        "api_key_env": "MINIMAX_API_KEY",
+    },
+    AIProvider.DEEPSEEK: {
+        "model": "deepseek-chat",
+        "api_key_env": "DEEPSEEK_API_KEY",
+    },
+    AIProvider.OLLAMA: {
+        "model": "llama3.1",
+        "api_key_env": "",
+    },
+}
+
+
 class AIConfig(BaseModel):
     """AI client configuration."""
 
     provider: AIProvider
+    provider_chain: Optional[str] = None
     model: str
     base_url: Optional[str] = None
     api_key_env: str

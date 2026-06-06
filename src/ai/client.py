@@ -3,7 +3,7 @@
 import os
 import re
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from anthropic import AsyncAnthropic
 from google import genai
@@ -11,6 +11,7 @@ from google.genai import types
 
 
 from ..models import AIConfig, AIProvider
+from rich import print as rich_print
 from .tokens import record_usage
 
 
@@ -481,18 +482,8 @@ class GeminiClient(AIClient):
         return response.text
 
 
-def create_ai_client(config: AIConfig) -> AIClient:
-    """Factory function to create appropriate AI client.
-
-    Args:
-        config: AI configuration
-
-    Returns:
-        AIClient: Initialized AI client
-
-    Raises:
-        ValueError: If provider is not supported
-    """
+def _create_single_client(config: AIConfig) -> AIClient:
+    """Create a single AI client instance."""
     if config.provider == AIProvider.ANTHROPIC:
         return AnthropicClient(config)
     elif config.provider == AIProvider.AZURE:
@@ -510,3 +501,121 @@ def create_ai_client(config: AIConfig) -> AIClient:
         return OpenAIClient(config)
     else:
         raise ValueError(f"Unsupported AI provider: {config.provider}")
+
+
+class ChainedAIClient(AIClient):
+    """Chain multiple AI clients with automatic fallback.
+
+    When a provider fails with a retryable error (rate limit, auth/quota,
+    service unavailable, or empty response), automatically falls back to
+    the next provider in the chain.
+
+    Clients are created lazily so that missing API keys for downstream
+    providers do not block startup when the primary provider works.
+    """
+
+    def __init__(
+        self,
+        configs: List[AIConfig],
+        clients: Optional[List[AIClient]] = None,
+        client_factory: Optional[Any] = None,
+    ):
+        self.configs = configs
+        self._client_factory = client_factory or _create_single_client
+        self._client_cache: Dict[int, AIClient] = {}
+        # Allow tests to inject pre-built clients directly
+        if clients is not None:
+            for idx, client in enumerate(clients):
+                self._client_cache[idx] = client
+
+    def _get_client(self, index: int) -> AIClient:
+        if index not in self._client_cache:
+            self._client_cache[index] = self._client_factory(self.configs[index])
+        return self._client_cache[index]
+
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        last_error: Optional[Exception] = None
+        for i in range(len(self.configs)):
+            try:
+                client = self._get_client(i)
+                result = await client.complete(system, user, temperature, max_tokens)
+                if not result or not result.strip():
+                    raise ValueError("Empty response from provider")
+                return result
+            except Exception as exc:
+                if not self._should_fallback(exc):
+                    raise
+                last_error = exc
+                if i < len(self.configs) - 1:
+                    rich_print(
+                        f"\n[yellow]Provider {self.configs[i].provider.value} failed ({exc}), "
+                        f"falling back to {self.configs[i + 1].provider.value}...[/yellow]"
+                    )
+        raise RuntimeError(f"All providers failed. Last error: {last_error}")
+
+    @staticmethod
+    def _should_fallback(exc: Exception) -> bool:
+        """Determine if an error warrants fallback to the next provider."""
+        msg = str(exc).lower()
+        if "429" in msg or "rate limit" in msg:
+            return True
+        if "401" in msg or "403" in msg or "quota" in msg or "exceeded" in msg:
+            return True
+        if "502" in msg or "503" in msg or "service unavailable" in msg:
+            return True
+        if "empty response" in msg:
+            return True
+        return False
+
+
+def _create_chained_client(config: AIConfig) -> ChainedAIClient:
+    """Build a ChainedAIClient from a comma-separated provider chain."""
+    from ..models import AI_PROVIDER_DEFAULTS
+
+    provider_names = [p.strip() for p in config.provider_chain.split(",") if p.strip()]
+    if not provider_names:
+        raise ValueError("provider_chain is empty")
+
+    chain_configs: List[AIConfig] = []
+    for name in provider_names:
+        try:
+            provider = AIProvider(name)
+        except ValueError:
+            raise ValueError(f"Unsupported AI provider in chain: {name}")
+
+        defaults = AI_PROVIDER_DEFAULTS.get(provider, {})
+        cfg = AIConfig(
+            provider=provider,
+            model=defaults.get("model", config.model),
+            api_key_env=defaults.get("api_key_env", config.api_key_env),
+            base_url=config.base_url,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
+            languages=config.languages,
+        )
+        chain_configs.append(cfg)
+
+    return ChainedAIClient(chain_configs)
+
+
+def create_ai_client(config: AIConfig) -> AIClient:
+    """Factory function to create appropriate AI client.
+
+    Args:
+        config: AI configuration
+
+    Returns:
+        AIClient: Initialized AI client
+
+    Raises:
+        ValueError: If provider is not supported
+    """
+    if config.provider_chain:
+        return _create_chained_client(config)
+    return _create_single_client(config)
