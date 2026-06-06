@@ -18,6 +18,7 @@ from .scrapers.rss import RSSScraper
 from .scrapers.reddit import RedditScraper
 from .scrapers.telegram import TelegramScraper
 from .scrapers.twitter import TwitterScraper
+from .scrapers.twitter_playwright import TwitterPlaywrightScraper
 from .scrapers.openbb import OpenBBScraper
 from .scrapers.ossinsight import OSSInsightScraper
 from .ai.client import create_ai_client
@@ -264,9 +265,13 @@ class HorizonOrchestrator:
                 telegram_scraper = TelegramScraper(self.config.sources.telegram, client)
                 tasks.append(self._fetch_with_progress("Telegram", telegram_scraper, since))
 
-            # Twitter
+            # Twitter (Apify or Playwright mode)
             if self.config.sources.twitter and self.config.sources.twitter.enabled:
-                twitter_scraper = TwitterScraper(self.config.sources.twitter, client)
+                tw_cfg = self.config.sources.twitter
+                if tw_cfg.mode == "playwright":
+                    twitter_scraper = TwitterPlaywrightScraper(tw_cfg)
+                else:
+                    twitter_scraper = TwitterScraper(tw_cfg, client)
                 tasks.append(self._fetch_with_progress("Twitter", twitter_scraper, since))
 
             # OpenBB (financial news / filings via the OpenBB Platform SDK)
@@ -489,6 +494,11 @@ class HorizonOrchestrator:
         )
 
         async with httpx.AsyncClient(timeout=30.0) as client:
+            if tw_cfg.mode == "playwright":
+                self.console.print(
+                    "   [yellow]Reply expansion not yet supported in Playwright mode.[/yellow]"
+                )
+                return
             scraper = TwitterScraper(tw_cfg, client)
             expanded = []
             for item in twitter_items:

@@ -145,17 +145,27 @@ class TelegramConfig(BaseModel):
 
 
 class TwitterConfig(BaseModel):
-    """Twitter source configuration via Apify."""
+    """Twitter source configuration.
+
+    Two modes are supported:
+    - "apify": Use Apify scweet actor (requires APIFY_TOKEN, more reliable)
+    - "playwright": Use Playwright + browser cookies (free, no token needed)
+    """
 
     enabled: bool = True
-    apify_token_env: str = "APIFY_TOKEN"
-    actor_id: str = "altimis~scweet"
+    mode: str = "apify"  # "apify" or "playwright"
     users: List[str] = Field(default_factory=list)
     fetch_limit: int = 10
     fetch_reply_text: bool = False
     max_replies_per_tweet: int = 3
     max_tweets_to_expand: int = 10
     reply_min_likes: int = 0
+    # Apify settings (used when mode == "apify")
+    apify_token_env: str = "APIFY_TOKEN"
+    actor_id: str = "altimis~scweet"
+    # Playwright settings (used when mode == "playwright")
+    cookie_dir: str = "data"
+    cookie_file_pattern: str = "x_cookies_*.json"
 
 
 class OpenBBWatchlist(BaseModel):

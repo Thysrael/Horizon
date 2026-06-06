@@ -21,12 +21,13 @@ def test_resolve_horizon_path_accepts_explicit_repo() -> None:
     assert resolve_horizon_path(str(repo_root)) == repo_root.resolve()
 
 
-def test_resolve_config_path_defaults_to_repo_data_config() -> None:
-    repo_root = Path(__file__).resolve().parents[1]
+def test_resolve_config_path_defaults_to_repo_data_config(tmp_path: Path) -> None:
+    # Create a temporary config.json so resolve_config_path doesn't raise
+    config_path = tmp_path / "data" / "config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text("{}", encoding="utf-8")
 
-    assert (
-        resolve_config_path(repo_root) == (repo_root / "data" / "config.json").resolve()
-    )
+    assert resolve_config_path(tmp_path) == config_path.resolve()
 
 
 def test_load_mcp_secrets_loads_generic_env_keys(tmp_path: Path, monkeypatch) -> None:

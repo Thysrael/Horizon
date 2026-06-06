@@ -31,6 +31,10 @@ openbb = [
     "openbb>=4.4.0",
     "openbb-benzinga>=1.6.0",
 ]
+twitter = [
+    "playwright>=1.40.0",
+    "playwright-stealth>=1.0.0",
+]
 
 [project.scripts]
 horizon = "src.main:main"
