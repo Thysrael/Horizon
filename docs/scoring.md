@@ -39,22 +39,33 @@ Engagement metadata is source-specific: HN provides score and comment count, Red
 
 ## Filtering
 
-After scoring, items are filtered by `filtering.ai_score_threshold` (default: `7.0`) and sorted by score descending. Only items meeting the threshold appear in the daily summary.
+After scoring, items are filtered by `filtering.ai_score_threshold` (default: `7.0`) and sorted by score descending. Optional balanced digest quotas are then applied before enrichment.
 
 ```json
 {
   "filtering": {
     "ai_score_threshold": 7.0,
-    "time_window_hours": 24
+    "time_window_hours": 24,
+    "max_items": 20,
+    "category_groups": {
+      "ai": {
+        "limit": 5,
+        "categories": ["ai-news", "ai-tools", "machine-learning"]
+      }
+    }
   }
 }
 ```
+
+`category_groups` limits each configured category group independently.
+`max_items` caps the merged result. Both fields are optional; without them,
+scoring and filtering behave as before.
 
 Items scoring 9.0 or above are featured in the "Today's Highlights" section of the summary.
 
 ## Enrichment
 
-Items that pass the score threshold go through a second AI pass for enrichment (`src/ai/enricher.py`):
+Items that pass the score threshold and any balanced digest limits go through a second AI pass for enrichment (`src/ai/enricher.py`):
 
 1. **Concept extraction** — AI identifies 1-3 technical concepts in the item that may need explanation.
 2. **Web search** — Each concept is searched via DuckDuckGo to gather grounding context.

@@ -262,6 +262,35 @@ cp data/config.example.json data/config.json  # 自定义信息源
 }
 ```
 
+**均衡日报（可选）**
+
+可以限制日报总条数，并避免单一类别占据过多内容。类别来自
+`sources.rss[].category` 等信息源配置。
+
+```jsonc
+{
+  "filtering": {
+    "ai_score_threshold": 6.0,
+    "max_items": 20,
+    "category_groups": {
+      "ai": {
+        "limit": 5,
+        "categories": ["ai-news", "ai-tools", "machine-learning"]
+      },
+      "finance": {
+        "limit": 5,
+        "categories": ["finance", "business", "equities"]
+      }
+    },
+    "default_group": "other",
+    "default_group_limit": 3
+  }
+}
+```
+
+分组限额在 AI 分数过滤之后、内容补充之前执行。未配置
+`category_groups` 和 `max_items` 时，筛选行为保持不变。
+
 `data/config.json` 里的任意字符串值都可以通过 `${VAR_NAME}` 引用环境变量。这适合用于 `ai.base_url`、私有 RSS 链接、Webhook 地址或自定义请求头模板等字段。
 
 完整配置参考请查看[配置指南](docs/configuration.md)。

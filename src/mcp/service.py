@@ -204,6 +204,13 @@ class HorizonPipelineService:
             "filtering": {
                 "ai_score_threshold": ctx.config.filtering.ai_score_threshold,
                 "time_window_hours": ctx.config.filtering.time_window_hours,
+                "max_items": ctx.config.filtering.max_items,
+                "category_groups": {
+                    key: group.model_dump(mode="json")
+                    for key, group in ctx.config.filtering.category_groups.items()
+                },
+                "default_group": ctx.config.filtering.default_group,
+                "default_group_limit": ctx.config.filtering.default_group_limit,
             },
             "enabled_sources": get_enabled_sources(ctx.config),
             "selected_sources": selected_sources,
@@ -327,10 +334,29 @@ class HorizonPipelineService:
         important_items.sort(key=lambda x: x.ai_score or 0, reverse=True)
 
         before_dedup = len(important_items)
+        orchestrator = None
         if topic_dedup and important_items:
             storage = make_storage(ctx.runtime, ctx.config_path)
             orchestrator = make_orchestrator(ctx.runtime, ctx.config, storage)
             important_items = await orchestrator.merge_topic_duplicates(important_items)
+        after_dedup = len(important_items)
+
+        filtering = ctx.config.filtering
+        balanced_enabled = bool(
+            getattr(filtering, "category_groups", {})
+            or getattr(filtering, "max_items", None) is not None
+        )
+        balanced_group_counts: dict[str, int] = {}
+        if balanced_enabled:
+            if orchestrator is None:
+                storage = make_storage(ctx.runtime, ctx.config_path)
+                orchestrator = make_orchestrator(ctx.runtime, ctx.config, storage)
+            balanced_result = orchestrator.apply_balanced_digest(
+                important_items,
+                log=False,
+            )
+            important_items = balanced_result.items
+            balanced_group_counts = balanced_result.group_counts
 
         self.run_store.save_items(run_id, "filtered", items_to_dicts(important_items))
         meta = self.run_store.update_meta(
@@ -339,7 +365,10 @@ class HorizonPipelineService:
                 "filtered_count": len(important_items),
                 "filter_threshold": effective_threshold,
                 "topic_dedup_enabled": topic_dedup,
-                "topic_dedup_removed": before_dedup - len(important_items),
+                "topic_dedup_removed": before_dedup - after_dedup,
+                "balanced_digest_enabled": balanced_enabled,
+                "balanced_digest_group_counts": balanced_group_counts,
+                "balanced_digest_removed": after_dedup - len(important_items),
             },
         )
 
@@ -347,7 +376,10 @@ class HorizonPipelineService:
             "run_id": run_id,
             "kept": len(important_items),
             "threshold": effective_threshold,
-            "removed_by_topic_dedup": before_dedup - len(important_items),
+            "removed_by_topic_dedup": before_dedup - after_dedup,
+            "removed_by_balanced_digest": after_dedup - len(important_items),
+            "balanced_digest_enabled": balanced_enabled,
+            "group_counts": balanced_group_counts,
             "source_counts": get_source_counts(important_items),
             "artifact": str((self.run_store.run_dir(run_id) / "filtered_items.json").resolve()),
             "meta": meta,

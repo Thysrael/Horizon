@@ -400,13 +400,50 @@ Content is scored 0-10:
 {
   "filtering": {
     "ai_score_threshold": 7.0,
-    "time_window_hours": 24
+    "time_window_hours": 24,
+    "max_items": 20,
+    "category_groups": {
+      "ai": {
+        "name": "AI / Machine Learning",
+        "limit": 5,
+        "categories": ["ai-news", "ai-tools", "machine-learning", "llm"]
+      },
+      "finance": {
+        "name": "Finance",
+        "limit": 5,
+        "categories": ["finance", "equities", "crypto"]
+      }
+    },
+    "default_group": "other",
+    "default_group_limit": 3
   }
 }
 ```
 
 - `ai_score_threshold`: Only include content scoring >= this value
 - `time_window_hours`: Fetch content from last N hours
+- `max_items`: Optional final cap after all group limits are applied
+- `category_groups`: Optional map of quota groups. Each group requires a positive
+  `limit` and a non-empty `categories` list. Items within each group are kept by
+  AI score, highest first.
+- `category_groups.*.name`: Optional display name used in run logs
+- `default_group`: Group key for items whose category does not match any
+  configured group. Default is `other`.
+- `default_group_limit`: Optional positive limit for unmatched items. If omitted,
+  unmatched items are unlimited except for `max_items`.
+
+Balanced digest filtering runs after AI score threshold filtering and topic
+deduplication, but before enrichment. This reduces enrichment calls to only the
+items that can appear in the final digest.
+
+Group matching uses the source category stored in `ContentItem.metadata.category`.
+RSS sources expose this through `sources.rss[].category`, and OpenBB watchlists
+through `sources.openbb.watchlists[].category`. Sources without a category enter
+the default group.
+
+If the same category appears in multiple groups, Horizon logs a warning and uses
+the first group in configuration order. Omitting both `category_groups` and
+`max_items` preserves the previous filtering behavior.
 
 ## Environment Variable Substitution
 

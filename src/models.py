@@ -309,11 +309,23 @@ class EmailConfig(BaseModel):
     enabled: bool = False
 
 
+class CategoryGroupConfig(BaseModel):
+    """A quota group containing one or more source categories."""
+
+    name: Optional[str] = None
+    limit: int = Field(gt=0)
+    categories: List[str] = Field(min_length=1)
+
+
 class FilteringConfig(BaseModel):
     """Content filtering configuration."""
 
     ai_score_threshold: float = 7.0
     time_window_hours: int = 24
+    max_items: Optional[int] = Field(default=None, gt=0)
+    category_groups: Dict[str, CategoryGroupConfig] = Field(default_factory=dict)
+    default_group: str = "other"
+    default_group_limit: Optional[int] = Field(default=None, gt=0)
 
 
 class Config(BaseModel):

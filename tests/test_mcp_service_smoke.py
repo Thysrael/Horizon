@@ -142,3 +142,46 @@ def test_filter_items_uses_public_topic_dedup_api(tmp_path: Path, monkeypatch) -
     assert result["kept"] == 1
     assert result["removed_by_topic_dedup"] == 1
     assert service.run_store.load_items("run-topic-dedup", "filtered")[0]["id"] == "item-1"
+
+
+def test_filter_items_applies_balanced_digest(tmp_path: Path, monkeypatch) -> None:
+    service = HorizonPipelineService(runs_root=tmp_path / "mcp-runs")
+    service.run_store.create_run("run-balanced")
+    filtering = SimpleNamespace(
+        ai_score_threshold=7.0,
+        max_items=1,
+        category_groups={},
+    )
+
+    monkeypatch.setattr(
+        service,
+        "_load_stage_items",
+        lambda **kwargs: (
+            [make_item("item-1", score=9.0), make_item("item-2", score=8.0)],
+            SimpleNamespace(
+                runtime=SimpleNamespace(),
+                config_path=tmp_path / "config.json",
+                config=SimpleNamespace(filtering=filtering),
+            ),
+        ),
+    )
+    monkeypatch.setattr("src.mcp.service.make_storage", lambda runtime, config_path: object())
+
+    class FakeOrchestrator:
+        def apply_balanced_digest(self, items, log=True):  # type: ignore[no-untyped-def]
+            assert log is False
+            return SimpleNamespace(items=items[:1], group_counts={"other": 1})
+
+    monkeypatch.setattr(
+        "src.mcp.service.make_orchestrator",
+        lambda runtime, config, storage: FakeOrchestrator(),
+    )
+
+    result = asyncio.run(
+        service.filter_items(run_id="run-balanced", topic_dedup=False)
+    )
+
+    assert result["kept"] == 1
+    assert result["removed_by_balanced_digest"] == 1
+    assert result["balanced_digest_enabled"] is True
+    assert result["group_counts"] == {"other": 1}
