@@ -47,6 +47,8 @@ data/mcp-runs/
 data/x_cookies_*.json
 
 docs/_posts/*.md
+docs/_site/
+docs/.jekyll-metadata
 
 # Logs
 logs/*.log

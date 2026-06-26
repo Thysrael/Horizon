@@ -326,6 +326,12 @@ docker compose run --rm horizon           # Run with default 24h window
 docker compose run --rm horizon --hours 48  # Fetch from last 48 hours
 ```
 
+Host site locally
+
+```bash
+docker compose up site                    # Serve at http://localhost:4000
+```
+
 The generated report will be saved to `data/summaries/`.
 
 ### 4. Automate (Optional)

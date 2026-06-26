@@ -11,3 +11,14 @@ services:
     # Run daily at 8:00 AM UTC (adjust as needed)
     # For one-time run, use: docker compose run --rm horizon
     command: ["--hours", "24"]
+  
+  # Self hosting site
+  # site:
+  #   image: jekyll/jekyll:latest
+  #   container_name: horizon-site
+  #   volumes:
+  #     - ./docs:/srv/jekyll
+  #   ports:
+  #     - "4000:4000"
+  #   command: sh -c "bundle install && jekyll serve --host 0.0.0.0 --baseurl / --incremental"
+  #   restart: unless-stopped
