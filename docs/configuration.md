@@ -193,6 +193,15 @@ By default, AI scoring and enrichment run one item at a time. If your API endpoi
 
 For OpenAI-compatible gateways, Horizon sends `temperature` by default. If a newer reasoning-style model rejects that parameter with an error such as `temperature is deprecated for this model`, Horizon retries once without it and remembers that capability for later requests.
 
+You can also set the base URL via environment variable:
+
+| Provider | Environment Variable |
+| --- | --- |
+| OpenAI / OpenAI-compatible | `OPENAI_BASE_URL` |
+| Ollama | `HORIZON_OLLAMA_BASE_URL`, `OLLAMA_BASE_URL`, `OLLAMA_HOST` |
+
+The `base_url` in `config.json` takes precedence over environment variables if both are set.
+
 ## Information Sources
 
 All sources are configured under the top-level `sources` key in `config.json`.
