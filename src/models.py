@@ -17,6 +17,8 @@ class SourceType(str, Enum):
     TWITTER = "twitter"
     OPENBB = "openbb"
     OSSINSIGHT = "ossinsight"
+    GDELT = "gdelt"
+    GOOGLE_NEWS = "google_news"
 
 
 class ContentItem(BaseModel):
@@ -264,6 +266,43 @@ class OSSInsightConfig(BaseModel):
     max_items: int = 30
 
 
+class GDELTConfig(BaseModel):
+    """GDELT 2.0 DOC API source configuration.
+
+    Queries the key-less GDELT DOC API
+    (https://api.gdeltproject.org/api/v2/doc/doc) for recent news articles
+    matching a search query and emits them as ContentItems. No API key is
+    required. The DOC API caps results at 250 records per request, so keep
+    `max_records` modest.
+    """
+
+    enabled: bool = False
+    query: str = "artificial intelligence"
+    mode: str = "ArtList"
+    max_records: int = 75  # GDELT DOC API caps at 250; keep modest
+    timespan: Optional[str] = None  # e.g. "24h"; overrides since-derived window
+    language: Optional[str] = None  # sourcelang filter, e.g. "english"; None = no filter
+    country: Optional[str] = None  # sourcecountry filter; None = no filter
+    category: Optional[str] = None  # Horizon category label for downstream grouping
+
+
+class GoogleNewsConfig(BaseModel):
+    """Google News RSS search source configuration.
+
+    Builds Google News RSS search URLs
+    (https://news.google.com/rss/search) for a query and parses the
+    resulting feed via feedparser. No API key is required.
+    """
+
+    enabled: bool = False
+    query: str = "artificial intelligence"
+    language: str = "en"  # hl
+    country: str = "US"  # gl
+    ceid: Optional[str] = None  # when None scraper derives it as "{country}:{language}"
+    max_results: int = 100  # cap ~100
+    category: Optional[str] = None
+
+
 class SourcesConfig(BaseModel):
     """All sources configuration."""
 
@@ -275,6 +314,8 @@ class SourcesConfig(BaseModel):
     twitter: Optional[TwitterConfig] = None
     openbb: Optional[OpenBBConfig] = None
     ossinsight: OSSInsightConfig = Field(default_factory=OSSInsightConfig)
+    gdelt: Optional[GDELTConfig] = None
+    google_news: Optional[GoogleNewsConfig] = None
 
 
 class WebhookConfig(BaseModel):

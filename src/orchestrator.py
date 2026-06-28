@@ -22,6 +22,8 @@ from .scrapers.twitter import TwitterScraper
 from .scrapers.twitter_playwright import TwitterPlaywrightScraper
 from .scrapers.openbb import OpenBBScraper
 from .scrapers.ossinsight import OSSInsightScraper
+from .scrapers.gdelt import GDELTScraper
+from .scrapers.google_news import GoogleNewsScraper
 from .ai.client import create_ai_client
 from .ai.analyzer import ContentAnalyzer
 from .ai.summarizer import DailySummarizer
@@ -300,6 +302,16 @@ class HorizonOrchestrator:
                 oss_scraper = OSSInsightScraper(self.config.sources.ossinsight, client)
                 tasks.append(self._fetch_with_progress("OSS Insight", oss_scraper, since))
 
+            # GDELT 2.0 DOC API (key-less global news)
+            if self.config.sources.gdelt and self.config.sources.gdelt.enabled:
+                gdelt_scraper = GDELTScraper(self.config.sources.gdelt, client)
+                tasks.append(self._fetch_with_progress("GDELT", gdelt_scraper, since))
+
+            # Google News RSS (key-less news search)
+            if self.config.sources.google_news and self.config.sources.google_news.enabled:
+                gn_scraper = GoogleNewsScraper(self.config.sources.google_news, client)
+                tasks.append(self._fetch_with_progress("Google News", gn_scraper, since))
+
             # Fetch all concurrently
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -354,6 +366,12 @@ class HorizonOrchestrator:
             return meta["repo"]
         if meta.get("watchlist"):
             return meta["watchlist"]
+        if meta.get("source_name"):
+            return meta["source_name"]
+        if meta.get("gn_query"):
+            return f"google_news:{meta['gn_query']}"
+        if meta.get("domain"):
+            return meta["domain"]
         return item.author or "unknown"
 
     def merge_cross_source_duplicates(self, items: List[ContentItem]) -> List[ContentItem]:
