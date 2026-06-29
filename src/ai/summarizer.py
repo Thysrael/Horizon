@@ -106,7 +106,7 @@ class DailySummarizer:
             if language == "zh":
                 t = _pangu(t)
             score = item.ai_score or "?"
-            toc_entries.append(f"{i + 1}. [{t}]({item.url}) \u2b50\ufe0f {score}/10")
+            toc_entries.append(f"{i + 1}. [{t}](#item-{i + 1}) \u2b50\ufe0f {score}/10")
         toc = "\n".join(toc_entries) + "\n\n---\n\n"
 
         parts = [self._format_item(item, labels, language, i + 1) for i, item in enumerate(items)]

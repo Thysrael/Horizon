@@ -57,8 +57,8 @@ def test_generate_summary_toc_links_to_original_item_url():
         )
     )
 
-    assert "1. [Important Item 1](https://example.com/items/1) ⭐️ 8.0/10" in result
-    assert "[Important Item 1](#item-1)" not in result
+    assert "1. [Important Item 1](#item-1) ⭐️ 8.0/10" in result
+    assert "1. [Important Item 1](https://example.com/items/1) ⭐️ 8.0/10" not in result
 
 
 def test_generate_webhook_item_renders_single_item_detail():
