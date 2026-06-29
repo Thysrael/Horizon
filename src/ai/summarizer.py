@@ -226,22 +226,9 @@ class DailySummarizer:
             lines.append("")
             lines.append(f"**{labels['background']}**: {background}")
 
-        sources = meta.get("sources") or []
-        if sources:
-            items_html = "".join(f'<li><a href="{s["url"]}">{s["title"]}</a></li>\n' for s in sources)
-            lines += [
-                "",
-                f'<details><summary>{labels["references"]}</summary>\n<ul>\n{items_html}\n</ul>\n</details>',
-            ]
-
         if discussion:
             lines.append("")
             lines.append(f"**{labels['discussion']}**: {discussion}")
-
-        if item.ai_tags:
-            tags_str = ", ".join([f"`#{t}`" for t in item.ai_tags])
-            lines.append("")
-            lines.append(f"**{labels['tags']}**: {tags_str}")
 
         lines.append("")
         lines.append("---")

@@ -57,7 +57,8 @@ def test_generate_webhook_item_renders_single_item_detail():
     assert result.startswith("Item 1/2")
     assert "## [Important Item 1](https://example.com/items/1)" in result
     assert "Summary for item 1." in result
-    assert "**Tags**: `#AI`, `#News`" in result
+    assert "**Tags**:" not in result
+    assert "`#AI`" not in result
 
 
 def test_generate_webhook_item_includes_discussion_link_when_distinct():
@@ -90,6 +91,25 @@ def test_generate_webhook_item_omits_discussion_link_when_same_as_item_url():
     assert "[Discussion](https://example.com/items/1)" not in result
 
 
+def test_generate_webhook_item_omits_reference_links():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+    item.metadata["sources"] = [
+        {"title": "Reference Article", "url": "https://example.com/reference"}
+    ]
+
+    result = summarizer.generate_webhook_item(
+        item,
+        language="zh",
+        index=1,
+        total=1,
+    )
+
+    assert "参考链接" not in result
+    assert "Reference Article" not in result
+    assert "https://example.com/reference" not in result
+
+
 def test_generate_webhook_item_uses_localized_discussion_label():
     summarizer = DailySummarizer()
     item = _make_item(1)
@@ -120,6 +140,8 @@ def test_generate_summary_zh_uses_localized_selection_header_and_numeric_date():
 
     assert "> 从 10 条内容中筛选出 1 条重要资讯。" in result
     assert "rss · tester · 4月25日 08:00" in result
+    assert "参考链接" not in result
+    assert "**标签**" not in result
     assert "From 10 items" not in result
     assert "Apr 25, 08:00" not in result
 
