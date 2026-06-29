@@ -44,6 +44,23 @@ def test_generate_webhook_overview_lists_items_without_full_details():
     assert "Summary for item 1." not in result
 
 
+def test_generate_summary_toc_links_to_original_item_url():
+    summarizer = DailySummarizer()
+    item = _make_item(1)
+
+    result = _run_async(
+        summarizer.generate_summary(
+            [item],
+            date="2026-04-25",
+            total_fetched=10,
+            language="zh",
+        )
+    )
+
+    assert "1. [Important Item 1](https://example.com/items/1) ⭐️ 8.0/10" in result
+    assert "[Important Item 1](#item-1)" not in result
+
+
 def test_generate_webhook_item_renders_single_item_detail():
     summarizer = DailySummarizer()
 
