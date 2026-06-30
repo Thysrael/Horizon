@@ -17,6 +17,7 @@ def _make_config(fetch_comments: int = 1) -> RedditConfig:
                 sort="hot",
                 fetch_limit=1,
                 min_score=1,
+                category="ai-tools",
             )
         ],
         users=[],
@@ -182,6 +183,7 @@ def test_reddit_listing_uses_old_reddit_first():
     assert items[0].author == "old_author"
     assert items[0].metadata["score"] == 42
     assert items[0].metadata["num_comments"] == 7
+    assert items[0].metadata["category"] == "ai-tools"
 
 
 def test_reddit_listing_old_failure_falls_back_to_json_then_rss():
@@ -230,6 +232,7 @@ def test_reddit_listing_old_failure_falls_back_to_json_then_rss():
     assert items[0].author == "rss_author"
     assert items[0].metadata["subreddit"] == "LocalLLaMA"
     assert items[0].metadata["fallback"] == "rss"
+    assert items[0].metadata["category"] == "ai-tools"
 
 
 def test_reddit_comments_use_old_reddit_first():

@@ -21,7 +21,10 @@ class HackerNewsScraper(BaseScraper):
 
     def __init__(self, config: HackerNewsConfig, http_client: httpx.AsyncClient):
         super().__init__(config.model_dump(), http_client)
+        self.hn_config = config
         self.base_url = "https://hacker-news.firebaseio.com/v0"
+        self._include_keywords = [kw.lower() for kw in config.include_keywords if kw]
+        self._exclude_keywords = [kw.lower() for kw in config.exclude_keywords if kw]
 
     async def fetch(self, since: datetime) -> List[ContentItem]:
         if not self.config.get("enabled", True):
@@ -53,6 +56,8 @@ class HackerNewsScraper(BaseScraper):
                     continue
                 published_at = datetime.fromtimestamp(story["time"], tz=timezone.utc)
                 if published_at < since:
+                    continue
+                if not self._matches_filters(story):
                     continue
                 valid_stories.append(story)
                 # Queue comment fetching
@@ -124,6 +129,19 @@ class HackerNewsScraper(BaseScraper):
         content = "\n\n".join(parts)
         hn_discussion_url = f"https://news.ycombinator.com/item?id={story_id}"
 
+        metadata = {
+            "score": story.get("score", 0),
+            "descendants": story.get("descendants", 0),
+            "type": story.get("type", "story"),
+            "discussion_url": hn_discussion_url,
+            "comment_count": len(comments),
+        }
+        if self.hn_config.category:
+            metadata["category"] = self.hn_config.category
+        matched_keywords = self._matched_keywords(story)
+        if matched_keywords:
+            metadata["matched_keywords"] = matched_keywords
+
         return ContentItem(
             id=self._generate_id("hackernews", "story", str(story_id)),
             source_type=SourceType.HACKERNEWS,
@@ -132,11 +150,26 @@ class HackerNewsScraper(BaseScraper):
             content=content,
             author=author,
             published_at=published_at,
-            metadata={
-                "score": story.get("score", 0),
-                "descendants": story.get("descendants", 0),
-                "type": story.get("type", "story"),
-                "discussion_url": hn_discussion_url,
-                "comment_count": len(comments),
-            }
+            metadata=metadata,
         )
+
+    def _story_haystack(self, story: dict) -> str:
+        """Return lower-cased story fields used for configured keyword filters."""
+        return " ".join(
+            str(story.get(key) or "").lower()
+            for key in ("title", "url", "text")
+        )
+
+    def _matched_keywords(self, story: dict) -> list[str]:
+        """Configured include keywords that matched this story."""
+        haystack = self._story_haystack(story)
+        return sorted({kw for kw in self._include_keywords if kw in haystack})
+
+    def _matches_filters(self, story: dict) -> bool:
+        """Apply optional include/exclude keyword filters before comment fetching."""
+        haystack = self._story_haystack(story)
+        if self._exclude_keywords and any(kw in haystack for kw in self._exclude_keywords):
+            return False
+        if self._include_keywords and not any(kw in haystack for kw in self._include_keywords):
+            return False
+        return True

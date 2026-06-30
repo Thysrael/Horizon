@@ -125,6 +125,7 @@ class OSSInsightScraper(BaseScraper):
                 "period": self.cfg.period,
                 "collection_names": collections,
                 "description": description,
+                **({"category": self.cfg.category} if self.cfg.category else {}),
             },
         )
 
