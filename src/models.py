@@ -110,6 +110,7 @@ class AIConfig(BaseModel):
     analysis_concurrency: int = 1
     enrichment_concurrency: int = 1
     languages: List[str] = Field(default_factory=lambda: ["en"])
+    curation_focus: Optional[str] = None
     # Azure OpenAI specific; required when provider == AZURE
     azure_endpoint_env: Optional[str] = None
     api_version: Optional[str] = None
@@ -210,6 +211,8 @@ class TwitterConfig(BaseModel):
     # Playwright settings (used when mode == "playwright")
     cookie_dir: str = "data"
     cookie_file_pattern: str = "x_cookies_*.json"
+    list_id: Optional[str] = None  # X/Twitter List ID; when set, scrape this list timeline only
+    category: Optional[str] = None  # Category assigned to emitted Twitter items for digest grouping
 
 
 class OpenBBWatchlist(BaseModel):

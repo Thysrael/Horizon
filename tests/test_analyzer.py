@@ -94,3 +94,13 @@ def test_analyze_batch_concurrent_preserves_order(monkeypatch):
     result = asyncio.run(analyzer.analyze_batch(items))
 
     assert [item.id for item in result] == [item.id for item in items]
+
+
+def test_system_prompt_appends_optional_curation_focus():
+    client = SimpleNamespace(config=SimpleNamespace(curation_focus="Prioritize AI and quant."))
+    analyzer = ContentAnalyzer(client)
+
+    prompt = analyzer._get_system_prompt()
+
+    assert "Additional curation focus:" in prompt
+    assert "Prioritize AI and quant." in prompt

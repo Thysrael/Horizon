@@ -117,6 +117,29 @@ class StorageManager:
 
         return filepath
 
+    def save_run_artifact(self, run_id: str, stage: str, items: list) -> Path:
+        """Persist a run stage as JSONL for auditability.
+
+        Each line is one ContentItem serialized with Pydantic's JSON mode.
+        Re-running the same stage overwrites the file so the artifact reflects
+        the latest state of that stage.
+        """
+        safe_stage = re.sub(r"[^A-Za-z0-9_.-]", "_", stage)
+        run_dir = self.data_dir / "runs" / run_id
+        run_dir.mkdir(parents=True, exist_ok=True)
+        filepath = run_dir / f"{safe_stage}.jsonl"
+
+        with open(filepath, "w", encoding="utf-8") as f:
+            for item in items:
+                if hasattr(item, "model_dump"):
+                    row = item.model_dump(mode="json")
+                else:
+                    row = item
+                f.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+                f.write("\n")
+
+        return filepath
+
     def load_subscribers(self) -> list:
         """Loads the list of email subscribers."""
         subscribers_path = self.data_dir / "subscribers.json"

@@ -62,6 +62,21 @@ class HorizonOrchestrator:
             else None
         )
 
+    def _run_id(self) -> str:
+        """Return a stable filesystem-safe UTC run identifier."""
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H%M%SZ")
+
+    def _save_run_artifact(self, run_id: str, stage: str, items: List[ContentItem]) -> None:
+        """Best-effort persistence of intermediate run stages."""
+        saver = getattr(self.storage, "save_run_artifact", None)
+        if not saver:
+            return
+        try:
+            path = saver(run_id, stage, items)
+            self.console.print(f"   [dim]Saved {stage} artifact: {path}[/dim]")
+        except Exception as exc:
+            self.console.print(f"[yellow]Warning: could not save {stage} artifact: {exc}[/yellow]")
+
     async def run(self, force_hours: int = None) -> None:
         """Execute the complete workflow.
 
@@ -83,10 +98,12 @@ class HorizonOrchestrator:
         try:
             # 1. Determine time window
             since = self._determine_time_window(force_hours)
+            run_id = self._run_id()
             self.console.print(f"📅 Fetching content since: {since.strftime('%Y-%m-%d %H:%M:%S')}\n")
 
             # 2. Fetch content from all sources
             all_items = await self.fetch_all_sources(since)
+            self._save_run_artifact(run_id, "raw", all_items)
             self.console.print(f"📥 Fetched {len(all_items)} items from all sources\n")
 
             if not all_items:
@@ -95,6 +112,7 @@ class HorizonOrchestrator:
 
             # 3. Merge cross-source duplicates (same URL from different sources)
             merged_items = self.merge_cross_source_duplicates(all_items)
+            self._save_run_artifact(run_id, "merged", merged_items)
             if len(merged_items) < len(all_items):
                 self.console.print(
                     f"🔗 Merged {len(all_items) - len(merged_items)} cross-source duplicates "
@@ -103,6 +121,7 @@ class HorizonOrchestrator:
 
             # 4. Analyze with AI
             analyzed_items = await self._analyze_content(merged_items)
+            self._save_run_artifact(run_id, "analyzed", analyzed_items)
             self.console.print(f"🤖 Analyzed {len(analyzed_items)} items with AI\n")
 
             # 5. Filter by score threshold
@@ -111,6 +130,12 @@ class HorizonOrchestrator:
                 item for item in analyzed_items
                 if item.ai_score and item.ai_score >= threshold
             ]
+            rejected_items = [
+                item for item in analyzed_items
+                if not item.ai_score or item.ai_score < threshold
+            ]
+            self._save_run_artifact(run_id, "important", important_items)
+            self._save_run_artifact(run_id, "rejected", rejected_items)
             important_items.sort(key=lambda x: x.ai_score or 0, reverse=True)
 
             self.console.print(
@@ -132,6 +157,7 @@ class HorizonOrchestrator:
             # 5.7 Apply per-category and global digest limits before enrichment
             balanced_result = self.apply_balanced_digest(important_items)
             important_items = balanced_result.items
+            self._save_run_artifact(run_id, "selected", important_items)
 
             # Show per-sub-source selection breakdown
             selected_counts: Dict[str, int] = defaultdict(int)

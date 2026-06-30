@@ -13,6 +13,7 @@ from typing import List, Optional
 
 from ..models import ContentItem, SourceType, TwitterConfig
 from .base import BaseScraper
+from .twitter_list_playwright import scrape_list_timeline
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +74,12 @@ class TwitterPlaywrightScraper(BaseScraper):
             return []
 
         users = [u.strip().lstrip("@") for u in self.twitter_config.users if u.strip()]
-        if not users:
-            logger.debug("No Twitter users configured, skipping.")
+        list_id = (self.twitter_config.list_id or "").strip()
+        scrape_list = bool(list_id)
+        if scrape_list:
+            logger.info("Scraping X/Twitter list %s", list_id)
+        elif not users:
+            logger.debug("No Twitter users or list configured, skipping.")
             return []
 
         if not PLAYWRIGHT_AVAILABLE:
@@ -141,6 +146,18 @@ class TwitterPlaywrightScraper(BaseScraper):
                 ctx = contexts[context_idx]
                 consecutive_failures = 0
 
+                if scrape_list:
+                    logger.info("Scraping X/Twitter list %s with cookie #%d...", list_id, context_idx + 1)
+                    username = "list"
+                    await asyncio.sleep(random.uniform(3, 6))
+                    tweets = await scrape_list_timeline(ctx, list_id, since, self.twitter_config.fetch_limit)
+                    if tweets is not None:
+                        parsed = [item for item in (self._parse_tweet(t, username) for t in tweets) if item]
+                        async with lock:
+                            all_items.extend(parsed)
+                    return
+
+
                 for username in queue:
                     wait_time = (
                         random.uniform(5.0, 10.0) if not is_retry else random.uniform(10.0, 20.0)
@@ -172,8 +189,11 @@ class TwitterPlaywrightScraper(BaseScraper):
             for i, username in enumerate(users):
                 queues[i % num_contexts].append(username)
 
-            # First pass — all queues in parallel
-            await asyncio.gather(*[process_queue(i, q) for i, q in enumerate(queues)])
+            # First pass — one list scrape, or all configured user queues in parallel.
+            if scrape_list:
+                await process_queue(0, [])
+            else:
+                await asyncio.gather(*[process_queue(i, q) for i, q in enumerate(queues)])
 
             # Retry failed users with a different context
             if failed_users:
@@ -358,6 +378,10 @@ class TwitterPlaywrightScraper(BaseScraper):
             if not text:
                 return None
 
+            # List timelines contain posts from many authors; use the post's real author.
+            if username == "list" and tweet.get("username"):
+                username = tweet["username"]
+
             created_at_raw = tweet.get("datetime", "")
             try:
                 published_at = datetime.fromisoformat(created_at_raw)
@@ -370,6 +394,16 @@ class TwitterPlaywrightScraper(BaseScraper):
             if len(text) > 50:
                 title_body += "..."
 
+            metadata = {
+                "tweet_id": tweet_id,
+                "is_retweet": tweet.get("is_retweet", False),
+                "images": tweet.get("images", []),
+            }
+            if self.twitter_config.category:
+                metadata["category"] = self.twitter_config.category
+            if self.twitter_config.list_id:
+                metadata["list_id"] = self.twitter_config.list_id
+
             return ContentItem(
                 id=self._generate_id(SourceType.TWITTER.value, "tweet", tweet_id),
                 source_type=SourceType.TWITTER,
@@ -378,11 +412,7 @@ class TwitterPlaywrightScraper(BaseScraper):
                 content=text,
                 author=username,
                 published_at=published_at,
-                metadata={
-                    "tweet_id": tweet_id,
-                    "is_retweet": tweet.get("is_retweet", False),
-                    "images": tweet.get("images", []),
-                },
+                metadata=metadata,
             )
         except Exception as exc:
             logger.debug("Failed to parse tweet: %s", exc)
