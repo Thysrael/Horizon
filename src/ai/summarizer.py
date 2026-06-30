@@ -21,6 +21,7 @@ LABELS = {
     "en": {
         "header": "Horizon Daily",
         "source": "Source",
+        "source_short": "source",
         "original": "Original",
         "background": "Background",
         "discussion": "Discussion",
@@ -42,6 +43,7 @@ LABELS = {
     "zh": {
         "header": "Horizon 每日速递",
         "source": "来源",
+        "source_short": "来源",
         "original": "原文",
         "background": "背景",
         "discussion": "社区讨论",
@@ -108,7 +110,10 @@ class DailySummarizer:
             if language == "zh":
                 t = _pangu(t)
             score = item.ai_score or "?"
-            toc_entries.append(f"{i + 1}. [{t}](#item-{i + 1}) \u2b50\ufe0f {score}/10")
+            toc_entries.append(
+                f"{i + 1}. [{t}](#item-{i + 1}) · "
+                f"{labels['source_short']}: {self._source_label(item)} ⭐️ {score}/10"
+            )
         toc = "\n".join(toc_entries) + "\n\n---\n\n"
 
         parts = [self._format_item(item, labels, language, i + 1) for i, item in enumerate(items)]
@@ -220,7 +225,7 @@ class DailySummarizer:
 
         lines = [
             f'<a id="item-{index}"></a>',
-            f"## [{title}]({url}) \u2b50\ufe0f {score}/10",  # ⭐️
+            f"## [{title}]({url}) · {labels['source_short']}: {self._source_label(item)} ⭐️ {score}/10",  # ⭐️
             "",
             summary,
             "",
@@ -252,6 +257,16 @@ class DailySummarizer:
         lines.append("---")
 
         return "\n".join(lines) + "\n\n"
+
+    def _source_label(self, item: ContentItem) -> str:
+        """Compact source label shown next to item titles."""
+        meta = item.metadata
+        parts = [item.source_type.value]
+        if meta.get("subreddit"):
+            parts.append(f"r/{meta['subreddit']}")
+        elif meta.get("feed_name"):
+            parts.append(str(meta["feed_name"]))
+        return " / ".join(parts)
 
     def _generate_empty_summary(self, date: str, total_fetched: int, labels: dict) -> str:
         """Generate summary when no high-scoring items were found."""

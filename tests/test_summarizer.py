@@ -55,7 +55,7 @@ def test_generate_webhook_item_renders_single_item_detail():
     )
 
     assert result.startswith("Item 1/2")
-    assert "## [Important Item 1](https://example.com/items/1)" in result
+    assert "## [Important Item 1](https://example.com/items/1) · source: rss ⭐️ 8.0/10" in result
     assert "Summary for item 1." in result
     assert "**Tags**: `#AI`, `#News`" in result
 
@@ -148,6 +148,8 @@ def test_generate_summary_zh_uses_localized_selection_header_and_numeric_date():
     )
 
     assert "> 从 10 条内容中筛选出 1 条重要资讯。" in result
+    assert "1. [Important Item 1](#item-1) · 来源: rss ⭐️ 8.0/10" in result
+    assert "## [Important Item 1](https://example.com/items/1) · 来源: rss ⭐️ 8.0/10" in result
     assert "**来源**: [原文](https://example.com/items/1) · rss · tester · 4月25日 08:00" in result
     assert "From 10 items" not in result
     assert "Apr 25, 08:00" not in result
