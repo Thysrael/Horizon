@@ -75,6 +75,24 @@ def test_category_groups_apply_limits_and_default_group_limit() -> None:
     assert result.group_counts == {"other": 1, "ai": 2, "finance": 1}
 
 
+def test_default_group_limit_zero_excludes_uncategorized_items() -> None:
+    filtering = FilteringConfig(
+        category_groups={
+            "ai": CategoryGroupConfig(limit=2, categories=["ai"]),
+        },
+        default_group_limit=0,
+    )
+    items = [
+        make_item("hn-off-topic", 9.5, None),
+        make_item("ai-topic", 7.0, "ai"),
+    ]
+
+    result = make_orchestrator(filtering).apply_balanced_digest(items)
+
+    assert [item.id for item in result.items] == ["ai-topic"]
+    assert result.group_counts == {"ai": 1}
+
+
 def test_max_items_applies_after_group_limits() -> None:
     filtering = FilteringConfig(
         max_items=2,
@@ -126,7 +144,6 @@ def test_duplicate_category_warns_and_first_group_wins() -> None:
     "kwargs",
     [
         {"max_items": 0},
-        {"default_group_limit": 0},
         {"category_groups": {"ai": {"limit": 0, "categories": ["ai"]}}},
         {"category_groups": {"ai": {"limit": 1, "categories": []}}},
     ],

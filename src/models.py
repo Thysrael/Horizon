@@ -421,7 +421,7 @@ class FilteringConfig(BaseModel):
     max_items: Optional[int] = Field(default=None, gt=0)
     category_groups: Dict[str, CategoryGroupConfig] = Field(default_factory=dict)
     default_group: str = "other"
-    default_group_limit: Optional[int] = Field(default=None, gt=0)
+    default_group_limit: Optional[int] = Field(default=None, ge=0)
 
 
 class Config(BaseModel):
