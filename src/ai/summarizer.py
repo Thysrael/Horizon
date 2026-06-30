@@ -21,6 +21,7 @@ LABELS = {
     "en": {
         "header": "Horizon Daily",
         "source": "Source",
+        "original": "Original",
         "background": "Background",
         "discussion": "Discussion",
         "references": "References",
@@ -41,6 +42,7 @@ LABELS = {
     "zh": {
         "header": "Horizon 每日速递",
         "source": "来源",
+        "original": "原文",
         "background": "背景",
         "discussion": "社区讨论",
         "references": "参考链接",
@@ -205,7 +207,10 @@ class DailySummarizer:
             else:
                 day = item.published_at.strftime("%d").lstrip("0")
                 source_parts.append(item.published_at.strftime(f"%b {day}, %H:%M"))
-        source_line = " \u00b7 ".join(source_parts)  # ·
+        source_line = (
+            f"**{labels['source']}**: [{labels['original']}]({url})"
+            f" · {' · '.join(source_parts)}"
+        )
 
         discussion_url = meta.get("discussion_url")
         if discussion_url:

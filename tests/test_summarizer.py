@@ -72,7 +72,23 @@ def test_generate_webhook_item_includes_discussion_link_when_distinct():
         total=1,
     )
 
-    assert "tester · Apr 25, 08:00 · [Discussion](https://news.ycombinator.com/item?id=1)" in result
+    assert (
+        "**Source**: [Original](https://example.com/items/1) · rss · tester · Apr 25, 08:00"
+        " · [Discussion](https://news.ycombinator.com/item?id=1)"
+    ) in result
+
+
+def test_generate_webhook_item_labels_original_source_link():
+    summarizer = DailySummarizer()
+
+    result = summarizer.generate_webhook_item(
+        _make_item(1),
+        language="en",
+        index=1,
+        total=1,
+    )
+
+    assert "**Source**: [Original](https://example.com/items/1)" in result
 
 
 def test_generate_webhook_item_omits_discussion_link_when_same_as_item_url():
@@ -105,6 +121,19 @@ def test_generate_webhook_item_uses_localized_discussion_label():
     assert "[社区讨论](https://www.reddit.com/r/python/comments/abc123/test/)" in result
 
 
+def test_generate_webhook_item_labels_original_source_link_in_zh():
+    summarizer = DailySummarizer()
+
+    result = summarizer.generate_webhook_item(
+        _make_item(1),
+        language="zh",
+        index=1,
+        total=1,
+    )
+
+    assert "**来源**: [原文](https://example.com/items/1)" in result
+
+
 def test_generate_summary_zh_uses_localized_selection_header_and_numeric_date():
     summarizer = DailySummarizer()
     item = _make_item(1)
@@ -119,7 +148,7 @@ def test_generate_summary_zh_uses_localized_selection_header_and_numeric_date():
     )
 
     assert "> 从 10 条内容中筛选出 1 条重要资讯。" in result
-    assert "rss · tester · 4月25日 08:00" in result
+    assert "**来源**: [原文](https://example.com/items/1) · rss · tester · 4月25日 08:00" in result
     assert "From 10 items" not in result
     assert "Apr 25, 08:00" not in result
 
