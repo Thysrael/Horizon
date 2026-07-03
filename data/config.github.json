@@ -1,45 +1,41 @@
 {
   "version": "1.0",
   "ai": {
-    "provider": "deepseek",
-    "model": "deepseek-v4-flash",
-    "base_url": "https://api.deepseek.com",
-    "api_key_env": "DEEPSEEK_API_KEY",
+    "provider": "openai",
+    "model": "agnes-2.0-flash",
+    "base_url": "https://apihub.agnes-ai.com/v1",
+    "api_key_env": "AGNES_API_KEY",
     "temperature": 0.3,
-    "max_tokens": 8192,
-    "throttle_sec": 1,
+    "max_tokens": 65536,
+    "throttle_sec": 0.5,
     "languages": [
       "zh",
       "en"
     ],
-    "analysis_concurrency": 5,
-    "enrichment_concurrency": 5
+    "analysis_concurrency": 3,
+    "enrichment_concurrency": 3
+  },
+  "email": {
+    "enabled": true,
+    "smtp_server": "smtp.163.com",
+    "smtp_port": 465,
+    "imap_server": "imap.163.com",
+    "imap_port": 993,
+    "email_address": "lin1796646806@163.com",
+    "sender_name": "Horizon Daily",
+    "password_env": "EMAIL_PASSWORD",
+    "subscribe_keyword": "SUBSCRIBE",
+    "unsubscribe_keyword": "UNSUBSCRIBE",
+    "imap_enabled": true
   },
   "sources": {
     "github": [
-      {
-        "type": "user_events",
-        "username": "karpathy",
-        "enabled": true
-      },
-      {
-        "type": "repo_releases",
-        "owner": "vllm-project",
-        "repo": "vllm",
-        "enabled": true
-      },
-      {
-        "type": "repo_releases",
-        "owner": "sgl-project",
-        "repo": "sglang",
-        "enabled": true
-      },
-      {
-        "type": "repo_releases",
-        "owner": "triton-lang",
-        "repo": "triton",
-        "enabled": true
-      }
+      { "type": "user_events", "username": "karpathy", "enabled": true },
+      { "type": "user_events", "username": "torvalds", "enabled": true },
+      { "type": "repo_releases", "owner": "vllm-project", "repo": "vllm", "enabled": true },
+      { "type": "repo_releases", "owner": "rust-lang", "repo": "rust", "enabled": true },
+      { "type": "repo_releases", "owner": "ziglang", "repo": "zig", "enabled": true },
+      { "type": "repo_releases", "owner": "neovim", "repo": "neovim", "enabled": true }
     ],
     "hackernews": {
       "enabled": true,
@@ -47,50 +43,34 @@
       "min_score": 150
     },
     "rss": [
-      {
-        "name": "Simon Willison",
-        "url": "https://simonwillison.net/atom/everything/",
-        "enabled": true,
-        "category": "ai-tools"
-      },
-      {
-        "name": "GitHub Trending - Daily",
-        "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-        "enabled": true,
-        "category": "github-trending"
-      },
-      {
-        "name": "Semianalysis",
-        "url": "https://newsletter.semianalysis.com/feed",
-        "enabled": true,
-        "category": "semiconductors"
-      },
-      {
-        "name": "LWN.net",
-        "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
-        "enabled": true,
-        "category": "linux-kernel"
-      }
+      { "name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/", "enabled": true, "category": "ai-tools" },
+      { "name": "GitHub Trending - Daily", "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml", "enabled": true, "category": "github-trending" },
+      { "name": "量子位", "url": "https://wechat2rss.xlab.app/feed/7131b577c61365cb47e81000738c10d872685908.xml", "enabled": true, "category": "ai-news" },
+      { "name": "新智元", "url": "https://wechat2rss.xlab.app/feed/ede30346413ea70dbef5d485ea5cbb95cca446e7.xml", "enabled": true, "category": "ai-news" },
+      { "name": "LWN.net", "url": "https://lwn.net/headlines/rss", "enabled": true, "category": "linux-kernel" },
+      { "name": "Brendan Gregg", "url": "https://www.brendangregg.com/blog/rss.xml", "enabled": true, "category": "systems" },
+      { "name": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/", "enabled": true, "category": "security" },
+      { "name": "Schneier on Security", "url": "https://www.schneier.com/feed/atom/", "enabled": true, "category": "security" },
+      { "name": "CSS-Tricks", "url": "https://css-tricks.com/feed/", "enabled": true, "category": "frontend" },
+      { "name": "Hackaday", "url": "https://hackaday.com/feed/", "enabled": true, "category": "hardware" },
+      { "name": "Nature", "url": "https://www.nature.com/nature.rss", "enabled": true, "category": "science" },
+      { "name": "Quanta Magazine", "url": "https://api.quantamagazine.org/feed/", "enabled": true, "category": "science" }
     ],
     "reddit": {
       "enabled": true,
       "subreddits": [
-        {
-          "subreddit": "MachineLearning",
-          "enabled": true,
-          "sort": "hot",
-          "time_filter": "day",
-          "fetch_limit": 10,
-          "min_score": 60
-        },
-        {
-          "subreddit": "LocalLLaMA",
-          "enabled": true,
-          "sort": "hot",
-          "time_filter": "day",
-          "fetch_limit": 10,
-          "min_score": 60
-        }
+        { "subreddit": "MachineLearning", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 60 },
+        { "subreddit": "LocalLLaMA", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 60 },
+        { "subreddit": "linux", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 100 },
+        { "subreddit": "netsec", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 50 },
+        { "subreddit": "webdev", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 80 },
+        { "subreddit": "javascript", "enabled": true, "sort": "hot", "fetch_limit": 10, "min_score": 60 },
+        { "subreddit": "ProgrammingLanguages", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 30 },
+        { "subreddit": "rust", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 60 },
+        { "subreddit": "robotics", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 30 },
+        { "subreddit": "embedded", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 30 },
+        { "subreddit": "commandline", "enabled": true, "sort": "hot", "fetch_limit": 10, "min_score": 40 },
+        { "subreddit": "science", "enabled": true, "sort": "hot", "fetch_limit": 15, "min_score": 200 }
       ],
       "users": [],
       "fetch_comments": 10
@@ -98,11 +78,7 @@
     "telegram": {
       "enabled": true,
       "channels": [
-        {
-          "channel": "zaihuapd",
-          "enabled": true,
-          "fetch_limit": 20
-        }
+        { "channel": "zaihuapd", "enabled": true, "fetch_limit": 20 }
       ]
     }
   },
