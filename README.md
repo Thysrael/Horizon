@@ -275,6 +275,33 @@ For Gemini, use `GOOGLE_API_KEY`:
 
 Any string value in `data/config.json` can reference environment variables with `${VAR_NAME}`. This is useful for values such as `ai.base_url`, private RSS feed URLs, webhook endpoints, or custom header templates.
 
+#### OpenAI-compatible Gateways
+
+Horizon works with any OpenAI-compatible API through `base_url`. For example, OpenCode Go:
+
+```jsonc
+{
+  "ai": {
+    "provider": "openai",
+    "model": "glm-5.1",
+    "base_url": "https://opencode.ai/zen/go/v1",
+    "api_key_env": "OPENCODE_API_KEY"
+  }
+}
+```
+
+Set your API key in `.env`:
+
+```bash
+OPENCODE_API_KEY=<your-opencode-go-key>
+```
+
+Compatibility depends on whether the gateway accepts Horizon's parameters (`temperature`, `response_format`, `max_tokens`). Most models work out of the box; a few may fail with server-side errors or reject specific parameter values. Test models with:
+
+```bash
+uv run python scripts/probe_opencode_go.py
+```
+
 For the full reference, see the [Configuration Guide](docs/configuration.md).
 
 ### 3. Run
@@ -282,15 +309,32 @@ For the full reference, see the [Configuration Guide](docs/configuration.md).
 #### Local Installation
 
 ```bash
-uv run horizon           # Run with default 24h window
-uv run horizon --hours 48  # Fetch from last 48 hours
+uv run horizon              # Run with default 24h window
+uv run horizon --hours 48   # Fetch from last 48 hours
 ```
+
+**Inspect previous runs:**
+
+```bash
+uv run horizon --list-runs  # Show recent runs and their completed stages
+```
+
+**Resume from an interrupted run:**
+
+If a run fails partway through (e.g. network error during enrichment), you can resume with `--resume`:
+
+```bash
+uv run horizon --resume <run_id>              # Auto-detect last completed stage
+uv run horizon --resume <run_id> --resume-from filtered  # Resume from a specific stage
+```
+
+Stages are saved progressively under `data/mcp-runs/<run_id>/` as `raw`, `scored`, `filtered`, and `enriched`. If `--resume-from` is omitted, Horizon automatically picks the latest available stage (enriched → filtered → scored → raw).
 
 #### With Docker
 
 ```bash
-docker compose run --rm horizon           # Run with default 24h window
-docker compose run --rm horizon --hours 48  # Fetch from last 48 hours
+docker compose run --rm horizon              # Run with default 24h window
+docker compose run --rm horizon --hours 48   # Fetch from last 48 hours
 ```
 
 The generated report will be saved to `data/summaries/`.

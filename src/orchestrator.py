@@ -47,11 +47,18 @@ class HorizonOrchestrator:
             else None
         )
 
-    async def run(self, force_hours: int = None) -> None:
+    async def run(
+        self,
+        force_hours: int = None,
+        run_store=None,
+        run_id: str = None,
+    ) -> None:
         """Execute the complete workflow.
 
         Args:
             force_hours: Optional override for time window in hours
+            run_store: Optional RunStore for checkpoint persistence
+            run_id: Run identifier (required when run_store is provided)
         """
         self.console.print("[bold cyan]🌅 Horizon - Starting aggregation...[/bold cyan]\n")
 
@@ -86,9 +93,15 @@ class HorizonOrchestrator:
                     f"→ {len(merged_items)} unique items\n"
                 )
 
+            if run_store and run_id:
+                run_store.save_items(run_id, "raw", [i.model_dump(mode="json") for i in merged_items])
+
             # 4. Analyze with AI
             analyzed_items = await self._analyze_content(merged_items)
             self.console.print(f"🤖 Analyzed {len(analyzed_items)} items with AI\n")
+
+            if run_store and run_id:
+                run_store.save_items(run_id, "scored", [i.model_dump(mode="json") for i in analyzed_items])
 
             # 5. Filter by score threshold
             threshold = self.config.filtering.ai_score_threshold
@@ -114,6 +127,9 @@ class HorizonOrchestrator:
             # 5.6 Optional second-stage Twitter reply expansion + targeted re-analysis
             await self._expand_twitter_discussion(important_items)
 
+            if run_store and run_id:
+                run_store.save_items(run_id, "filtered", [i.model_dump(mode="json") for i in important_items])
+
             # Show per-sub-source selection breakdown
             selected_counts: Dict[str, int] = defaultdict(int)
             for item in important_items:
@@ -125,6 +141,9 @@ class HorizonOrchestrator:
 
             # 6. Search related stories + enrich with background knowledge (2nd AI pass)
             await self._enrich_important_items(important_items)
+
+            if run_store and run_id:
+                run_store.save_items(run_id, "enriched", [i.model_dump(mode="json") for i in important_items])
 
             # 7. Generate and save daily summaries for each configured language
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -216,6 +235,157 @@ class HorizonOrchestrator:
                 )
 
             raise
+
+    async def resume_from(
+        self,
+        items: List[ContentItem],
+        stage: str,
+        all_fetched: int = 0,
+        run_store=None,
+        run_id: str = None,
+    ) -> None:
+        """Resume pipeline from a saved stage.
+
+        Args:
+            items: Deserialized ContentItem list from saved stage
+            stage: Source stage (raw, scored, filtered, enriched)
+            all_fetched: Original total fetched count (for summary context)
+            run_store: Optional RunStore for saving subsequent stages
+            run_id: Run identifier
+        """
+        valid = {"raw", "scored", "filtered", "enriched"}
+        if stage not in valid:
+            raise ValueError(f"Invalid resume stage '{stage}'. Must be one of: {', '.join(sorted(valid))}")
+
+        self.console.print(f"[bold cyan]🔄 Resuming from stage: {stage}[/bold cyan]\n")
+
+        if stage == "raw":
+            analyzed_items = await self._analyze_content(items)
+            self.console.print(f"🤖 Re-analyzed {len(analyzed_items)} items with AI\n")
+            if run_store and run_id:
+                run_store.save_items(run_id, "scored", [i.model_dump(mode="json") for i in analyzed_items])
+
+            threshold = self.config.filtering.ai_score_threshold
+            important_items = [i for i in analyzed_items if i.ai_score and i.ai_score >= threshold]
+            important_items.sort(key=lambda x: x.ai_score or 0, reverse=True)
+
+            deduped = await self.merge_topic_duplicates(important_items)
+            if len(deduped) < len(important_items):
+                self.console.print(
+                    f"🧹 Removed {len(important_items) - len(deduped)} topic duplicates "
+                    f"→ {len(deduped)} unique items\n"
+                )
+            important_items = deduped
+
+            await self._expand_twitter_discussion(important_items)
+            if run_store and run_id:
+                run_store.save_items(run_id, "filtered", [i.model_dump(mode="json") for i in important_items])
+
+            items = important_items
+
+        elif stage == "scored":
+            threshold = self.config.filtering.ai_score_threshold
+            important_items = [i for i in items if i.ai_score and i.ai_score >= threshold]
+            important_items.sort(key=lambda x: x.ai_score or 0, reverse=True)
+            self.console.print(f"⭐️ {len(important_items)} items scored ≥ {threshold}\n")
+
+            deduped = await self.merge_topic_duplicates(important_items)
+            if len(deduped) < len(important_items):
+                self.console.print(
+                    f"🧹 Removed {len(important_items) - len(deduped)} topic duplicates "
+                    f"→ {len(deduped)} unique items\n"
+                )
+            important_items = deduped
+
+            await self._expand_twitter_discussion(important_items)
+            if run_store and run_id:
+                run_store.save_items(run_id, "filtered", [i.model_dump(mode="json") for i in important_items])
+
+            items = important_items
+
+        elif stage == "filtered":
+            self.console.print(f"⭐️ {len(items)} items from filtered stage\n")
+            items = items
+
+        elif stage == "enriched":
+            self.console.print(f"📚 {len(items)} already-enriched items\n")
+            items = items
+
+        if stage in ("filtered", "scored", "raw"):
+            await self._enrich_important_items(items)
+            if run_store and run_id:
+                run_store.save_items(run_id, "enriched", [i.model_dump(mode="json") for i in items])
+
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        for lang in self.config.ai.languages:
+            summarizer = DailySummarizer()
+            summary = await summarizer.generate_summary(items, today, all_fetched or len(items), language=lang)
+
+            summary_path = self.storage.save_daily_summary(today, summary, language=lang)
+            self.console.print(f"💾 Saved {lang.upper()} summary to: {summary_path}\n")
+
+            try:
+                from pathlib import Path
+
+                post_filename = f"{today}-summary-{lang}.md"
+                posts_dir = Path("docs/_posts")
+                posts_dir.mkdir(parents=True, exist_ok=True)
+                dest_path = posts_dir / post_filename
+
+                front_matter = (
+                    "---\n"
+                    "layout: default\n"
+                    f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
+                    f"date: {today}\n"
+                    f"lang: {lang}\n"
+                    "---\n\n"
+                )
+
+                summary_content = summary
+                first_line = summary_content.strip().split("\n")[0]
+                if first_line.startswith("# "):
+                    parts = summary_content.split("\n", 1)
+                    if len(parts) > 1:
+                        summary_content = parts[1].strip()
+
+                with open(dest_path, "w", encoding="utf-8") as f:
+                    f.write(front_matter + summary_content)
+
+                self.console.print(f"📄 Copied {lang.upper()} summary to GitHub Pages: {dest_path}\n")
+            except Exception as e:
+                self.console.print(f"[yellow]⚠️  Failed to copy {lang.upper()} summary to docs/: {e}[/yellow]\n")
+
+            if self.email_manager and self.config.email and self.config.email.enabled:
+                self.console.print(f"📧 Sending {lang.upper()} email summary...")
+                subscribers = self.storage.load_subscribers()
+                subject = f"Horizon Summary ({lang.upper()}) - {today}"
+                self.email_manager.send_daily_summary(summary, subject, subscribers)
+
+            if self.webhook_notifier:
+                await self.webhook_notifier.send_daily_summary(
+                    summary=summary,
+                    important_items=items,
+                    all_items_count=all_fetched or len(items),
+                    date=today,
+                    lang=lang,
+                    summarizer=summarizer,
+                )
+
+        self.console.print("[bold green]✅ Horizon resume completed successfully![/bold green]")
+        usage = get_usage_snapshot()
+        if usage.total_tokens > 0:
+            self.console.print(
+                f"\n🧮 Token usage this run: "
+                f"{usage.total_tokens} tokens "
+                f"(input: {usage.total_input_tokens}, output: {usage.total_output_tokens})"
+            )
+            for provider, u in sorted(usage.per_provider.items()):
+                if u.total <= 0:
+                    continue
+                self.console.print(
+                    f"   • {provider}: {u.total} tokens "
+                    f"(in: {u.input_tokens}, out: {u.output_tokens})"
+                )
 
     def _determine_time_window(self, force_hours: int = None) -> datetime:
         if force_hours:
