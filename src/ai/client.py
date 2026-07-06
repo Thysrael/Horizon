@@ -179,6 +179,10 @@ class OpenAIClient(AIClient):
     # Providers that need temperature clamped to (0, 1]
     _TEMP_CLAMP = {"minimax"}
 
+    # Newer reasoning-series / GPT-5 family models reject legacy `max_tokens`
+    # and require `max_completion_tokens` instead.
+    _MODELS_REQUIRING_MAX_COMPLETION_TOKENS = ("o1", "o3", "o4", "gpt-5")
+
     def __init__(self, config: AIConfig):
         """Initialize OpenAI-compatible client.
 
@@ -203,6 +207,10 @@ class OpenAIClient(AIClient):
         # Some newer models (e.g. Claude Opus 4.7 on Bedrock Converse) reject
         # `temperature`. We learn this on first 400 and stop sending it.
         self._supports_temperature = True
+        self._use_max_completion_tokens = any(
+            config.model.startswith(prefix)
+            for prefix in self._MODELS_REQUIRING_MAX_COMPLETION_TOKENS
+        )
 
     async def complete(
         self,
@@ -236,11 +244,10 @@ class OpenAIClient(AIClient):
                 temperature=temperature,
                 max_tokens=max_tokens,
                 include_temperature=self._supports_temperature,
+                use_max_completion_tokens=self._use_max_completion_tokens,
             )
         except Exception as exc:
-            if self._supports_temperature and self._is_temperature_unsupported(
-                str(exc)
-            ):
+            if self._supports_temperature and self._is_temperature_unsupported(str(exc)):
                 self._supports_temperature = False
                 response = await self._do_request(
                     system=system,
@@ -248,6 +255,17 @@ class OpenAIClient(AIClient):
                     temperature=temperature,
                     max_tokens=max_tokens,
                     include_temperature=False,
+                    use_max_completion_tokens=self._use_max_completion_tokens,
+                )
+            elif not self._use_max_completion_tokens and self._is_max_tokens_unsupported(str(exc)):
+                self._use_max_completion_tokens = True
+                response = await self._do_request(
+                    system=system,
+                    user=user,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    include_temperature=self._supports_temperature,
+                    use_max_completion_tokens=True,
                 )
             else:
                 raise
@@ -268,6 +286,7 @@ class OpenAIClient(AIClient):
         temperature: float,
         max_tokens: int,
         include_temperature: bool,
+        use_max_completion_tokens: bool,
     ):
         request_kwargs = {
             "model": self.model,
@@ -275,8 +294,9 @@ class OpenAIClient(AIClient):
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ],
-            "max_tokens": max_tokens,
         }
+        token_param = "max_completion_tokens" if use_max_completion_tokens else "max_tokens"
+        request_kwargs[token_param] = max_tokens
         if include_temperature:
             request_kwargs["temperature"] = temperature
         if self.provider not in self._NO_RESPONSE_FORMAT:
@@ -291,6 +311,11 @@ class OpenAIClient(AIClient):
             or "not support" in lowered
             or "unsupported" in lowered
         )
+
+    @staticmethod
+    def _is_max_tokens_unsupported(message: str) -> bool:
+        lowered = message.lower()
+        return "max_tokens" in lowered and "max_completion_tokens" in lowered
 
 
 class AzureOpenAIClient(AIClient):
