@@ -1089,6 +1089,9 @@ twitter = [
     { name = "playwright" },
     { name = "playwright-stealth" },
 ]
+visual = [
+    { name = "playwright" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1104,6 +1107,7 @@ requires-dist = [
     { name = "openbb", marker = "extra == 'openbb'", specifier = ">=4.4.0" },
     { name = "openbb-benzinga", marker = "extra == 'openbb'", specifier = ">=1.6.0" },
     { name = "playwright", marker = "extra == 'twitter'", specifier = ">=1.40.0" },
+    { name = "playwright", marker = "extra == 'visual'", specifier = ">=1.40.0" },
     { name = "playwright-stealth", marker = "extra == 'twitter'", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.9.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
@@ -1113,7 +1117,7 @@ requires-dist = [
     { name = "rich", specifier = ">=13.9.0" },
     { name = "tenacity", specifier = ">=9.0.0" },
 ]
-provides-extras = ["dev", "openbb", "twitter"]
+provides-extras = ["dev", "openbb", "twitter", "visual"]
 
 [[package]]
 name = "hpack"

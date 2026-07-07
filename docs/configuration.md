@@ -243,12 +243,28 @@ All sources are configured under the top-level `sources` key in `config.json`.
         "name": "Blog Name",
         "url": "https://example.com/feed.xml",
         "enabled": true,
-        "category": "ai-ml"
+        "category": "ai-ml",
+        "visual_extraction": {
+          "enabled": false,
+          "timeout_ms": 15000
+        }
       }
     ]
   }
 }
 ```
+
+- `visual_extraction` — optional, per-feed, disabled by default. When `enabled: true`, high-scoring items from this feed have their article URL rendered to a screenshot (self-hosted headless Chromium via Playwright — no external service, no FAISS/embedding pipeline) during enrichment, and the configured AI provider's vision input is asked whether the real page contains meaningfully more content than the feed's thin summary/teaser. If so, the AI-extracted real content replaces the snippet for that item's background enrichment. Any failure (render timeout, network error, or a non-vision-capable AI provider) degrades gracefully back to the original snippet — items are never dropped.
+  - `timeout_ms` — Playwright page render/screenshot timeout in milliseconds (default: `15000`)
+
+Requires the optional `visual` dependency group and a local Chromium install:
+
+```bash
+uv sync --extra visual
+uv run playwright install chromium
+```
+
+Visual extraction also requires the configured AI provider to support image input (currently Anthropic and OpenAI-compatible providers via `AIClient.complete_vision`); other providers safely skip this step and fall back to the original snippet.
 
 ### Reddit
 

@@ -17,6 +17,8 @@ class SourceType(str, Enum):
     TWITTER = "twitter"
     OPENBB = "openbb"
     OSSINSIGHT = "ossinsight"
+    GDELT = "gdelt"
+    GOOGLE_NEWS = "google_news"
 
 
 class ContentItem(BaseModel):
@@ -131,6 +133,22 @@ class HackerNewsConfig(BaseModel):
     min_score: int = 100
 
 
+class VisualExtractionConfig(BaseModel):
+    """Render-only visual extraction sub-step configuration.
+
+    Gates the optional second-pass enrichment sub-step that renders an
+    item's article URL to a screenshot (self-hosted Playwright render, no
+    FAISS/embedding pipeline, no hosted PixelRAG API) and asks the
+    configured vision-capable AI client whether the real page content
+    differs meaningfully from the thin RSS/GDELT/Google News snippet.
+    Disabled by default, matching the opt-in convention used for every
+    other new source/feature in this repo.
+    """
+
+    enabled: bool = False
+    timeout_ms: int = 15000  # Playwright page render/screenshot timeout
+
+
 class RSSSourceConfig(BaseModel):
     """RSS feed source configuration."""
 
@@ -138,6 +156,12 @@ class RSSSourceConfig(BaseModel):
     url: HttpUrl
     enabled: bool = True
     category: Optional[str] = None
+    # Per-feed toggle: RSS has no source-type-level wrapper object (it is a
+    # List[RSSSourceConfig] on SourcesConfig), so visual extraction is
+    # configured per-feed rather than globally for all RSS sources.
+    visual_extraction: VisualExtractionConfig = Field(
+        default_factory=VisualExtractionConfig
+    )
 
 
 class RedditSubredditConfig(BaseModel):
@@ -264,6 +288,43 @@ class OSSInsightConfig(BaseModel):
     max_items: int = 30
 
 
+class GDELTConfig(BaseModel):
+    """GDELT source configuration — minimal forward-compatible placeholder.
+
+    NOTE: The actual GDELT scraper and its full config surface (query,
+    mode, max_records, timespan, language, country filters, etc.) live in
+    the unmerged `news-api-scrapers` branch. This placeholder exists only
+    so `SourceType.GDELT` and the visual-extraction toggle can be gated
+    here without a naming mismatch when the two branches are eventually
+    merged. Intentionally minimal — do NOT add unrelated fields (API
+    endpoints, query params, etc.) here; reconcile with the full config
+    shape from `news-api-scrapers` at merge time instead.
+    """
+
+    enabled: bool = True
+    visual_extraction: VisualExtractionConfig = Field(
+        default_factory=VisualExtractionConfig
+    )
+
+
+class GoogleNewsConfig(BaseModel):
+    """Google News source configuration — minimal forward-compatible placeholder.
+
+    NOTE: The actual Google News RSS-search scraper and its full config
+    surface live in the unmerged `news-api-scrapers` branch. This
+    placeholder exists only so `SourceType.GOOGLE_NEWS` and the
+    visual-extraction toggle can be gated here without a naming mismatch
+    when the two branches are eventually merged. Intentionally minimal —
+    do NOT add unrelated fields here; reconcile with the full config shape
+    from `news-api-scrapers` at merge time instead.
+    """
+
+    enabled: bool = True
+    visual_extraction: VisualExtractionConfig = Field(
+        default_factory=VisualExtractionConfig
+    )
+
+
 class SourcesConfig(BaseModel):
     """All sources configuration."""
 
@@ -275,6 +336,8 @@ class SourcesConfig(BaseModel):
     twitter: Optional[TwitterConfig] = None
     openbb: Optional[OpenBBConfig] = None
     ossinsight: OSSInsightConfig = Field(default_factory=OSSInsightConfig)
+    gdelt: Optional[GDELTConfig] = None
+    google_news: Optional[GoogleNewsConfig] = None
 
 
 class WebhookConfig(BaseModel):

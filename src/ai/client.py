@@ -1,5 +1,6 @@
 """AI client abstraction supporting multiple providers."""
 
+import base64
 import os
 import re
 from abc import ABC, abstractmethod
@@ -110,6 +111,42 @@ class AIClient(ABC):
         """
         pass
 
+    async def complete_vision(
+        self,
+        system: str,
+        user: str,
+        image_data: bytes,
+        image_media_type: str = "image/png",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate a completion grounded in both text and an image.
+
+        Base implementation raises NotImplementedError for providers that
+        don't support vision/image input — callers (e.g. ContentEnricher)
+        must catch this and treat it as a graceful-degradation failure
+        case, not a crash. This is intentionally a concrete (non-abstract)
+        method so existing subclasses that don't override it automatically
+        get this behavior.
+
+        Args:
+            system: System prompt
+            user: User prompt (accompanying text for the image)
+            image_data: Raw image bytes (e.g. a PNG screenshot)
+            image_media_type: MIME type of the image (default "image/png")
+            temperature: Optional sampling temperature override
+            max_tokens: Optional maximum tokens override
+
+        Returns:
+            str: Generated completion text
+
+        Raises:
+            NotImplementedError: If the provider doesn't support vision/image input.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not support vision/image input"
+        )
+
 
 class AnthropicClient(AIClient):
     """Client for Anthropic Claude models."""
@@ -160,6 +197,65 @@ class AnthropicClient(AIClient):
             temperature=temperature,
             system=system,
             messages=[{"role": "user", "content": user}]
+        )
+        usage = getattr(message, "usage", None)
+        if usage is not None:
+            record_usage(
+                "anthropic",
+                input_tokens=getattr(usage, "input_tokens", 0),
+                output_tokens=getattr(usage, "output_tokens", 0),
+            )
+        return message.content[0].text
+
+    async def complete_vision(
+        self,
+        system: str,
+        user: str,
+        image_data: bytes,
+        image_media_type: str = "image/png",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate completion grounded in text + an image using Claude's
+        multimodal Messages API.
+
+        Args:
+            system: System prompt
+            user: User prompt (text alongside the image)
+            image_data: Raw image bytes
+            image_media_type: MIME type of the image
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            str: Generated text
+        """
+        temperature = self.temperature if temperature is None else temperature
+        max_tokens = self.max_tokens if max_tokens is None else max_tokens
+
+        encoded_image = base64.b64encode(image_data).decode()
+
+        message = await self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": image_media_type,
+                                "data": encoded_image,
+                            },
+                        },
+                        {"type": "text", "text": user},
+                    ],
+                }
+            ],
         )
         usage = getattr(message, "usage", None)
         if usage is not None:
@@ -324,6 +420,104 @@ class OpenAIClient(AIClient):
             or "not support" in lowered
             or "unsupported" in lowered
         )
+
+    async def complete_vision(
+        self,
+        system: str,
+        user: str,
+        image_data: bytes,
+        image_media_type: str = "image/png",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate completion grounded in text + an image using the
+        OpenAI-compatible chat completions `image_url` content-part format.
+
+        Args:
+            system: System prompt
+            user: User prompt (text alongside the image)
+            image_data: Raw image bytes
+            image_media_type: MIME type of the image
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            str: Generated text
+        """
+        temperature = self.temperature if temperature is None else temperature
+        max_tokens = self.max_tokens if max_tokens is None else max_tokens
+
+        if self.provider in self._TEMP_CLAMP and temperature <= 0:
+            temperature = 0.01
+
+        try:
+            response = await self._do_vision_request(
+                system=system,
+                user=user,
+                image_data=image_data,
+                image_media_type=image_media_type,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                include_temperature=self._supports_temperature,
+            )
+        except Exception as exc:
+            if self._supports_temperature and self._is_temperature_unsupported(
+                str(exc)
+            ):
+                self._supports_temperature = False
+                response = await self._do_vision_request(
+                    system=system,
+                    user=user,
+                    image_data=image_data,
+                    image_media_type=image_media_type,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    include_temperature=False,
+                )
+            else:
+                raise
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            record_usage(
+                self.provider,
+                input_tokens=getattr(usage, "prompt_tokens", 0),
+                output_tokens=getattr(usage, "completion_tokens", 0),
+            )
+        return response.choices[0].message.content
+
+    async def _do_vision_request(
+        self,
+        *,
+        system: str,
+        user: str,
+        image_data: bytes,
+        image_media_type: str,
+        temperature: float,
+        max_tokens: int,
+        include_temperature: bool,
+    ):
+        encoded_image = base64.b64encode(image_data).decode()
+        data_url = f"data:{image_media_type};base64,{encoded_image}"
+
+        request_kwargs = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                },
+            ],
+            "max_tokens": max_tokens,
+        }
+        if include_temperature:
+            request_kwargs["temperature"] = temperature
+        if self.provider not in self._NO_RESPONSE_FORMAT:
+            request_kwargs["response_format"] = {"type": "json_object"}
+        return await self.client.chat.completions.create(**request_kwargs)
 
 
 class AzureOpenAIClient(AIClient):
@@ -590,6 +784,34 @@ class ChainedAIClient(AIClient):
                         f"falling back to {self.configs[i + 1].provider.value}...[/yellow]"
                     )
         raise RuntimeError(f"All providers failed. Last error: {last_error}")
+
+    async def complete_vision(
+        self,
+        system: str,
+        user: str,
+        image_data: bytes,
+        image_media_type: str = "image/png",
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Delegate to the current (first) client in the chain only.
+
+        Unlike `complete()`, this does not replicate the full multi-provider
+        fallback logic — that would be scope creep for a vision-specific
+        path. If the current provider doesn't support vision, its
+        NotImplementedError propagates so the caller's graceful-degradation
+        handling (e.g. ContentEnricher) can catch it, rather than silently
+        trying every provider in the chain.
+        """
+        client = self._get_client(0)
+        return await client.complete_vision(
+            system,
+            user,
+            image_data,
+            image_media_type=image_media_type,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
 
     @staticmethod
     def _should_fallback(exc: Exception) -> bool:

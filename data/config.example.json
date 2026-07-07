@@ -45,13 +45,21 @@
         "name": "Simon Willison",
         "url": "https://simonwillison.net/atom/everything/",
         "enabled": true,
-        "category": "ai-tools"
+        "category": "ai-tools",
+        "visual_extraction": {
+          "enabled": false,
+          "timeout_ms": 15000
+        }
       },
       {
         "name": "LWN.net (subscriber full-text)",
         "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
         "enabled": false,
-        "category": "linux"
+        "category": "linux",
+        "visual_extraction": {
+          "enabled": false,
+          "timeout_ms": 15000
+        }
       }
     ],
     "reddit": {

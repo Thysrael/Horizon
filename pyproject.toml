@@ -35,6 +35,9 @@ twitter = [
     "playwright>=1.40.0",
     "playwright-stealth>=1.0.0",
 ]
+visual = [
+    "playwright>=1.40.0",
+]
 
 [project.scripts]
 horizon = "src.main:main"

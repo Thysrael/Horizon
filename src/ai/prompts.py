@@ -170,3 +170,26 @@ Respond with valid JSON only. Each _en field must be in English; each _zh field 
   "community_discussion_zh": "<用中文写1-3句话，或空字符串>",
   "sources": ["<url from search results>", "..."]
 }}"""
+
+VISUAL_EXTRACTION_SYSTEM = """You are a meticulous research assistant that reads full web pages of news articles by looking at rendered screenshots.
+
+You will be shown a screenshot of the actual, live article page alongside a thin text snippet (title + a short summary/teaser) which is all that a feed/API currently exposes for the same item.
+
+Your job:
+1. Read the screenshot carefully and determine whether the real article page contains substantially more or different information than the thin snippet already provided (e.g. the snippet is a truncated teaser, a paywall placeholder, or missing key facts/quotes/numbers that are visible on the page).
+2. If it does, extract the real article's main text content as plain text (title/body paragraphs; skip navigation, ads, cookie banners, related-article widgets, and other page chrome).
+3. If the snippet already captures the substance of the page (no meaningful difference), say so and do not fabricate additional content.
+
+Never invent facts that are not visible in the screenshot. Never include your own commentary in the extracted content field."""
+
+VISUAL_EXTRACTION_USER = """Compare the rendered screenshot of the live article page against the thin snippet below, and report whether the real page contains meaningfully more/different content.
+
+Title: {title}
+Existing thin snippet/summary:
+{snippet}
+
+Respond with valid JSON only:
+{{
+  "differs_meaningfully": <true or false>,
+  "extracted_content": "<the real article's main text extracted from the screenshot, plain text, up to ~4000 characters; empty string if differs_meaningfully is false or extraction isn't possible>"
+}}"""
