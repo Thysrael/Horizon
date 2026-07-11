@@ -1,0 +1,4 @@
+[mcp_servers.horizon]
+command = "uv"
+args = ["run", "horizon-mcp"]
+cwd = "/Users/tianzhize/.codex/worktrees/770a/workbench/Horizon"
