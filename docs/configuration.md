@@ -95,18 +95,46 @@ Set `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in your `.env`. The `mode
 
 **MiniMax**:
 
+The built-in provider defaults to `MiniMax-M3` and the global
+OpenAI-compatible endpoint:
+
 ```json
 {
   "ai": {
     "provider": "minimax",
     "model": "MiniMax-M3",
     "api_key_env": "MINIMAX_API_KEY",
+    "base_url": "https://api.minimax.io/v1",
     "throttle_sec": 0
   }
 }
 ```
 
-Available models: `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`
+Available models: `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`.
+
+Use the endpoint for your account region and preferred compatible API:
+
+| Region | OpenAI-compatible base URL | Anthropic-compatible base URL |
+| --- | --- | --- |
+| Global | `https://api.minimax.io/v1` | `https://api.minimax.io/anthropic` |
+| China | `https://api.minimaxi.com/v1` | `https://api.minimaxi.com/anthropic` |
+
+For the Anthropic-compatible API, keep `provider` set to `minimax` and pass
+the base URL directly without adding `/v1`. Horizon selects its Anthropic
+client for this endpoint, and the SDK appends `/v1/messages` when sending a
+request:
+
+```json
+{
+  "ai": {
+    "provider": "minimax",
+    "model": "MiniMax-M3",
+    "api_key_env": "MINIMAX_API_KEY",
+    "base_url": "https://api.minimax.io/anthropic",
+    "throttle_sec": 0
+  }
+}
+```
 
 **Aliyun DashScope** (OpenAI-compatible):
 

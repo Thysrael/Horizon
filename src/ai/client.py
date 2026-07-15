@@ -112,7 +112,7 @@ class AIClient(ABC):
 
 
 class AnthropicClient(AIClient):
-    """Client for Anthropic Claude models."""
+    """Client for Anthropic-compatible models."""
 
     def __init__(self, config: AIConfig):
         """Initialize Anthropic client.
@@ -164,7 +164,7 @@ class AnthropicClient(AIClient):
         usage = getattr(message, "usage", None)
         if usage is not None:
             record_usage(
-                "anthropic",
+                self.config.provider.value,
                 input_tokens=getattr(usage, "input_tokens", 0),
                 output_tokens=getattr(usage, "output_tokens", 0),
             )
@@ -530,9 +530,18 @@ class GeminiClient(AIClient):
         return response.text
 
 
+def _uses_anthropic_compatible_api(config: AIConfig) -> bool:
+    """Return whether MiniMax is configured for its Anthropic-compatible API."""
+    base_url = (config.base_url or "").rstrip("/")
+    return config.provider == AIProvider.MINIMAX and base_url.endswith("/anthropic")
+
+
 def _create_single_client(config: AIConfig) -> AIClient:
     """Create a single AI client instance."""
-    if config.provider == AIProvider.ANTHROPIC:
+    if (
+        config.provider == AIProvider.ANTHROPIC
+        or _uses_anthropic_compatible_api(config)
+    ):
         return AnthropicClient(config)
     elif config.provider == AIProvider.AZURE:
         return AzureOpenAIClient(config)
