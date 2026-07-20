@@ -4,7 +4,7 @@ import asyncio
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Literal, Optional
+from typing import Callable, Dict, List, Literal, Optional
 from urllib.parse import unquote_plus, urlsplit
 import httpx
 from rich.console import Console
@@ -203,6 +203,7 @@ class HorizonOrchestrator:
         self,
         force_hours: int | None = None,
         custom_instruction: str | None = None,
+        item_filter: Callable[[ContentItem], bool] | None = None,
     ) -> HorizonRunResult:
         """Run Horizon's pipeline without writing files or sending deliveries."""
         self.console.print("[bold cyan]🌅 Horizon - Starting aggregation...[/bold cyan]\n")
@@ -224,6 +225,8 @@ class HorizonOrchestrator:
             else:
                 analyzed_items = await self._analyze_content(merged_items, custom_instruction=custom_instruction)
             self.console.print(f"🤖 Analyzed {len(analyzed_items)} items with AI\n")
+            if item_filter is not None:
+                analyzed_items = [item for item in analyzed_items if item_filter(item)]
             important_items = (await self.filter_items(analyzed_items, apply_balance=False)).items
             if custom_instruction is None:
                 await self._expand_twitter_discussion(important_items)

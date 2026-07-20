@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Callable
 
 from src.infoservice.sources.catalog import SourceCatalog
 from src.models import AIConfig, Config, FilteringConfig, SourcesConfig
@@ -34,10 +34,14 @@ class HorizonReportExecutor:
                 temporary_storage = TemporaryDirectory(prefix="infoservice-horizon-")
                 storage = StorageManager(temporary_storage.name)
             orchestrator = HorizonOrchestrator(config, storage, runtime_api_key=runtime_api_key)
-            result = await orchestrator.execute(
-                force_hours=request.lookback_hours,
-                custom_instruction=request.custom_instruction,
-            )
+            execute_kwargs: dict[str, Any] = {
+                "force_hours": request.lookback_hours,
+                "custom_instruction": request.custom_instruction,
+            }
+            item_filter = self._build_item_filter(request.config)
+            if item_filter is not None:
+                execute_kwargs["item_filter"] = item_filter
+            result = await orchestrator.execute(**execute_kwargs)
             language = config.ai.languages[0]
             return ReportExecutionResult(
                 markdown=result.summaries[language],
@@ -66,6 +70,55 @@ class HorizonReportExecutor:
             email=None,
             webhook=None,
         )
+
+    @staticmethod
+    def _build_item_filter(report: Any) -> Callable[[Any], bool] | None:
+        """Build InfoService-only category and topic exclusion rules.
+
+        Horizon's legacy configuration has no report-level categories or
+        exclusions.  Keep these rules at the adapter boundary so its CLI and
+        webhook execution remain unchanged.
+        """
+        categories = {
+            value.strip().casefold()
+            for value in getattr(report, "categories", []) or []
+            if isinstance(value, str) and value.strip()
+        }
+        exclusions = {
+            value.strip().casefold()
+            for value in getattr(report, "exclusions", []) or []
+            if isinstance(value, str) and value.strip()
+        }
+        if not categories and not exclusions:
+            return None
+
+        def includes(item: Any) -> bool:
+            metadata = getattr(item, "metadata", {}) or {}
+            category_value = metadata.get("category")
+            category = (
+                category_value.strip().casefold()
+                if isinstance(category_value, str)
+                else ""
+            )
+            if categories and category not in categories:
+                return False
+            if category in exclusions:
+                return False
+
+            searchable = " ".join(
+                str(value)
+                for value in (
+                    getattr(item, "title", ""),
+                    getattr(item, "content", ""),
+                    getattr(item, "ai_summary", ""),
+                    getattr(item, "ai_reason", ""),
+                    *getattr(item, "ai_tags", []),
+                )
+                if value
+            ).casefold()
+            return not any(exclusion in searchable for exclusion in exclusions)
+
+        return includes
 
     def _build_sources(self, records: Any) -> SourcesConfig:
         grouped: dict[str, list[Any]] = defaultdict(list)
