@@ -39,6 +39,19 @@ def _make_ollama_config(**overrides) -> AIConfig:
 
 
 class TestOpenAIClientInit:
+    def test_explicit_key_does_not_touch_environment(self, monkeypatch):
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        config = _make_config(
+            provider=AIProvider.DEEPSEEK,
+            model="deepseek-chat",
+            api_key_env="DEEPSEEK_API_KEY",
+        )
+
+        client = create_ai_client(config, api_key="sk-user")
+
+        assert client.client.api_key == "sk-user"
+        assert os.getenv("DEEPSEEK_API_KEY") is None
+
     def test_creates_instance_with_valid_config(self, monkeypatch):
         monkeypatch.setenv("MINIMAX_API_KEY", "test-key")
         client = OpenAIClient(_make_config())

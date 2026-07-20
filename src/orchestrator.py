@@ -164,7 +164,12 @@ class FetchReport:
 class HorizonOrchestrator:
     """Orchestrates the complete workflow for content aggregation and analysis."""
 
-    def __init__(self, config: Config, storage: StorageManager):
+    def __init__(
+        self,
+        config: Config,
+        storage: StorageManager,
+        runtime_api_key: str | None = None,
+    ):
         """Initialize orchestrator.
 
         Args:
@@ -173,6 +178,7 @@ class HorizonOrchestrator:
         """
         self.config = config
         self.storage = storage
+        self.runtime_api_key = runtime_api_key
         self.console = Console()
         self.email_manager = EmailManager(config.email, console=self.console) if config.email else None
         self.webhook_notifier = (
@@ -583,7 +589,7 @@ class HorizonOrchestrator:
         items_text = "\n\n".join(lines)
 
         try:
-            ai_client = create_ai_client(self.config.ai)
+            ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
             response = await ai_client.complete(
                 system=TOPIC_DEDUP_SYSTEM,
                 user=TOPIC_DEDUP_USER.format(items=items_text),
@@ -844,7 +850,7 @@ class HorizonOrchestrator:
         self.console.print(
             f"   Re-analyzing {len(expanded)} Twitter items with reply context...\n"
         )
-        ai_client = create_ai_client(self.config.ai)
+        ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
         analyzer = ContentAnalyzer(ai_client)
         await analyzer.analyze_batch(expanded)
 
@@ -861,7 +867,7 @@ class HorizonOrchestrator:
             return
 
         self.console.print("📚 Enriching with background knowledge...")
-        ai_client = create_ai_client(self.config.ai)
+        ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
         enricher = ContentEnricher(ai_client)
         await enricher.enrich_batch(items)
         self.console.print(f"   Enriched {len(items)} items\n")
@@ -877,7 +883,7 @@ class HorizonOrchestrator:
         """
         self.console.print("🤖 Analyzing content with AI...")
 
-        ai_client = create_ai_client(self.config.ai)
+        ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
         analyzer = ContentAnalyzer(ai_client)
 
         return await analyzer.analyze_batch(items)

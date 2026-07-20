@@ -36,7 +36,14 @@ _DEFAULT_API_KEY_ENVS = {
 }
 
 
-def _resolve_api_key(config: AIConfig, *, fallback: Optional[str] = None) -> str:
+def _resolve_api_key(
+    config: AIConfig,
+    *,
+    api_key: Optional[str] = None,
+    fallback: Optional[str] = None,
+) -> str:
+    if api_key is not None:
+        return api_key
     api_key = os.getenv(config.api_key_env)
     if api_key:
         return api_key
@@ -114,7 +121,7 @@ class AIClient(ABC):
 class AnthropicClient(AIClient):
     """Client for Anthropic-compatible models."""
 
-    def __init__(self, config: AIConfig):
+    def __init__(self, config: AIConfig, *, api_key: Optional[str] = None):
         """Initialize Anthropic client.
 
         Args:
@@ -122,7 +129,7 @@ class AnthropicClient(AIClient):
         """
         self.config = config
 
-        api_key = _resolve_api_key(config)
+        api_key = _resolve_api_key(config, api_key=api_key)
 
         kwargs = {"api_key": api_key}
         if config.base_url:
@@ -192,7 +199,7 @@ class OpenAIClient(AIClient):
     # and require `max_completion_tokens` instead.
     _MODELS_REQUIRING_MAX_COMPLETION_TOKENS = ("o1", "o3", "o4", "gpt-5")
 
-    def __init__(self, config: AIConfig):
+    def __init__(self, config: AIConfig, *, api_key: Optional[str] = None):
         """Initialize OpenAI-compatible client.
 
         Args:
@@ -201,7 +208,7 @@ class OpenAIClient(AIClient):
         self.config = config
 
         fallback = "no_key" if config.provider == AIProvider.OLLAMA else None
-        api_key = _resolve_api_key(config, fallback=fallback)
+        api_key = _resolve_api_key(config, api_key=api_key, fallback=fallback)
 
         kwargs = {"api_key": api_key}
         base_url = self._resolve_base_url(config)
@@ -355,7 +362,7 @@ class AzureOpenAIClient(AIClient):
     # so a best-effort guess can be wrong for custom deployment aliases.
     _MODELS_REQUIRING_MAX_COMPLETION_TOKENS = ("o1", "o3", "o4", "gpt-5")
 
-    def __init__(self, config: AIConfig):
+    def __init__(self, config: AIConfig, *, api_key: Optional[str] = None):
         """Initialize Azure OpenAI client.
 
         Args:
@@ -363,7 +370,7 @@ class AzureOpenAIClient(AIClient):
         """
         self.config = config
 
-        api_key = _resolve_api_key(config)
+        api_key = _resolve_api_key(config, api_key=api_key)
         if not config.azure_endpoint_env:
             raise ValueError("azure_endpoint_env is required for azure provider")
         azure_endpoint = os.getenv(config.azure_endpoint_env)
@@ -475,7 +482,7 @@ class AzureOpenAIClient(AIClient):
 class GeminiClient(AIClient):
     """Client for Google Gemini models."""
 
-    def __init__(self, config: AIConfig):
+    def __init__(self, config: AIConfig, *, api_key: Optional[str] = None):
         """Initialize Gemini client.
 
         Args:
@@ -483,7 +490,7 @@ class GeminiClient(AIClient):
         """
         self.config = config
 
-        api_key = _resolve_api_key(config)
+        api_key = _resolve_api_key(config, api_key=api_key)
 
         self.client = genai.Client(api_key=api_key)
         self.model = config.model
@@ -536,17 +543,17 @@ def _uses_anthropic_compatible_api(config: AIConfig) -> bool:
     return config.provider == AIProvider.MINIMAX and base_url.endswith("/anthropic")
 
 
-def _create_single_client(config: AIConfig) -> AIClient:
+def _create_single_client(config: AIConfig, *, api_key: Optional[str] = None) -> AIClient:
     """Create a single AI client instance."""
     if (
         config.provider == AIProvider.ANTHROPIC
         or _uses_anthropic_compatible_api(config)
     ):
-        return AnthropicClient(config)
+        return AnthropicClient(config, api_key=api_key)
     elif config.provider == AIProvider.AZURE:
-        return AzureOpenAIClient(config)
+        return AzureOpenAIClient(config, api_key=api_key)
     elif config.provider == AIProvider.GEMINI:
-        return GeminiClient(config)
+        return GeminiClient(config, api_key=api_key)
     elif config.provider in {
         AIProvider.OPENAI,
         AIProvider.ALI,
@@ -555,7 +562,7 @@ def _create_single_client(config: AIConfig) -> AIClient:
         AIProvider.DEEPSEEK,
         AIProvider.OLLAMA,
     }:
-        return OpenAIClient(config)
+        return OpenAIClient(config, api_key=api_key)
     else:
         raise ValueError(f"Unsupported AI provider: {config.provider}")
 
@@ -631,8 +638,10 @@ class ChainedAIClient(AIClient):
         return False
 
 
-def _create_chained_client(config: AIConfig) -> ChainedAIClient:
+def _create_chained_client(config: AIConfig, *, api_key: Optional[str] = None) -> ChainedAIClient:
     """Build a ChainedAIClient from a comma-separated provider chain."""
+    if api_key is not None:
+        raise ValueError("Runtime API keys are not supported for provider chains")
     provider_chain = config.provider_chain or ""
     provider_names = [p.strip() for p in provider_chain.split(",") if p.strip()]
     if not provider_names:
@@ -674,7 +683,7 @@ def _create_chained_client(config: AIConfig) -> ChainedAIClient:
     return ChainedAIClient(chain_configs)
 
 
-def create_ai_client(config: AIConfig) -> AIClient:
+def create_ai_client(config: AIConfig, *, api_key: Optional[str] = None) -> AIClient:
     """Factory function to create appropriate AI client.
 
     Args:
@@ -687,5 +696,5 @@ def create_ai_client(config: AIConfig) -> AIClient:
         ValueError: If provider is not supported
     """
     if config.provider_chain:
-        return _create_chained_client(config)
-    return _create_single_client(config)
+        return _create_chained_client(config, api_key=api_key)
+    return _create_single_client(config, api_key=api_key)

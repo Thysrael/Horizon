@@ -175,6 +175,18 @@ def test_create_chained_client_parses_chain():
     assert chained.configs[1].api_key_env == ""
 
 
+def test_create_chained_client_rejects_runtime_key():
+    config = AIConfig(
+        provider=AIProvider.OPENAI,
+        model="m1",
+        api_key_env="K1",
+        provider_chain="openai,ollama",
+    )
+
+    with pytest.raises(ValueError, match="provider chains"):
+        _create_chained_client(config, api_key="sk-user")
+
+
 def test_create_chained_client_uses_provider_defaults_without_leaking_base_url():
     """Every heterogeneous entry gets its own connection defaults."""
     providers = list(AIProvider)
