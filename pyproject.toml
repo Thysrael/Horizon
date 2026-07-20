@@ -20,12 +20,21 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "markdown>=3.10.2",
     "mcp>=1.0.0",
+    "aiogram>=3.25,<4",
+    "sqlalchemy>=2.0,<3",
+    "asyncpg>=0.30,<1",
+    "alembic>=1.16,<2",
+    "pydantic-settings>=2.10,<3",
+    "cryptography>=45,<47",
+    "croniter>=6,<7",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
+    "pytest-asyncio>=1,<2",
+    "respx>=0.22,<1",
 ]
 openbb = [
     "openbb>=4.4.0",
@@ -44,6 +53,9 @@ horizon = "src.main:main"
 horizon-mcp = "src.mcp.server:main"
 horizon-wizard = "src.setup.wizard:main"
 horizon-webhook = "src.services.webhook_cli:main"
+infoservice-bot = "src.infoservice.bot.app:main"
+infoservice-scheduler = "src.infoservice.scheduling.service:main"
+infoservice-worker = "src.infoservice.execution.worker:main"
 
 [build-system]
 requires = ["hatchling"]

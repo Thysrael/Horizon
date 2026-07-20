@@ -1,0 +1,1 @@
+"""InfoService application package."""
