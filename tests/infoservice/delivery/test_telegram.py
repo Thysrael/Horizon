@@ -105,6 +105,18 @@ def test_renderer_uses_markdown_document_after_twenty_messages() -> None:
     assert rendered.document.data == b"# Full report"
 
 
+def test_document_fallback_handles_an_almost_full_report_name() -> None:
+    renderer = TelegramReportRenderer(today=lambda: date(2026, 7, 20))
+    result = _result(*[_item(index, summary="Details " * 500) for index in range(1, 22)])
+
+    rendered = renderer.render(result, "N" * 3790)
+
+    assert rendered.document is not None
+    assert len(rendered.messages) == 1
+    assert len(rendered.messages[0]) <= 3800
+    assert _is_valid_html(rendered.messages[0])
+
+
 @pytest.mark.asyncio
 async def test_document_fallback_sends_overview_before_document() -> None:
     bot = SimpleNamespace(send_message=AsyncMock(), send_document=AsyncMock())

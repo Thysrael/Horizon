@@ -95,7 +95,11 @@ class TelegramReportRenderer:
             return header
 
         item_limit = MESSAGE_LIMIT - len(header) - 2
-        if item_limit <= 0:
+        # A near-limit report name leaves no space for an HTML link plus a
+        # summary character. The bounded header is still a valid overview;
+        # the attached Markdown remains the complete report.
+        minimum_item_markup = len(self._title_markup(items[0], "")) + 1
+        if item_limit < minimum_item_markup:
             return header
         return f"{header}\n\n{self._item_blocks(items[0], limit=item_limit)[0]}"
 
