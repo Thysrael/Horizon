@@ -14,11 +14,11 @@ class UserRepository:
 
     async def get_or_create(self, telegram_user_id: int, chat_id: int, *, timezone: str = "UTC") -> User:
         stmt = select(User).where(or_(User.telegram_user_id == telegram_user_id, User.chat_id == chat_id))
-        user = (await self.session.execute(stmt)).scalar_one_or_none()
-        if user is not None:
-            if user.telegram_user_id != telegram_user_id or user.chat_id != chat_id:
+        users = (await self.session.execute(stmt)).scalars().all()
+        if users:
+            if len(users) != 1 or users[0].telegram_user_id != telegram_user_id or users[0].chat_id != chat_id:
                 raise Conflict("Этот чат уже привязан к другому пользователю")
-            return user
+            return users[0]
 
         try:
             async with self.session.begin_nested():
@@ -26,7 +26,8 @@ class UserRepository:
                 self.session.add(user)
                 await self.session.flush()
         except IntegrityError:
-            user = (await self.session.execute(stmt)).scalar_one_or_none()
-            if user is None or user.telegram_user_id != telegram_user_id or user.chat_id != chat_id:
+            users = (await self.session.execute(stmt)).scalars().all()
+            if len(users) != 1 or users[0].telegram_user_id != telegram_user_id or users[0].chat_id != chat_id:
                 raise Conflict("Этот чат уже привязан к другому пользователю")
+            user = users[0]
         return user
