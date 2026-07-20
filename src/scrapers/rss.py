@@ -14,6 +14,7 @@ import feedparser
 from .base import BaseScraper
 from ..extractors import ExtractorRegistry
 from ..models import ContentItem, SourceType, RSSSourceConfig
+from ..url_security import safe_request
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ class RSSScraper(BaseScraper):
             )
 
             # Fetch feed content
-            response = await self.client.get(feed_url, follow_redirects=True)
+            response = await safe_request(self.client, "GET", feed_url)
             response.raise_for_status()
 
             # Parse feed
