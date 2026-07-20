@@ -9,7 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn
 
 from .client import AIClient
-from .prompts import CONTENT_ANALYSIS_SYSTEM, CONTENT_ANALYSIS_USER
+from .prompts import CONTENT_ANALYSIS_SYSTEM, CONTENT_ANALYSIS_USER, build_analysis_prompt
 from .utils import parse_json_response
 from ..models import ContentItem
 
@@ -28,8 +28,9 @@ class AnalysisResult(BaseModel):
 class ContentAnalyzer:
     """Analyzes content items using AI to determine importance."""
 
-    def __init__(self, ai_client: AIClient):
+    def __init__(self, ai_client: AIClient, custom_instruction: str | None = None):
         self.client = ai_client
+        self.custom_instruction = custom_instruction
 
     @staticmethod
     def _parse_json_response(response: str) -> Optional[dict]:
@@ -140,7 +141,7 @@ class ContentAnalyzer:
         discussion_section = "\n".join(discussion_parts) if discussion_parts else ""
 
         # Generate user prompt
-        user_prompt = CONTENT_ANALYSIS_USER.format(
+        source_prompt = CONTENT_ANALYSIS_USER.format(
             title=item.title,
             source=f"{item.source_type.value}",
             author=item.author or "Unknown",
@@ -148,6 +149,7 @@ class ContentAnalyzer:
             content_section=content_section,
             discussion_section=discussion_section
         )
+        user_prompt = build_analysis_prompt(self.custom_instruction, source_prompt)
 
         # Get AI completion
         response = await self.client.complete(

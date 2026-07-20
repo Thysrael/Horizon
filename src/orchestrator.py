@@ -161,6 +161,17 @@ class FetchReport:
         }
 
 
+@dataclass
+class HorizonRunResult:
+    """Data produced by Horizon before any legacy delivery is performed."""
+
+    summaries: Dict[str, str]
+    important_items: List[ContentItem]
+    all_items_count: int
+    fetch_report: FetchReport
+    usage: object
+
+
 class HorizonOrchestrator:
     """Orchestrates the complete workflow for content aggregation and analysis."""
 
@@ -188,156 +199,88 @@ class HorizonOrchestrator:
         )
         self.last_fetch_report: Optional[FetchReport] = None
 
-    async def run(self, force_hours: int = None) -> None:
-        """Execute the complete workflow.
-
-        Args:
-            force_hours: Optional override for time window in hours
-        """
+    async def execute(
+        self,
+        force_hours: int | None = None,
+        custom_instruction: str | None = None,
+    ) -> HorizonRunResult:
+        """Run Horizon's pipeline without writing files or sending deliveries."""
         self.console.print("[bold cyan]🌅 Horizon - Starting aggregation...[/bold cyan]\n")
+        since = self._determine_time_window(force_hours)
+        self.console.print(f"📅 Fetching content since: {since.strftime('%Y-%m-%d %H:%M:%S')}\n")
+        all_items = await self.fetch_all_sources(since)
+        self.console.print(f"📥 Fetched {len(all_items)} items from all sources\n")
+        fetch_report = self.last_fetch_report or FetchReport()
+        if fetch_report.all_failed:
+            raise RuntimeError(fetch_report.failure_message())
 
-        # Check email subscriptions if configured
-        if (
-            self.email_manager
-            and self.config.email
-            and self.config.email.enabled
-            and self.config.email.imap_enabled
-        ):
-            self.console.print("📧 Checking for new email subscriptions...")
-            self.email_manager.check_subscriptions(self.storage)
-
-        try:
-            # 1. Determine time window
-            since = self._determine_time_window(force_hours)
-            self.console.print(f"📅 Fetching content since: {since.strftime('%Y-%m-%d %H:%M:%S')}\n")
-
-            # 2. Fetch content from all sources
-            all_items = await self.fetch_all_sources(since)
-            self.console.print(f"📥 Fetched {len(all_items)} items from all sources\n")
-
-            if self.last_fetch_report and self.last_fetch_report.all_failed:
-                raise RuntimeError(self.last_fetch_report.failure_message())
-
-            if not all_items:
-                self.console.print("[yellow]No new content found. Exiting.[/yellow]")
-                return
-
-            # 3. Merge cross-source duplicates (same URL from different sources)
+        important_items: List[ContentItem] = []
+        if all_items:
             merged_items = self.merge_cross_source_duplicates(all_items)
             if len(merged_items) < len(all_items):
-                self.console.print(
-                    f"🔗 Merged {len(all_items) - len(merged_items)} cross-source duplicates "
-                    f"→ {len(merged_items)} unique items\n"
-                )
-
-            # 4. Analyze with AI
-            analyzed_items = await self._analyze_content(merged_items)
+                self.console.print(f"🔗 Merged {len(all_items) - len(merged_items)} cross-source duplicates → {len(merged_items)} unique items\n")
+            if custom_instruction is None:
+                analyzed_items = await self._analyze_content(merged_items)
+            else:
+                analyzed_items = await self._analyze_content(merged_items, custom_instruction=custom_instruction)
             self.console.print(f"🤖 Analyzed {len(analyzed_items)} items with AI\n")
-
-            # 5. Filter, deduplicate, and balance the digest
-            filtering_result = await self.filter_items(
-                analyzed_items,
-                apply_balance=False,
-            )
-            important_items = filtering_result.items
-
-            # 5.5 Optional second-stage Twitter reply expansion + targeted re-analysis
-            await self._expand_twitter_discussion(important_items)
-
-            # 5.6 Apply digest limits after any targeted re-analysis changes scores.
+            important_items = (await self.filter_items(analyzed_items, apply_balance=False)).items
+            if custom_instruction is None:
+                await self._expand_twitter_discussion(important_items)
+            else:
+                await self._expand_twitter_discussion(important_items, custom_instruction=custom_instruction)
             important_items = self.apply_balanced_digest(important_items).items
-
-            # Show per-sub-source selection breakdown
-            selected_counts: Dict[str, int] = defaultdict(int)
-            for item in important_items:
-                key = f"{item.source_type.value}/{self._sub_source_label(item)}"
-                selected_counts[key] += 1
-            for source_key, count in sorted(selected_counts.items()):
-                self.console.print(f"      • {source_key}: {count}")
-            self.console.print("")
-
-            # 6. Search related stories + enrich with background knowledge (2nd AI pass)
             await self._enrich_important_items(important_items)
 
-            # 7. Generate and save daily summaries for each configured language
-            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-            for lang in self.config.ai.languages:
-                summarizer = DailySummarizer()
-                summary = await summarizer.generate_summary(important_items, today, len(all_items), language=lang)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        languages = getattr(getattr(self.config, "ai", None), "languages", [])
+        summaries = {
+            lang: await DailySummarizer().generate_summary(important_items, today, len(all_items), language=lang)
+            for lang in languages
+        }
+        return HorizonRunResult(summaries, important_items, len(all_items), fetch_report, get_usage_snapshot())
 
-                # Save to data/summaries/
+    async def run(self, force_hours: int = None) -> None:
+        """Run the pipeline and preserve Horizon's file, email, and webhook delivery."""
+        if self.email_manager and self.config.email and self.config.email.enabled and self.config.email.imap_enabled:
+            self.console.print("📧 Checking for new email subscriptions...")
+            self.email_manager.check_subscriptions(self.storage)
+        try:
+            result = await self.execute(force_hours)
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            for lang, summary in result.summaries.items():
                 summary_path = self.storage.save_daily_summary(today, summary, language=lang)
                 self.console.print(f"💾 Saved {lang.upper()} summary to: {summary_path}\n")
-
-                # Copy to docs/ for GitHub Pages
                 try:
                     from pathlib import Path
 
-                    post_filename = f"{today}-summary-{lang}.md"
                     posts_dir = Path("docs/_posts")
                     posts_dir.mkdir(parents=True, exist_ok=True)
-
-                    dest_path = safe_output_path(posts_dir, post_filename)
-
-                    # Add Jekyll front matter
+                    dest_path = safe_output_path(posts_dir, f"{today}-summary-{lang}.md")
                     front_matter = (
-                        "---\n"
-                        "layout: default\n"
+                        "---\nlayout: default\n"
                         f"title: \"Horizon Summary: {today} ({lang.upper()})\"\n"
-                        f"date: {today}\n"
-                        f"lang: {lang}\n"
-                        "---\n\n"
+                        f"date: {today}\nlang: {lang}\n---\n\n"
                     )
-
-                    # Strip leading H1 header to avoid duplication with Jekyll title
                     summary_content = summary
-                    first_line = summary_content.strip().split("\n")[0]
-                    if first_line.startswith("# "):
-                        parts = summary_content.split("\n", 1)
-                        if len(parts) > 1:
-                            summary_content = parts[1].strip()
-
-                    with open(dest_path, "w", encoding="utf-8") as f:
-                        f.write(front_matter + summary_content)
-
+                    if summary_content.strip().startswith("# ") and "\n" in summary_content:
+                        summary_content = summary_content.split("\n", 1)[1].strip()
+                    with open(dest_path, "w", encoding="utf-8") as output:
+                        output.write(front_matter + summary_content)
                     self.console.print(f"📄 Copied {lang.upper()} summary to GitHub Pages: {dest_path}\n")
-                except Exception as e:
-                    self.console.print(f"[yellow]⚠️  Failed to copy {lang.upper()} summary to docs/: {e}[/yellow]\n")
-
-                # Send email if configured
+                except Exception as exc:
+                    self.console.print(f"[yellow]⚠️  Failed to copy {lang.upper()} summary to docs/: {exc}[/yellow]\n")
                 if self.email_manager and self.config.email and self.config.email.enabled:
-                    self.console.print(f"📧 Sending {lang.upper()} email summary...")
-                    subscribers = self.storage.load_subscribers()
-                    subject = f"Horizon Summary ({lang.upper()}) - {today}"
-                    self.email_manager.send_daily_summary(summary, subject, subscribers)
-
-                # Send webhook notification if configured
+                    self.email_manager.send_daily_summary(summary, f"Horizon Summary ({lang.upper()}) - {today}", self.storage.load_subscribers())
                 if self.webhook_notifier:
-                    await self.webhook_notifier.send_daily_summary(
-                        summary=summary,
-                        important_items=important_items,
-                        all_items_count=len(all_items),
-                        date=today,
-                        lang=lang,
-                        summarizer=summarizer,
-                    )
-
+                    await self.webhook_notifier.send_daily_summary(summary=summary, important_items=result.important_items, all_items_count=result.all_items_count, date=today, lang=lang, summarizer=DailySummarizer())
             self.console.print("[bold green]✅ Horizon completed successfully![/bold green]")
-            usage = get_usage_snapshot()
+            usage = result.usage
             if usage.total_tokens > 0:
-                self.console.print(
-                    f"\n🧮 Token usage this run: "
-                    f"{usage.total_tokens} tokens "
-                    f"(input: {usage.total_input_tokens}, output: {usage.total_output_tokens})"
-                )
-                for provider, u in sorted(usage.per_provider.items()):
-                    if u.total <= 0:
-                        continue
-                    self.console.print(
-                        f"   • {provider}: {u.total} tokens "
-                        f"(in: {u.input_tokens}, out: {u.output_tokens})"
-                    )
-
+                self.console.print(f"\n🧮 Token usage this run: {usage.total_tokens} tokens (input: {usage.total_input_tokens}, output: {usage.total_output_tokens})")
+                for provider, provider_usage in sorted(usage.per_provider.items()):
+                    if provider_usage.total > 0:
+                        self.console.print(f"   • {provider}: {provider_usage.total} tokens (in: {provider_usage.input_tokens}, out: {provider_usage.output_tokens})")
         except Exception as e:
             self.console.print(f"[bold red]❌ Error: {e}[/bold red]")
 
@@ -799,7 +742,11 @@ class HorizonOrchestrator:
             duplicate_categories=sorted(set(duplicate_categories)),
         )
 
-    async def _expand_twitter_discussion(self, items: List[ContentItem]) -> None:
+    async def _expand_twitter_discussion(
+        self,
+        items: List[ContentItem],
+        custom_instruction: str | None = None,
+    ) -> None:
         """Second-stage: fetch reply text for important Twitter items and re-analyze.
 
         Only runs when sources.twitter.fetch_reply_text is True.
@@ -851,7 +798,7 @@ class HorizonOrchestrator:
             f"   Re-analyzing {len(expanded)} Twitter items with reply context...\n"
         )
         ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
-        analyzer = ContentAnalyzer(ai_client)
+        analyzer = ContentAnalyzer(ai_client, custom_instruction=custom_instruction)
         await analyzer.analyze_batch(expanded)
 
     async def _enrich_important_items(self, items: List[ContentItem]) -> None:
@@ -872,7 +819,11 @@ class HorizonOrchestrator:
         await enricher.enrich_batch(items)
         self.console.print(f"   Enriched {len(items)} items\n")
 
-    async def _analyze_content(self, items: List[ContentItem]) -> List[ContentItem]:
+    async def _analyze_content(
+        self,
+        items: List[ContentItem],
+        custom_instruction: str | None = None,
+    ) -> List[ContentItem]:
         """Analyze content items with AI.
 
         Args:
@@ -884,7 +835,7 @@ class HorizonOrchestrator:
         self.console.print("🤖 Analyzing content with AI...")
 
         ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
-        analyzer = ContentAnalyzer(ai_client)
+        analyzer = ContentAnalyzer(ai_client, custom_instruction=custom_instruction)
 
         return await analyzer.analyze_batch(items)
 
