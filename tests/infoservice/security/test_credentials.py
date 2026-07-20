@@ -21,6 +21,26 @@ def test_cipher_masks_and_redacts_a_key(cipher):
     assert cipher.redact("request failed: sk-secret-value") == "request failed: sk-…alue"
 
 
+@pytest.mark.parametrize(
+    "secret",
+    (
+        "sk-secret-value",
+        "sk_secret_value",
+        "AIzaSecretValue",
+        "xai-secret-value",
+        "gsk_secret_value",
+        "hf_secret_value",
+    ),
+)
+def test_cipher_redacts_all_supported_secret_prefixes(cipher, secret):
+    message = f"request failed: {secret}"
+
+    redacted = cipher.redact(message)
+
+    assert redacted == f"request failed: {cipher.mask(secret)}"
+    assert secret not in redacted
+
+
 def test_cipher_rejects_an_invalid_fernet_key_without_echoing_it():
     invalid_key = "not-a-fernet-key"
 

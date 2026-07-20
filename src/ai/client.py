@@ -10,20 +10,13 @@ from google import genai
 from google.genai import types
 
 
+from ..infoservice.security.credentials import SECRET_PREFIXES
 from ..models import AIConfig, AIProvider, AI_PROVIDER_DEFAULTS
 from rich import print as rich_print
 from .tokens import record_usage
 
 
 _ENV_VAR_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-_SECRET_PREFIXES = (
-    "sk-",
-    "sk_",
-    "AIza",
-    "xai-",
-    "gsk_",
-    "hf_",
-)
 _DEFAULT_API_KEY_ENVS = {
     AIProvider.ANTHROPIC: "ANTHROPIC_API_KEY",
     AIProvider.OPENAI: "OPENAI_API_KEY",
@@ -79,7 +72,7 @@ def _missing_api_key_message(config: AIConfig) -> str:
 
 
 def _looks_like_api_key_value(value: str) -> bool:
-    if value.startswith(_SECRET_PREFIXES):
+    if value.startswith(SECRET_PREFIXES):
         return True
     return not bool(_ENV_VAR_RE.fullmatch(value))
 
