@@ -160,6 +160,8 @@ class ReportRun(TimestampMixin, Base):
     trigger: Mapped[RunTrigger] = mapped_column(string_enum_type(RunTrigger, "run_trigger"), nullable=False)
     scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[RunStatus] = mapped_column(string_enum_type(RunStatus, "run_status"), default=RunStatus.QUEUED, server_default="queued", nullable=False)
+    worker_id: Mapped[str | None] = mapped_column(String(255))
+    attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     items_seen: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
