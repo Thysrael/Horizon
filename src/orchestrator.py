@@ -247,6 +247,9 @@ class HorizonOrchestrator:
             self.email_manager.check_subscriptions(self.storage)
         try:
             result = await self.execute(force_hours)
+            if result.all_items_count == 0:
+                self.console.print("[yellow]No new content found. Exiting.[/yellow]")
+                return
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             for lang, summary in result.summaries.items():
                 summary_path = self.storage.save_daily_summary(today, summary, language=lang)

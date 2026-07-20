@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime, timezone
 from io import StringIO
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from rich.console import Console
@@ -162,3 +162,40 @@ def test_native_run_treats_all_success_empty_as_no_content(monkeypatch) -> None:
     asyncio.run(orchestrator.run())
 
     send_failure.assert_not_awaited()
+
+
+def test_native_run_skips_all_delivery_after_successful_empty_fetch(monkeypatch) -> None:
+    """Legacy run keeps its historical no-content early exit."""
+    orchestrator = make_orchestrator()
+    orchestrator.config = SimpleNamespace(  # type: ignore[assignment]
+        email=SimpleNamespace(enabled=True, imap_enabled=False),
+        filtering=SimpleNamespace(time_window_hours=24),
+        ai=SimpleNamespace(languages=["en"]),
+    )
+    orchestrator.storage = SimpleNamespace(
+        save_daily_summary=Mock(), load_subscribers=Mock()
+    )
+    orchestrator.email_manager = SimpleNamespace(send_daily_summary=Mock())
+    send_daily_summary = AsyncMock()
+    orchestrator.webhook_notifier = SimpleNamespace(send_daily_summary=send_daily_summary)
+
+    async def fetch_all_sources(since):  # type: ignore[no-untyped-def]
+        orchestrator.last_fetch_report = FetchReport(
+            [SourceFetchOutcome("RSS Feeds", "empty")]
+        )
+        return []
+
+    monkeypatch.setattr(orchestrator, "fetch_all_sources", fetch_all_sources)
+    monkeypatch.setattr(
+        "src.orchestrator.DailySummarizer.generate_summary",
+        AsyncMock(return_value="# Empty summary"),
+    )
+    save_pages_post = Mock()
+    monkeypatch.setattr("src.orchestrator.safe_output_path", save_pages_post)
+
+    asyncio.run(orchestrator.run())
+
+    orchestrator.storage.save_daily_summary.assert_not_called()
+    save_pages_post.assert_not_called()
+    orchestrator.email_manager.send_daily_summary.assert_not_called()
+    send_daily_summary.assert_not_awaited()
