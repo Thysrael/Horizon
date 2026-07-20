@@ -105,11 +105,12 @@ def test_renderer_uses_markdown_document_after_twenty_messages() -> None:
     assert rendered.document.data == b"# Full report"
 
 
-def test_document_fallback_handles_an_almost_full_report_name() -> None:
+@pytest.mark.parametrize("name_length", [3750, 3790])
+def test_document_fallback_handles_an_almost_full_report_name(name_length: int) -> None:
     renderer = TelegramReportRenderer(today=lambda: date(2026, 7, 20))
     result = _result(*[_item(index, summary="Details " * 500) for index in range(1, 22)])
 
-    rendered = renderer.render(result, "N" * 3790)
+    rendered = renderer.render(result, "N" * name_length)
 
     assert rendered.document is not None
     assert len(rendered.messages) == 1

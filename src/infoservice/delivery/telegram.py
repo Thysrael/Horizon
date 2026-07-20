@@ -101,7 +101,14 @@ class TelegramReportRenderer:
         minimum_item_markup = len(self._title_markup(items[0], "")) + 1
         if item_limit < minimum_item_markup:
             return header
-        return f"{header}\n\n{self._item_blocks(items[0], limit=item_limit)[0]}"
+        try:
+            first_block = self._item_blocks(items[0], limit=item_limit)[0]
+        except ValueError:
+            # Some tight budgets can represent a linked title but not the
+            # separator plus the first escaped summary character. In that
+            # case the bounded header is the only valid overview.
+            return header
+        return f"{header}\n\n{first_block}"
 
     def _item_blocks(self, item: ContentItem, *, limit: int = MESSAGE_LIMIT) -> list[str]:
         title_markup = lambda value: self._title_markup(item, value)
