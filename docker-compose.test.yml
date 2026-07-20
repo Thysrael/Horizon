@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: infoservice
+      POSTGRES_PASSWORD: infoservice
+      POSTGRES_DB: infoservice_test
+    ports:
+      - "55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infoservice -d infoservice_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
