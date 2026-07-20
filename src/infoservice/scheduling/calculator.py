@@ -55,6 +55,8 @@ class ScheduleSpec:
             expression = f"{minute} {hour} * * {weekday}"
         elif self.kind == "cron":
             expression = self.value.strip()
+            if len(expression.split()) != 5:
+                raise ScheduleValidationError("Cron expressions must have exactly five fields")
             if not croniter.is_valid(expression):
                 raise ScheduleValidationError("Invalid cron expression")
             _validate_minimum_hourly(expression)
@@ -107,15 +109,10 @@ def _validate_minimum_hourly(expression: str) -> None:
     """Reject cron expressions which produce a gap shorter than one hour."""
     cursor = datetime(2026, 1, 1, tzinfo=timezone.utc)
     iterator = croniter(expression, cursor)
-    end = cursor + timedelta(hours=48)
-    previous = cursor
-    while True:
-        occurrence = iterator.get_next(datetime)
-        if occurrence > end:
-            return
-        if occurrence - previous < timedelta(hours=1):
-            raise ScheduleValidationError("Cron schedules may run at most once per hour")
-        previous = occurrence
+    first_occurrence = iterator.get_next(datetime)
+    second_occurrence = iterator.get_next(datetime)
+    if second_occurrence - first_occurrence < timedelta(hours=1):
+        raise ScheduleValidationError("Cron schedules may run at most once per hour")
 
 
 def _resolve_wall_time(wall_time: datetime, timezone_info: ZoneInfo) -> datetime:

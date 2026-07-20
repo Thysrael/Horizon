@@ -32,6 +32,17 @@ def test_cron_rejects_more_than_hourly():
         ScheduleSpec(kind="cron", value="*/15 * * * *", timezone="UTC")
 
 
+def test_cron_rejects_subhourly_sunday_schedule():
+    with pytest.raises(ScheduleValidationError):
+        ScheduleSpec(kind="cron", value="*/15 * * * sun", timezone="UTC")
+
+
+@pytest.mark.parametrize("expression", ["0 0 * *", "0 0 * * * *", "0 0 * * * * *"])
+def test_cron_requires_exactly_five_fields(expression: str):
+    with pytest.raises(ScheduleValidationError):
+        ScheduleSpec(kind="cron", value=expression, timezone="UTC")
+
+
 def test_nonexistent_dst_wall_time_moves_to_first_valid_minute():
     spec = ScheduleSpec(kind="daily", value="02:30", timezone="America/New_York")
 
