@@ -78,8 +78,10 @@ git pull --ff-only
 5. Сгенерируйте пароль для PostgreSQL:
 
    ```bash
-   openssl rand -base64 32
+   openssl rand -hex 32
    ```
+
+   Используйте именно hex-вариант: такой пароль состоит только из `0-9` и `a-f`, поэтому его можно безопасно вставить в URL подключения без дополнительного кодирования.
 
 Пользователи вводят свои ключи DeepSeek в личном чате с ботом. Общий `DEEPSEEK_API_KEY` на сервере не нужен.
 
@@ -94,14 +96,16 @@ chmod 600 .env
 nano .env
 ```
 
-Заполните минимум эти значения:
+Заполните минимум эти значения. Значение после `POSTGRES_PASSWORD=` и пароль внутри `DATABASE_URL` должны быть **абсолютно одинаковыми**:
 
 ```dotenv
-POSTGRES_PASSWORD=ваш_длинный_случайный_пароль
-DATABASE_URL=postgresql+asyncpg://infoservice:ваш_длинный_случайный_пароль@postgres:5432/infoservice
+POSTGRES_PASSWORD=тот_же_hex_пароль_из_предыдущего_шага
+DATABASE_URL=postgresql+asyncpg://infoservice:тот_же_hex_пароль_из_предыдущего_шага@postgres:5432/infoservice
 TELEGRAM_BOT_TOKEN=токен_из_BotFather
 APP_ENCRYPTION_KEY=ваш_Fernet_ключ
 ```
+
+Не используйте здесь пробелы, кавычки или разные пароли. Символы вроде `@`, `:`, `/`, `#` в обычном пароле требуют URL-кодирования внутри `DATABASE_URL`; hex-пароль исключает эту проблему.
 
 Остальные безопасные значения уже есть в шаблоне. Для первого запуска оставьте:
 
@@ -132,6 +136,23 @@ docker compose logs -f scheduler
 ```
 
 Когда всё готово, найдите бота в Telegram, откройте личный чат, нажмите `/start`, выберите часовой пояс и добавьте личный ключ DeepSeek. Создайте тестовый отчёт с одним RSS-источником и запустите его вручную.
+
+### Если `migrate` завершился с ошибкой авторизации PostgreSQL
+
+Проверьте причину:
+
+```bash
+docker compose logs migrate --tail=100
+```
+
+Ошибка `password authentication failed for user "infoservice"` означает, что значения `POSTGRES_PASSWORD` и `DATABASE_URL` не совпадают. Исправьте `.env`, затем **только если это первый запуск и в базе нет нужных данных**, пересоздайте пустой PostgreSQL volume:
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+Команда с `-v` удаляет базу целиком. Никогда не выполняйте её после того, как в сервисе появились пользователи, отчёты или credentials.
 
 ## 7. Доступ к серверу без открытия портов: Tailscale
 
