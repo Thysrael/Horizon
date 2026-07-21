@@ -28,3 +28,8 @@ class EditRules(StatesGroup):
 class EditSchedule(StatesGroup):
     kind = State()
     value = State()
+
+
+class SourceForm(StatesGroup):
+    config = State()
+    delete_confirmation = State()

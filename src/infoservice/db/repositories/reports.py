@@ -106,6 +106,30 @@ class ReportRepository:
         await self.session.flush()
         return source
 
+    async def list_sources(self, report_id: UUID, user_id: UUID) -> list[Source]:
+        await self.get_owned(report_id, user_id)
+        stmt = select(Source).where(Source.report_id == report_id).order_by(Source.created_at)
+        return list((await self.session.execute(stmt)).scalars())
+
+    async def get_source_owned(self, source_id: UUID, user_id: UUID) -> Source:
+        stmt = select(Source).join(Report).where(Source.id == source_id, Report.user_id == user_id)
+        source = (await self.session.execute(stmt)).scalar_one_or_none()
+        if source is None:
+            raise NotFound("Источник не найден")
+        return source
+
+    async def update_source(self, source_id: UUID, user_id: UUID, **values: Any) -> Source:
+        source = await self.get_source_owned(source_id, user_id)
+        for key, value in values.items():
+            setattr(source, key, value)
+        await self.session.flush()
+        return source
+
+    async def delete_source(self, source_id: UUID, user_id: UUID) -> None:
+        source = await self.get_source_owned(source_id, user_id)
+        await self.session.delete(source)
+        await self.session.flush()
+
     async def _lock_user(self, user_id: UUID) -> User:
         stmt = select(User).where(User.id == user_id).with_for_update()
         user = (await self.session.execute(stmt)).scalar_one_or_none()

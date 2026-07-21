@@ -13,6 +13,7 @@ from src.infoservice.bot.handlers.start import router as start_router
 from src.infoservice.bot.handlers.reports import router as reports_router
 from src.infoservice.bot.handlers.rules import router as rules_router
 from src.infoservice.bot.handlers.schedules import router as schedules_router
+from src.infoservice.bot.handlers.sources import router as sources_router
 from src.infoservice.bot.middleware import PrivateUserMiddleware
 from src.infoservice.db.session import create_session_factory
 from src.infoservice.llm.deepseek import DeepSeekVerifier
@@ -26,10 +27,11 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
     dispatcher.workflow_data.update(
         cipher=CredentialCipher(settings.app_encryption_key.get_secret_value()),
         verifier=DeepSeekVerifier(),
+        settings=settings,
     )
     dispatcher.message.outer_middleware(PrivateUserMiddleware(session_factory))
     dispatcher.callback_query.outer_middleware(PrivateUserMiddleware(session_factory))
-    dispatcher.include_routers(start_router, credentials_router, reports_router, rules_router, schedules_router)
+    dispatcher.include_routers(start_router, credentials_router, reports_router, rules_router, schedules_router, sources_router)
     return dispatcher
 
 
