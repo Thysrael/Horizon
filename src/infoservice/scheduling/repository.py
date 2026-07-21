@@ -4,10 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.orm import aliased
 
-from src.infoservice.db.models import Report, ReportRun, RunStatus, RunTrigger
+from src.infoservice.db.models import Report, ReportRun, RunStatus, RunTrigger, User
 
 from .calculator import ScheduleSpec, next_occurrence
 
@@ -68,12 +69,28 @@ class RunRepository:
     async def claim_next(self, worker_id: str, now: datetime) -> ClaimedRun | None:
         now = _as_utc(now)
         async with self.session_factory.begin() as session:
+            running_run = aliased(ReportRun)
+            running_report = aliased(Report)
             statement = (
                 select(ReportRun)
-                .where(ReportRun.status == RunStatus.QUEUED, ReportRun.scheduled_for <= now)
+                .join(Report, ReportRun.report_id == Report.id)
+                .join(User, Report.user_id == User.id)
+                .where(
+                    ReportRun.status == RunStatus.QUEUED,
+                    ReportRun.scheduled_for <= now,
+                    ~exists(
+                        select(1)
+                        .select_from(running_run)
+                        .join(running_report, running_run.report_id == running_report.id)
+                        .where(
+                            running_report.user_id == User.id,
+                            running_run.status == RunStatus.RUNNING,
+                        )
+                    ),
+                )
                 .order_by(ReportRun.scheduled_for, ReportRun.created_at, ReportRun.id)
                 .limit(1)
-                .with_for_update(skip_locked=True)
+                .with_for_update(of=User, skip_locked=True)
             )
             run = (await session.scalars(statement)).one_or_none()
             if run is None:

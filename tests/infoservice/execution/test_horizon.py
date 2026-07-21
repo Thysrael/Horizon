@@ -64,6 +64,23 @@ async def test_executor_returns_data_without_file_delivery(tmp_path, monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_executor_uses_model_from_execution_request(tmp_path, monkeypatch):
+    config = SimpleNamespace(sources=[], language="en", ai_score_threshold=7.0, max_items=10, categories=[], exclusions=[])
+    request = ReportExecutionRequest(report_id=uuid4(), config=config, api_key="sk-user-key", model="deepseek-reasoner")
+
+    class FakeOrchestrator:
+        def __init__(self, config, storage, runtime_api_key):
+            assert config.ai.model == "deepseek-reasoner"
+
+        async def execute(self, **kwargs):
+            return SimpleNamespace(summaries={"en": "# report"}, important_items=[], all_items_count=0, fetch_report={}, usage={})
+
+    monkeypatch.setattr("src.infoservice.execution.horizon.HorizonOrchestrator", FakeOrchestrator)
+
+    await HorizonReportExecutor(storage=SimpleNamespace(data_dir=tmp_path)).execute(request)
+
+
+@pytest.mark.asyncio
 async def test_executor_keeps_only_selected_report_categories(tmp_path, monkeypatch):
     config = SimpleNamespace(
         sources=[],

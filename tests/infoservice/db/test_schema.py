@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from src.infoservice.db.models import Report, ReportRun, User
+from src.infoservice.db.models import AppHeartbeat, Report, ReportRun, User
 
 
 @pytest.mark.asyncio
@@ -26,6 +26,14 @@ async def test_scheduled_run_is_idempotent(session, report):
         ReportRun(report_id=report.id, trigger="scheduled", scheduled_for=scheduled_for),
         ReportRun(report_id=report.id, trigger="scheduled", scheduled_for=scheduled_for),
     ])
+
+    with pytest.raises(IntegrityError):
+        await session.commit()
+
+
+@pytest.mark.asyncio
+async def test_app_heartbeat_has_one_row_per_role(session):
+    session.add_all([AppHeartbeat(role="worker"), AppHeartbeat(role="worker")])
 
     with pytest.raises(IntegrityError):
         await session.commit()

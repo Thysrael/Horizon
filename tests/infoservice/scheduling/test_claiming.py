@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from src.infoservice.db.models import Report, ReportRun, RunStatus
+from src.infoservice.db.models import Report, ReportRun, RunStatus, User
 from src.infoservice.scheduling.repository import RunRepository, SchedulerRepository
 
 
@@ -31,12 +31,35 @@ async def test_enqueue_due_is_idempotent_and_advances_schedule(session_factory, 
 
 
 @pytest.mark.asyncio
-async def test_two_claimers_receive_different_runs(session_factory, queued_runs):
+async def test_two_claimers_do_not_claim_runs_for_the_same_user(session_factory, queued_runs):
     run_repo = RunRepository(session_factory)
 
     first, second = await asyncio.gather(
         run_repo.claim_next("worker-a", utcnow()),
         run_repo.claim_next("worker-b", utcnow()),
+    )
+
+    assert sum(claim is not None for claim in (first, second)) == 1
+
+
+@pytest.mark.asyncio
+async def test_two_claimers_can_claim_runs_for_different_users(session_factory):
+    now = utcnow()
+    async with session_factory.begin() as session:
+        reports = [
+            Report(
+                user=User(telegram_user_id=9000 + index, chat_id=9000 + index, timezone="UTC"),
+                name=f"Report {index}", schedule_kind="daily", schedule_value="09:00",
+            )
+            for index in range(2)
+        ]
+        for report in reports:
+            session.add(ReportRun(report=report, trigger="scheduled", scheduled_for=now))
+
+    run_repo = RunRepository(session_factory)
+    first, second = await asyncio.gather(
+        run_repo.claim_next("worker-a", now),
+        run_repo.claim_next("worker-b", now),
     )
 
     assert first is not None

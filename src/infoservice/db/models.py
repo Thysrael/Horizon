@@ -68,6 +68,15 @@ class TimestampMixin:
     )
 
 
+class AppHeartbeat(Base):
+    """Latest liveness signal for an independently supervised app role."""
+
+    __tablename__ = "app_heartbeats"
+
+    role: Mapped[str] = mapped_column(String(64), primary_key=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, server_default=func.now())
+
+
 class User(TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (

@@ -28,7 +28,7 @@ class HorizonReportExecutor:
         runtime_api_key = request.api_key
         temporary_storage: TemporaryDirectory[str] | None = None
         try:
-            config = self._build_config(request.config)
+            config = self._build_config(request.config, request.model)
             storage = self._storage
             if storage is None:
                 temporary_storage = TemporaryDirectory(prefix="infoservice-horizon-")
@@ -55,9 +55,9 @@ class HorizonReportExecutor:
             if temporary_storage is not None:
                 temporary_storage.cleanup()
 
-    def _build_config(self, report: Any) -> Config:
+    def _build_config(self, report: Any, request_model: str | None = None) -> Config:
         sources = self._build_sources(getattr(report, "sources", []))
-        model = self._model or getattr(self._credential, "model", None) or getattr(report, "model", None) or "deepseek-v4-flash"
+        model = self._model or request_model or getattr(self._credential, "model", None) or getattr(report, "model", None) or "deepseek-v4-flash"
         exclusions = list(getattr(report, "exclusions", []) or [])
         return Config(
             ai=AIConfig(provider="deepseek", model=model, api_key_env="", languages=[getattr(report, "language", "en")]),

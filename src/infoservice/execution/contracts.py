@@ -16,6 +16,7 @@ class ReportExecutionRequest:
     api_key: str
     custom_instruction: str | None = None
     lookback_hours: int | None = None
+    model: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
