@@ -24,7 +24,8 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
         cipher=CredentialCipher(settings.app_encryption_key.get_secret_value()),
         verifier=DeepSeekVerifier(),
     )
-    dispatcher.update.outer_middleware(PrivateUserMiddleware(session_factory))
+    dispatcher.message.outer_middleware(PrivateUserMiddleware(session_factory))
+    dispatcher.callback_query.outer_middleware(PrivateUserMiddleware(session_factory))
     dispatcher.include_routers(start_router, credentials_router)
     return dispatcher
 

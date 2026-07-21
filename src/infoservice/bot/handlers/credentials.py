@@ -125,6 +125,7 @@ async def receive_key(
             user.id,
             CreateCredential(provider="deepseek", model="deepseek-v4-flash", ciphertext=ciphertext.encode(), key_mask=mask),
         )
+        await session.execute(update(Report).where(Report.user_id == user.id).values(enabled=True))
     except InvalidCredential:
         await message.answer(KEY_INVALID)
     except CredentialVerificationUnavailable:
