@@ -1,3 +1,43 @@
+# InfoService
+
+InfoService is a self-hosted Telegram bot for personal information reports. Each user configures independent reports, sources, filters and schedules, then supplies their own DeepSeek API key in a private chat. The key is encrypted at rest and is never shared with other users.
+
+[Русское руководство](README_RU.md)
+
+## What it provides
+
+- Private Telegram onboarding and bring-your-own DeepSeek key (BYOK).
+- Up to five independent reports per user, with rules, schedules, history and manual starts.
+- Stable sources: RSS, public Telegram channels, Hacker News and GitHub.
+- Beta sources: Reddit, Google News, GDELT and OSS Insight. Twitter/X and OpenBB are optional server capabilities.
+- PostgreSQL-backed scheduling, retry-safe workers and report delivery in Telegram.
+
+## Quick deployment
+
+1. Create a Telegram bot with [@BotFather](https://t.me/BotFather) and obtain its token.
+2. Copy `.env.example` to `.env`, set `TELEGRAM_BOT_TOKEN`, a PostgreSQL password and a Fernet `APP_ENCRYPTION_KEY`.
+3. Start the service:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+   Compose starts PostgreSQL, runs migrations, then launches `bot`, `scheduler` and `worker`. Check service status with `docker compose ps`.
+
+4. Open the bot in a private chat, choose your timezone and add your own DeepSeek key.
+
+For Twitter/X or OpenBB, set `APP_IMAGE_TARGET=runtime-full` and the matching `ENABLE_*` flag before rebuilding. These integrations may have extra provider requirements.
+
+## Operations
+
+Back up PostgreSQL regularly, for example: `docker compose exec -T postgres pg_dump -U infoservice infoservice > backup.sql`. Restore with `psql` into an empty database. To rotate the application encryption key, first decrypt/re-encrypt user credentials through a maintenance migration; simply changing it makes old user keys unusable. Deleting a user's credential in the bot stops that user's runs immediately.
+
+This repository is a fork and extension of [Thysrael/Horizon](https://github.com/Thysrael/Horizon), whose pipeline remains available through the existing `horizon`, `horizon-mcp`, `horizon-wizard` and `horizon-webhook` commands. It is distributed under the [MIT License](LICENSE); upstream notices are preserved.
+
+---
+
+## Upstream Horizon documentation
+
 <div align="center">
 <h1>🌅 Horizon</h1>
 

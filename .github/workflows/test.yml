@@ -1,0 +1,37 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: infoservice
+          POSTGRES_PASSWORD: infoservice
+          POSTGRES_DB: infoservice_test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U infoservice -d infoservice_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      DATABASE_URL: postgresql+asyncpg://infoservice:infoservice@localhost:55432/infoservice_test
+      TEST_DATABASE_URL: postgresql+asyncpg://infoservice:infoservice@localhost:55432/infoservice_test
+      TELEGRAM_BOT_TOKEN: test-token
+      APP_ENCRYPTION_KEY: WmYxSnI2TWUyQjdIaU1Fd2hSM0tyY1M5blRyT0d3UjNuU0o2b1Y2OD0=
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: uv sync --extra dev
+      - run: uv run alembic upgrade head
+      - run: uv run pytest tests/infoservice -q
+      - run: uv run pytest -q

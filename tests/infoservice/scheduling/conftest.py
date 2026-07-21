@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
 
+import pytest
 import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -15,7 +16,10 @@ def utcnow() -> datetime:
 
 @pytest_asyncio.fixture
 async def session_factory() -> async_sessionmaker:
-    factory = create_session_factory(os.environ["TEST_DATABASE_URL"])
+    database_url = os.getenv("TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TEST_DATABASE_URL is required for PostgreSQL tests")
+    factory = create_session_factory(database_url)
     async with factory.begin() as session:
         await session.execute(text("TRUNCATE TABLE users CASCADE"))
     yield factory

@@ -66,5 +66,5 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-q"
+addopts = "-q --import-mode=importlib"
 testpaths = ["tests"]

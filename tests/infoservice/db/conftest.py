@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -11,7 +12,9 @@ from src.infoservice.db.session import create_session_factory
 
 @pytest_asyncio.fixture
 async def session() -> AsyncSession:
-    database_url = os.environ["TEST_DATABASE_URL"]
+    database_url = os.getenv("TEST_DATABASE_URL")
+    if not database_url:
+        pytest.skip("TEST_DATABASE_URL is required for PostgreSQL tests")
     session_factory = create_session_factory(database_url)
     async with session_factory() as database_session:
         await database_session.execute(text("TRUNCATE TABLE users CASCADE"))

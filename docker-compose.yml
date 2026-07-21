@@ -1,13 +1,81 @@
 services:
-  horizon:
-    build: .
-    container_name: horizon
-    volumes:
-      - ./data:/app/data
-      - ./.env:/app/.env:ro
+  postgres:
+    image: postgres:16-alpine
     environment:
-      - TZ=UTC
+      POSTGRES_USER: ${POSTGRES_USER:-infoservice}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-postgres-password}
+      POSTGRES_DB: ${POSTGRES_DB:-infoservice}
+    volumes:
+      - infoservice-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: ${APP_IMAGE_TARGET:-runtime}
+    env_file: ${ENV_FILE:-.env}
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: "no"
-    # Run daily at 8:00 AM UTC (adjust as needed)
-    # For one-time run, use: docker compose run --rm horizon
-    command: ["--hours", "24"]
+
+  bot:
+    build:
+      context: .
+      target: ${APP_IMAGE_TARGET:-runtime}
+    env_file: ${ENV_FILE:-.env}
+    command: ["infoservice-bot"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "scripts/healthcheck.py", "--role", "bot"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      target: ${APP_IMAGE_TARGET:-runtime}
+    env_file: ${ENV_FILE:-.env}
+    command: ["infoservice-scheduler"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "scripts/healthcheck.py", "--role", "scheduler"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      target: ${APP_IMAGE_TARGET:-runtime}
+    env_file: ${ENV_FILE:-.env}
+    command: ["infoservice-worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "uv", "run", "--no-sync", "python", "scripts/healthcheck.py", "--role", "worker"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 45s
+    restart: unless-stopped
+
+volumes:
+  infoservice-postgres:

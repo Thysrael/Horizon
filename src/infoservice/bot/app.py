@@ -16,6 +16,7 @@ from src.infoservice.bot.handlers.schedules import router as schedules_router
 from src.infoservice.bot.handlers.sources import router as sources_router
 from src.infoservice.bot.middleware import PrivateUserMiddleware
 from src.infoservice.db.session import create_session_factory
+from src.infoservice.db.heartbeats import touch_heartbeat
 from src.infoservice.llm.deepseek import DeepSeekVerifier
 from src.infoservice.security.credentials import CredentialCipher
 from src.infoservice.settings import Settings
@@ -37,9 +38,26 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
 
 async def run() -> None:
     settings = Settings()
-    dispatcher = create_dispatcher(settings, create_session_factory(settings.database_url))
+    session_factory = create_session_factory(settings.database_url)
+    dispatcher = create_dispatcher(settings, session_factory)
     bot = Bot(settings.telegram_bot_token.get_secret_value())
-    await dispatcher.start_polling(bot, tasks_concurrency_limit=32)
+    stop_event = asyncio.Event()
+
+    async def heartbeat() -> None:
+        while not stop_event.is_set():
+            await touch_heartbeat(session_factory, "bot")
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=30)
+            except TimeoutError:
+                pass
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    try:
+        await dispatcher.start_polling(bot, tasks_concurrency_limit=32)
+    finally:
+        stop_event.set()
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
 def main() -> None:
