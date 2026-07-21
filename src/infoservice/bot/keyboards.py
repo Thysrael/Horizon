@@ -31,3 +31,20 @@ def confirmation_menu() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Да, заменить", callback_data="llm:replace:confirm")],
         [InlineKeyboardButton(text="Отмена", callback_data="llm:replace:cancel")],
     ])
+
+
+def report_confirmation_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Создать", callback_data="report:confirm")],
+        [InlineKeyboardButton(text="Отмена", callback_data="report:cancel")],
+    ])
+
+
+def report_menu(report_id: str, enabled: bool = True) -> InlineKeyboardMarkup:
+    toggle = "pause" if enabled else "resume"
+    toggle_label = "Приостановить" if enabled else "Возобновить"
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Правила", callback_data=f"report:rules:{report_id}"), InlineKeyboardButton(text="Расписание", callback_data=f"report:schedule:{report_id}")],
+        [InlineKeyboardButton(text=toggle_label, callback_data=f"report:{toggle}:{report_id}"), InlineKeyboardButton(text="Запустить", callback_data=f"report:run:{report_id}")],
+        [InlineKeyboardButton(text="История", callback_data=f"report:history:{report_id}"), InlineKeyboardButton(text="Удалить", callback_data=f"report:delete:{report_id}")],
+    ])

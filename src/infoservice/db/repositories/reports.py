@@ -67,6 +67,10 @@ class ReportRepository:
             raise NotFound("Отчёт не найден")
         return report
 
+    async def list_owned(self, user_id: UUID) -> list[Report]:
+        stmt = select(Report).where(Report.user_id == user_id).order_by(Report.created_at)
+        return list((await self.session.execute(stmt)).scalars())
+
     async def create(self, user_id: UUID, data: CreateReport) -> Report:
         await self._lock_user(user_id)
         count = await self.session.scalar(select(func.count()).select_from(Report).where(Report.user_id == user_id))
