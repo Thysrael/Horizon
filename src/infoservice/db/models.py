@@ -172,6 +172,7 @@ class ReportRun(TimestampMixin, Base):
     worker_id: Mapped[str | None] = mapped_column(String(255))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     items_seen: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     items_selected: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)

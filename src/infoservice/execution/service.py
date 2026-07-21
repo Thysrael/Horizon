@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from typing import Any, Protocol
 from uuid import UUID
@@ -42,6 +42,7 @@ class SourceResultPayload:
 class ExecutionStore(Protocol):
     async def claim_next(self, worker_id: str, now: datetime) -> ClaimedRun | None: ...
     async def load(self, claim: ClaimedRun) -> ExecutionContext: ...
+    async def touch_claim(self, context: ExecutionContext) -> bool: ...
     async def record_attempt(self, context: ExecutionContext) -> None: ...
     async def record_success(self, context: ExecutionContext, result: ReportExecutionResult, status: str) -> bool: ...
     async def record_failure(self, context: ExecutionContext, summary: str) -> bool: ...
@@ -73,6 +74,9 @@ class SqlExecutionStore:
             )
             session.expunge(run)
             return ExecutionContext(claim, run, run.report, credential, run.report.user.chat_id)
+
+    async def touch_claim(self, context: ExecutionContext) -> bool:
+        return await self._claims.touch_claim(context.claim, datetime.now(timezone.utc))
 
     async def record_attempt(self, context: ExecutionContext) -> None:
         async with self._factory.begin() as session:
@@ -114,10 +118,11 @@ class SqlExecutionStore:
 class ExecutionService:
     def __init__(self, *, store: ExecutionStore, executor: Any, delivery: Any, renderer: Any,
                  cipher: CredentialCipher, worker_id: str, sleep: Any = asyncio.sleep,
-                 semaphore: asyncio.Semaphore | None = None) -> None:
+                 semaphore: asyncio.Semaphore | None = None, heartbeat_interval: float = 30) -> None:
         self.store, self.executor, self.delivery, self.renderer = store, executor, delivery, renderer
         self.cipher, self.worker_id, self._sleep = cipher, worker_id, sleep
         self._semaphore = semaphore or asyncio.Semaphore(1)
+        self._heartbeat_interval = heartbeat_interval
 
     async def run_once(self) -> bool:
         claim = await self.store.claim_next(self.worker_id, datetime.now(timezone.utc))
@@ -126,9 +131,12 @@ class ExecutionService:
         context: ExecutionContext | None = None
         plaintext = ""
         started = datetime.now(timezone.utc)
+        heartbeat_stop = asyncio.Event()
+        heartbeat_task: asyncio.Task[None] | None = None
         async with self._semaphore:
             try:
                 context = await self.store.load(claim)
+                heartbeat_task = asyncio.create_task(self._keep_claim_alive(context, heartbeat_stop))
                 await self.store.record_attempt(context)
                 plaintext = self.cipher.decrypt(_ciphertext(context.credential))
                 result = await self._execute_with_retries(context, plaintext)
@@ -138,7 +146,9 @@ class ExecutionService:
                     logger.info("report_run_lost_claim", extra={"run_id": str(claim.id), "report_id": str(claim.report_id)})
                     return True
                 try:
-                    rendered = _failure_notification(context.report) if status == "failed" else self.renderer.render(result, context.report.name)
+                    rendered = _failure_notification(context.report) if status == "failed" else self.renderer.render(
+                        _with_presentation_context(result, context.report, status), context.report.name
+                    )
                     delivery = await self.delivery.send(context.chat_id, rendered)
                     delivery_status = getattr(delivery, "status", "unknown")
                 except Exception:
@@ -156,7 +166,28 @@ class ExecutionService:
                 logger.warning("report_run_failed", extra={"run_id": str(claim.id), "report_id": str(claim.report_id), "error": _safe_error(f"{type(error).__name__}: {error}")})
             finally:
                 plaintext = ""
+                heartbeat_stop.set()
+                if heartbeat_task is not None:
+                    await heartbeat_task
         return True
+
+    async def _keep_claim_alive(self, context: ExecutionContext, stop_event: asyncio.Event) -> None:
+        """Persist a lease renewal while a report run is executing.
+
+        Scheduler recovery uses this per-run lease rather than process-level
+        liveness, so a healthy worker cannot have a long Horizon execution
+        requeued underneath it.
+        """
+        while not stop_event.is_set():
+            try:
+                if not await self.store.touch_claim(context):
+                    return
+            except Exception:
+                logger.warning("report_run_heartbeat_failed", extra={"run_id": str(context.claim.id)})
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=self._heartbeat_interval)
+            except TimeoutError:
+                pass
 
     async def _execute_with_retries(self, context: ExecutionContext, api_key: str) -> ReportExecutionResult:
         for attempt in range(3):
@@ -252,6 +283,25 @@ def _result_status(fetch_report: Any) -> str:
     if failed and not succeeded:
         return "failed"
     return "succeeded"
+
+
+def _with_presentation_context(result: ReportExecutionResult, report: Any, status: str) -> ReportExecutionResult:
+    """Attach only user-safe collection facts needed by Telegram's overview."""
+    lookback = getattr(report, "lookback_hours", None)
+    period = f"last {int(lookback)} hours" if isinstance(lookback, int) and lookback > 0 else None
+    failed_sources: tuple[str, ...] = ()
+    if status == "partial":
+        failed_sources = tuple(
+            str(outcome.get("source", "unknown source")).strip() or "unknown source"
+            for outcome in _source_outcomes(result.fetch_report)
+            if outcome.get("status") == "failure"
+        )
+    return replace(
+        result,
+        presentation_period=period,
+        presentation_items_selected=len(result.items),
+        failed_sources=failed_sources,
+    )
 
 
 def _failure_notification(report: Any) -> str:

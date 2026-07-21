@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import aliased
 
@@ -98,8 +98,24 @@ class RunRepository:
             run.status = RunStatus.RUNNING
             run.worker_id = worker_id
             run.started_at = now
+            run.heartbeat_at = now
             await session.flush()
             return ClaimedRun(run.id, run.report_id, run.scheduled_for, worker_id, now)
+
+    async def touch_claim(self, claim: ClaimedRun, now: datetime) -> bool:
+        """Renew a running claim without allowing a former worker to revive it."""
+        now = _as_utc(now)
+        async with self.session_factory.begin() as session:
+            result = await session.execute(
+                update(ReportRun)
+                .where(
+                    ReportRun.id == claim.id,
+                    ReportRun.status == RunStatus.RUNNING,
+                    ReportRun.worker_id == claim.worker_id,
+                )
+                .values(heartbeat_at=now)
+            )
+            return result.rowcount == 1
 
     async def recover_stale(self, now: datetime, timeout: timedelta) -> int:
         now = _as_utc(now)
@@ -107,8 +123,11 @@ class RunRepository:
         async with self.session_factory.begin() as session:
             statement = (
                 select(ReportRun)
-                .where(ReportRun.status == RunStatus.RUNNING, ReportRun.started_at < cutoff)
-                .order_by(ReportRun.started_at, ReportRun.id)
+                .where(
+                    ReportRun.status == RunStatus.RUNNING,
+                    func.coalesce(ReportRun.heartbeat_at, ReportRun.started_at) < cutoff,
+                )
+                .order_by(func.coalesce(ReportRun.heartbeat_at, ReportRun.started_at), ReportRun.id)
                 .with_for_update(skip_locked=True)
             )
             runs = (await session.scalars(statement)).all()
@@ -118,6 +137,7 @@ class RunRepository:
                     run.status = RunStatus.QUEUED
                     run.worker_id = None
                     run.started_at = None
+                    run.heartbeat_at = None
                 else:
                     run.status = RunStatus.FAILED
                     run.finished_at = now

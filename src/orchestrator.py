@@ -29,6 +29,7 @@ from .ai.analyzer import ContentAnalyzer
 from .ai.summarizer import DailySummarizer
 from .ai.enricher import ContentEnricher
 from .ai.tokens import get_usage_snapshot
+from .infoservice.security.credentials import redact_secret_text
 
 
 _TRACKING_QUERY_PARAMETERS = {
@@ -199,6 +200,23 @@ class HorizonOrchestrator:
         )
         self.last_fetch_report: Optional[FetchReport] = None
 
+    def _safe_error(self, error: object) -> str:
+        """Sanitize provider exceptions before writing them to the console.
+
+        Runtime keys belong to individual InfoService users.  Some providers
+        reflect an Authorization header in their error response, so raw
+        ``str(error)`` must never be printed from this orchestration path.
+        """
+        runtime_key = getattr(self, "runtime_api_key", None)
+        return redact_secret_text(
+            error,
+            secrets=self._runtime_redaction_secrets(),
+        )
+
+    def _runtime_redaction_secrets(self) -> tuple[str, ...]:
+        runtime_key = getattr(self, "runtime_api_key", None)
+        return (runtime_key,) if isinstance(runtime_key, str) and runtime_key else ()
+
     async def execute(
         self,
         force_hours: int | None = None,
@@ -275,7 +293,10 @@ class HorizonOrchestrator:
                         output.write(front_matter + summary_content)
                     self.console.print(f"📄 Copied {lang.upper()} summary to GitHub Pages: {dest_path}\n")
                 except Exception as exc:
-                    self.console.print(f"[yellow]⚠️  Failed to copy {lang.upper()} summary to docs/: {exc}[/yellow]\n")
+                    self.console.print(
+                        "[yellow]⚠️  Failed to copy "
+                        f"{lang.upper()} summary to docs/: {self._safe_error(exc)}[/yellow]\n"
+                    )
                 if self.email_manager and self.config.email and self.config.email.enabled:
                     self.email_manager.send_daily_summary(summary, f"Horizon Summary ({lang.upper()}) - {today}", self.storage.load_subscribers())
                 if self.webhook_notifier:
@@ -288,13 +309,14 @@ class HorizonOrchestrator:
                     if provider_usage.total > 0:
                         self.console.print(f"   • {provider}: {provider_usage.total} tokens (in: {provider_usage.input_tokens}, out: {provider_usage.output_tokens})")
         except Exception as e:
-            self.console.print(f"[bold red]❌ Error: {e}[/bold red]")
+            safe_error = self._safe_error(e)
+            self.console.print(f"[bold red]❌ Error: {safe_error}[/bold red]")
 
             # Send webhook failure notification if configured
             if self.webhook_notifier:
                 await self.webhook_notifier.send_failure(
                     date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    error_message=str(e),
+                    error_message=safe_error,
                 )
 
             raise
@@ -409,7 +431,7 @@ class HorizonOrchestrator:
         try:
             items = await scraper.fetch(since)
         except Exception as exc:
-            error = f"{type(exc).__name__}: {exc}"
+            error = f"{type(exc).__name__}: {self._safe_error(exc)}"
             self.console.print(f"[red]   Failed to fetch {name}: {error}[/red]")
             return SourceFetchOutcome(
                 source_name=name,
@@ -552,7 +574,10 @@ class HorizonOrchestrator:
             duplicate_groups = result.get("duplicates", [])
         except Exception as e:
             if log:
-                self.console.print(f"[yellow]  dedup: AI call failed ({e}), skipping[/yellow]")
+                self.console.print(
+                    "[yellow]  dedup: AI call failed "
+                    f"({self._safe_error(e)}), skipping[/yellow]"
+                )
             return items
 
         if not duplicate_groups:
@@ -794,7 +819,8 @@ class HorizonOrchestrator:
                         )
                 except Exception as exc:
                     self.console.print(
-                        f"   [yellow]⚠️  Reply fetch failed for {item.id}: {exc}[/yellow]"
+                        "   [yellow]⚠️  Reply fetch failed for "
+                        f"{item.id}: {self._safe_error(exc)}[/yellow]"
                     )
 
         if not expanded:
@@ -804,7 +830,11 @@ class HorizonOrchestrator:
             f"   Re-analyzing {len(expanded)} Twitter items with reply context...\n"
         )
         ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
-        analyzer = ContentAnalyzer(ai_client, custom_instruction=custom_instruction)
+        analyzer = ContentAnalyzer(
+            ai_client,
+            custom_instruction=custom_instruction,
+            redaction_secrets=self._runtime_redaction_secrets(),
+        )
         await analyzer.analyze_batch(expanded)
 
     async def _enrich_important_items(self, items: List[ContentItem]) -> None:
@@ -821,7 +851,10 @@ class HorizonOrchestrator:
 
         self.console.print("📚 Enriching with background knowledge...")
         ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
-        enricher = ContentEnricher(ai_client)
+        enricher = ContentEnricher(
+            ai_client,
+            redaction_secrets=self._runtime_redaction_secrets(),
+        )
         await enricher.enrich_batch(items)
         self.console.print(f"   Enriched {len(items)} items\n")
 
@@ -841,7 +874,11 @@ class HorizonOrchestrator:
         self.console.print("🤖 Analyzing content with AI...")
 
         ai_client = create_ai_client(self.config.ai, api_key=self.runtime_api_key)
-        analyzer = ContentAnalyzer(ai_client, custom_instruction=custom_instruction)
+        analyzer = ContentAnalyzer(
+            ai_client,
+            custom_instruction=custom_instruction,
+            redaction_secrets=self._runtime_redaction_secrets(),
+        )
 
         return await analyzer.analyze_batch(items)
 

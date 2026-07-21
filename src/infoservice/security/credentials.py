@@ -20,6 +20,20 @@ _API_KEY_PATTERN = re.compile(
 )
 
 
+def redact_secret_text(value: object, *, secrets: tuple[str, ...] = ()) -> str:
+    """Return text safe for user-visible errors and logs.
+
+    Providers occasionally include the supplied Authorization value in an
+    exception body.  Prefix matching protects known API-key formats while the
+    exact-value replacement protects a runtime BYOK key even if a provider
+    uses an unfamiliar key format.
+    """
+    text = str(value)
+    for secret in sorted((item for item in secrets if item), key=len, reverse=True):
+        text = text.replace(secret, "[REDACTED]")
+    return _API_KEY_PATTERN.sub("[REDACTED]", text)
+
+
 def validate_fernet_key(encryption_key: str) -> str:
     """Return a valid Fernet key without ever including its value in errors."""
     try:

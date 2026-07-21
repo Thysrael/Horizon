@@ -40,6 +40,24 @@ def test_analyze_batch_does_not_sleep_by_default(monkeypatch):
     assert sleep_calls == []
 
 
+def test_analyze_batch_redacts_runtime_api_key_from_provider_error(monkeypatch, capsys):
+    """A provider error may echo its Authorization value; never print it."""
+    runtime_key = "sk-byok-secret-value"
+    analyzer = ContentAnalyzer(SimpleNamespace(), redaction_secrets=(runtime_key,))
+    item = _make_item("rss:test:redaction")
+
+    async def fail_with_echo(_item):
+        raise RuntimeError(f"401 invalid Authorization: Bearer {runtime_key}")
+
+    monkeypatch.setattr(analyzer, "_analyze_item", fail_with_echo)
+
+    asyncio.run(analyzer.analyze_batch([item]))
+
+    output = capsys.readouterr().out
+    assert runtime_key not in output
+    assert "[REDACTED]" in output
+
+
 def test_analyze_batch_sleeps_between_items_when_throttle_configured(monkeypatch):
     client = SimpleNamespace(config=SimpleNamespace(throttle_sec=1.5))
     analyzer = ContentAnalyzer(client)

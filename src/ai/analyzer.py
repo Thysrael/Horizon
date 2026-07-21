@@ -12,6 +12,7 @@ from .client import AIClient
 from .prompts import CONTENT_ANALYSIS_SYSTEM, CONTENT_ANALYSIS_USER, build_analysis_prompt
 from .utils import parse_json_response
 from ..models import ContentItem
+from ..infoservice.security.credentials import redact_secret_text
 
 DEFAULT_THROTTLE_SEC = 0.0
 
@@ -28,9 +29,16 @@ class AnalysisResult(BaseModel):
 class ContentAnalyzer:
     """Analyzes content items using AI to determine importance."""
 
-    def __init__(self, ai_client: AIClient, custom_instruction: str | None = None):
+    def __init__(
+        self,
+        ai_client: AIClient,
+        custom_instruction: str | None = None,
+        *,
+        redaction_secrets: tuple[str, ...] = (),
+    ):
         self.client = ai_client
         self.custom_instruction = custom_instruction
+        self._redaction_secrets = redaction_secrets
 
     @staticmethod
     def _parse_json_response(response: str) -> Optional[dict]:
@@ -62,7 +70,10 @@ class ContentAnalyzer:
                 try:
                     await self._analyze_item(item)
                 except Exception as e:
-                    print(f"Error analyzing item {item.id}: {e}")
+                    print(
+                        "Error analyzing item "
+                        f"{item.id}: {redact_secret_text(e, secrets=self._redaction_secrets)}"
+                    )
                     item.ai_score = 0.0
                     item.ai_reason = "Analysis failed"
                     item.ai_summary = item.title

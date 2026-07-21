@@ -17,8 +17,9 @@ from src.infoservice.bot.keyboards import report_confirmation_menu, report_menu
 from src.infoservice.bot.messages_ru import (ACTION_CANCELLED, HISTORY_EMPTY, MANUAL_RUN_COOLDOWN, MANUAL_RUN_UNAVAILABLE, REPORT_CONFIRMATION, REPORT_CREATED,
     REPORT_DELETE_CONFIRMATION, REPORT_DELETED, REPORT_NAME_REQUEST, REPORT_NOT_FOUND, REPORTS_MENU)
 from src.infoservice.bot.states import CreateReport
-from src.infoservice.db.models import LLMCredential, Report, ReportRun, RunStatus, RunTrigger
+from src.infoservice.db.models import LLMCredential, Report, ReportRun, RunStatus
 from src.infoservice.db.repositories.reports import CreateReport as CreateReportData, ReportRepository
+from src.infoservice.db.repositories.manual_runs import ManualRunRepository, ManualRunResult
 from src.infoservice.errors import NotFound
 from src.infoservice.scheduling.calculator import ScheduleSpec, next_occurrence
 
@@ -166,19 +167,15 @@ async def report_history(callback: CallbackQuery, session: AsyncSession, user) -
 async def manual_run(callback: CallbackQuery, session: AsyncSession, user) -> None:
     report_id = callback_report_id(callback.data)
     try:
-        report = await ReportRepository(session).get_owned(report_id, user.id) if report_id else None
-        if report is None:
+        if report_id is None:
             raise NotFound(REPORT_NOT_FOUND)
         credential = await session.scalar(select(LLMCredential.id).where(LLMCredential.user_id == user.id, LLMCredential.provider == "deepseek"))
         if credential is None:
             await callback.answer(MANUAL_RUN_UNAVAILABLE, show_alert=True); return
         now = datetime.now(timezone.utc)
-        running = await session.scalar(select(ReportRun.id).join(Report).where(Report.user_id == user.id, ReportRun.status.in_((RunStatus.QUEUED, RunStatus.RUNNING))).limit(1))
-        recent = await session.scalar(select(ReportRun.id).where(ReportRun.report_id == report.id, ReportRun.scheduled_for >= now - timedelta(hours=1)).limit(1))
-        if running is not None or recent is not None:
+        outcome = await ManualRunRepository(session).enqueue(user.id, report_id, now)
+        if outcome is ManualRunResult.COOLDOWN:
             await callback.answer(MANUAL_RUN_COOLDOWN, show_alert=True); return
-        session.add(ReportRun(report_id=report.id, trigger=RunTrigger.MANUAL, scheduled_for=now))
-        await session.flush()
     except NotFound:
         await callback.answer(REPORT_NOT_FOUND, show_alert=True); return
     await callback.answer()

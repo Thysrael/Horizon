@@ -19,6 +19,7 @@ from src.models import ContentItem
 
 MESSAGE_LIMIT = 3800
 DOCUMENT_THRESHOLD = 20
+_METADATA_VALUE_LIMIT = 512
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +41,7 @@ class TelegramReportRenderer:
         self._today = today or (lambda: datetime.now(timezone.utc).date())
 
     def render(self, result: ReportExecutionResult, report_name: str) -> RenderedReport:
-        header = self._bounded_markup(report_name, self._header_markup, MESSAGE_LIMIT)
+        header = self._overview_header(result, report_name)
         messages = self._pack([header, *[self._item_blocks(item) for item in result.items]])
         if len(messages) <= DOCUMENT_THRESHOLD:
             return RenderedReport(messages=messages)
@@ -54,6 +55,55 @@ class TelegramReportRenderer:
     @staticmethod
     def _header_markup(value: str) -> str:
         return Text(Bold(value)).as_html()
+
+    def _overview_header(self, result: ReportExecutionResult, report_name: str) -> str:
+        """Build the first Telegram message's factual overview before items.
+
+        Metadata is deliberately rendered before item blocks and its size gets
+        priority over an exceptionally long report title: partial delivery must
+        never look like a complete report.
+        """
+        details = self._presentation_details(result)
+        if not details:
+            return self._bounded_markup(report_name, self._header_markup, MESSAGE_LIMIT)
+        header_limit = max(0, MESSAGE_LIMIT - len(details) - 1)
+        header = self._bounded_markup(report_name, self._header_markup, header_limit)
+        return f"{header}\n{details}"
+
+    @classmethod
+    def _presentation_details(cls, result: ReportExecutionResult) -> str:
+        if result.presentation_period is None or result.presentation_items_selected is None:
+            return ""
+        period = cls._bounded_escaped(result.presentation_period, _METADATA_VALUE_LIMIT)
+        items_seen = cls._bounded_escaped(str(result.all_items_count), _METADATA_VALUE_LIMIT)
+        items_selected = cls._bounded_escaped(str(result.presentation_items_selected), _METADATA_VALUE_LIMIT)
+        lines = [
+            f"Period: {period}",
+            f"Items seen: {items_seen}",
+            f"Items selected: {items_selected}",
+        ]
+        if result.failed_sources:
+            warning = "⚠️ Partial report — failed sources: "
+            base = "\n".join(lines)
+            # Reserve a syntactically valid (possibly empty) bold title and
+            # the separating newline; arbitrary source labels cannot make the
+            # first delivery exceed Telegram's hard limit.
+            # There are two newlines in the final header: one after the
+            # (possibly empty) title and one before this warning line.
+            source_limit = max(0, MESSAGE_LIMIT - len(base) - len(warning) - len("<b></b>") - 2)
+            source_names = cls._bounded_escaped(", ".join(result.failed_sources), source_limit)
+            lines.append(f"{warning}{source_names}")
+        return "\n".join(lines)
+
+    @classmethod
+    def _bounded_escaped(cls, value: object, limit: int) -> str:
+        """Escape arbitrary metadata while retaining a valid, hard byte budget."""
+        raw = str(value)
+        split_at = cls._escaped_prefix_length(raw, max(0, limit))
+        escaped = html.quote(raw[:split_at])
+        if split_at < len(raw) and len(escaped) < limit:
+            escaped += "…"
+        return escaped
 
     def _report_date(self, markdown: str) -> str:
         match = re.search(r"\b\d{4}-\d{2}-\d{2}\b", markdown)

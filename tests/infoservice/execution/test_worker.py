@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
@@ -21,6 +22,7 @@ class MemoryRunStore:
         self.failed: list[tuple[ExecutionContext, str]] = []
         self.attempts = 0
         self.finalize = True
+        self.heartbeats = 0
 
     async def claim_next(self, worker_id, now):
         if self.claimed:
@@ -33,6 +35,10 @@ class MemoryRunStore:
 
     async def record_attempt(self, context):
         self.attempts += 1
+
+    async def touch_claim(self, context):
+        self.heartbeats += 1
+        return True
 
     async def record_success(self, context, result, status):
         self.succeeded.append((context, result, status))
@@ -79,6 +85,31 @@ async def test_worker_records_partial_result_and_delivers():
     assert store.attempts == 1
     assert store.succeeded[0][2] == "partial"
     delivery.send.assert_awaited_once_with(123, "rendered")
+
+
+@pytest.mark.asyncio
+async def test_worker_adds_partial_delivery_context_before_rendering():
+    context = _context()
+    context.report.lookback_hours = 24
+    store = MemoryRunStore(context)
+    result = ReportExecutionResult(
+        markdown="# report", items=[], all_items_count=8,
+        fetch_report={"sources": [{"source": "RSS Feeds", "status": "failure"}, {"source": "GitHub", "status": "success"}]},
+        usage={},
+    )
+    rendered_result = []
+    renderer = SimpleNamespace(render=lambda value, name: rendered_result.append(value) or "rendered")
+    worker = ExecutionService(
+        store=store, executor=SimpleNamespace(execute=AsyncMock(return_value=result)),
+        delivery=SimpleNamespace(send=AsyncMock(return_value=DeliveryResult("sent"))), renderer=renderer,
+        cipher=SimpleNamespace(decrypt=lambda value: "sk-private-key"), worker_id="test", sleep=AsyncMock(),
+    )
+
+    await worker.run_once()
+
+    assert rendered_result[0].presentation_period == "last 24 hours"
+    assert rendered_result[0].presentation_items_selected == 0
+    assert rendered_result[0].failed_sources == ("RSS Feeds",)
 
 
 @pytest.mark.asyncio
@@ -195,3 +226,30 @@ async def test_retryable_execution_is_attempted_three_times():
 
     assert executor.execute.await_count == 3
     assert store.attempts == 3
+
+
+@pytest.mark.asyncio
+async def test_worker_heartbeats_a_long_running_claim_until_execution_finishes():
+    context = _context()
+    store = MemoryRunStore(context)
+    execution_started = asyncio.Event()
+    release_execution = asyncio.Event()
+
+    async def execute(_request):
+        execution_started.set()
+        await release_execution.wait()
+        return ReportExecutionResult("# report", [], 0, {"sources": []}, {})
+
+    worker = ExecutionService(
+        store=store, executor=SimpleNamespace(execute=execute), delivery=SimpleNamespace(send=AsyncMock()),
+        renderer=SimpleNamespace(render=lambda *_: "rendered"), cipher=SimpleNamespace(decrypt=lambda value: "sk-key"),
+        worker_id="test", sleep=AsyncMock(), heartbeat_interval=0.001,
+    )
+
+    task = asyncio.create_task(worker.run_once())
+    await execution_started.wait()
+    await asyncio.sleep(0.01)
+    assert store.heartbeats >= 2
+
+    release_execution.set()
+    assert await task is True

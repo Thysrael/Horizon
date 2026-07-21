@@ -135,6 +135,53 @@ async def test_document_fallback_sends_overview_before_document() -> None:
     assert bot.send_document.await_args.kwargs["document"].filename == "report-2026-07-20.md"
 
 
+def test_partial_report_first_message_contains_period_counts_and_failed_sources() -> None:
+    result = ReportExecutionResult(
+        markdown="# Digest",
+        items=[],
+        all_items_count=17,
+        fetch_report={"sources": []},
+        usage={},
+        presentation_period="last 24 hours",
+        presentation_items_selected=3,
+        failed_sources=("RSS Feeds", "GitHub"),
+    )
+
+    rendered = TelegramReportRenderer().render(result, "Morning")
+
+    first = rendered.messages[0]
+    assert "last 24 hours" in first
+    assert "17" in first
+    assert "3" in first
+    assert "RSS Feeds" in first
+    assert "GitHub" in first
+
+
+def test_partial_header_is_bounded_with_extreme_title_and_source_names() -> None:
+    result = ReportExecutionResult(
+        markdown="# Digest", items=[], all_items_count=0, fetch_report={}, usage={},
+        presentation_period="last 24 hours", presentation_items_selected=0,
+        failed_sources=("<&>" * 5000,),
+    )
+
+    rendered = TelegramReportRenderer().render(result, "T" * 10_000)
+
+    assert len(rendered.messages[0]) <= 3800
+    assert _is_valid_html(rendered.messages[0])
+
+
+def test_partial_header_bounds_extreme_period_and_numeric_metadata() -> None:
+    result = ReportExecutionResult(
+        markdown="# Digest", items=[], all_items_count=int("9" * 4000), fetch_report={}, usage={},
+        presentation_period="<&>" * 5000, presentation_items_selected=int("8" * 4000),
+    )
+
+    rendered = TelegramReportRenderer().render(result, "")
+
+    assert len(rendered.messages[0]) <= 3800
+    assert _is_valid_html(rendered.messages[0])
+
+
 @pytest.mark.asyncio
 async def test_429_uses_retry_after() -> None:
     bot = SimpleNamespace(send_message=AsyncMock(side_effect=[

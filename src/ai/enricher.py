@@ -22,13 +22,15 @@ from .prompts import (
 )
 from .utils import parse_json_response
 from ..models import ContentItem
+from ..infoservice.security.credentials import redact_secret_text
 
 
 class ContentEnricher:
     """Enriches high-scoring content items with background knowledge."""
 
-    def __init__(self, ai_client: AIClient):
+    def __init__(self, ai_client: AIClient, *, redaction_secrets: tuple[str, ...] = ()):
         self.client = ai_client
+        self._redaction_secrets = redaction_secrets
 
     def _get_concurrency(self) -> int:
         """Return the configured enrichment concurrency, clamped to 1 or above."""
@@ -50,7 +52,11 @@ class ContentEnricher:
                 try:
                     await self._enrich_item(item)
                 except Exception as e:
-                    print(f"Error enriching item {item.id}: {e}, falling back to translation")
+                    print(
+                        "Error enriching item "
+                        f"{item.id}: {redact_secret_text(e, secrets=self._redaction_secrets)}, "
+                        "falling back to translation"
+                    )
                     await self._translate_item(item)
             progress.advance(progress_task)
 

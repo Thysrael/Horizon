@@ -5,6 +5,7 @@ import pytest
 from sqlalchemy import select
 
 from src.infoservice.db.models import Report, ReportRun, RunStatus, User
+from src.infoservice.db.repositories.manual_runs import ManualRunRepository, ManualRunResult
 from src.infoservice.scheduling.repository import RunRepository, SchedulerRepository
 
 
@@ -40,6 +41,24 @@ async def test_two_claimers_do_not_claim_runs_for_the_same_user(session_factory,
     )
 
     assert sum(claim is not None for claim in (first, second)) == 1
+
+
+@pytest.mark.asyncio
+async def test_concurrent_manual_enqueues_create_one_run_and_apply_cooldown(session_factory, due_report):
+    report, _ = due_report
+    now = utcnow()
+
+    async def enqueue():
+        async with session_factory.begin() as session:
+            return await ManualRunRepository(session).enqueue(report.user_id, report.id, now)
+
+    first, second = await asyncio.gather(enqueue(), enqueue())
+
+    assert sorted((first, second), key=lambda result: result.value) == [ManualRunResult.COOLDOWN, ManualRunResult.ENQUEUED]
+    async with session_factory() as session:
+        runs = (await session.scalars(select(ReportRun).where(ReportRun.report_id == report.id))).all()
+    assert len(runs) == 1
+    assert runs[0].trigger.value == "manual"
 
 
 @pytest.mark.asyncio
@@ -94,3 +113,24 @@ async def test_recover_stale_requeues_once_then_fails_safely(session_factory, qu
         assert run is not None
     assert run.status == RunStatus.FAILED
     assert run.attempt_count == 2
+
+
+@pytest.mark.asyncio
+async def test_recover_stale_keeps_long_running_run_with_recent_heartbeat(session_factory, queued_runs):
+    now = utcnow()
+    async with session_factory.begin() as session:
+        run = (await session.scalars(select(ReportRun).limit(1))).one()
+        run_id = run.id
+        run.status = RunStatus.RUNNING
+        run.worker_id = "worker-still-running"
+        run.started_at = now - timedelta(hours=2)
+        run.heartbeat_at = now - timedelta(minutes=1)
+
+    repository = RunRepository(session_factory)
+
+    assert await repository.recover_stale(now, timedelta(minutes=30)) == 0
+    async with session_factory() as session:
+        run = await session.get(ReportRun, run_id)
+        assert run is not None
+        assert run.status == RunStatus.RUNNING
+        assert run.worker_id == "worker-still-running"

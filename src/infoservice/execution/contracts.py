@@ -26,3 +26,9 @@ class ReportExecutionResult:
     all_items_count: int
     fetch_report: Any
     usage: Any
+    # Presentation-only context is attached by the durable execution layer.
+    # Keeping it on the immutable result lets renderers retain their small,
+    # two-argument interface while still making partial collection explicit.
+    presentation_period: str | None = None
+    presentation_items_selected: int | None = None
+    failed_sources: tuple[str, ...] = ()
