@@ -2,7 +2,7 @@
 
 InfoService — самостоятельный Telegram-бот для персональных информационных отчётов. Он использует Horizon как движок сбора и обработки, а DeepSeek подключается по модели BYOK: каждый пользователь вводит свой ключ.
 
-Полное развёртывание на домашнем ноутбуке: [DEPLOY_HOME_SERVER_RU.md](DEPLOY_HOME_SERVER_RU.md).
+Полное развёртывание на Linux-машине: [DEPLOY_HOME_SERVER_RU.md](DEPLOY_HOME_SERVER_RU.md).
 
 ## Быстрый запуск
 
