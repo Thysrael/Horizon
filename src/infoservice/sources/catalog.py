@@ -65,6 +65,16 @@ class SourceCatalog:
         return [capability for capability in cls._CAPABILITIES if capability.enabled(settings)]
 
     @classmethod
+    def stable(cls) -> list[SourceCapability]:
+        stable_types = ("rss", "telegram", "github", "hackernews")
+        capabilities = {
+            capability.type: capability
+            for capability in cls._CAPABILITIES
+            if capability.stability == "stable"
+        }
+        return [capabilities[source_type] for source_type in stable_types]
+
+    @classmethod
     def validate(cls, source_type: str, raw: dict, settings: Settings) -> BaseModel:
         capability = next((item for item in cls.available(settings) if item.type == source_type), None)
         if capability is None:
