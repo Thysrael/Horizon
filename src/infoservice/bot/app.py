@@ -44,8 +44,8 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
         reports_router,
         rules_router,
         schedules_router,
-        source_wizard_router,
         sources_router,
+        source_wizard_router,
     )
     return dispatcher
 

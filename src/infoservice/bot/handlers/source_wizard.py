@@ -467,7 +467,7 @@ async def _render_previous(
             )
         return
 
-    if previous == "source_card":
+    if previous in {"source_card", "edit_fields"}:
         await state.clear()
         if draft.source_id is None:
             await replace_or_answer(callback.message, "Источник не найден.")

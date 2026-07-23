@@ -90,6 +90,8 @@ def test_dispatcher_registers_user_middleware_on_message_and_callback_observers(
         assert len(middlewares) == 1
         assert isinstance(middlewares[0], PrivateUserMiddleware)
         assert middlewares[0]._session_factory is session_factory
+    router_names = [router.name for router in dispatcher.sub_routers]
+    assert router_names.index("sources") < router_names.index("source_wizard")
 
 
 @pytest.mark.asyncio

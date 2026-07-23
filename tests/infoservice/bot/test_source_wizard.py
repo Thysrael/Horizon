@@ -492,3 +492,31 @@ async def test_edit_stable_source_starts_from_existing_config(monkeypatch):
     assert raw["mode"] == "edit"
     assert raw["values"]["channel"] == "python_news"
     assert state.value == SourceForm.options
+
+
+@pytest.mark.asyncio
+async def test_back_from_edit_summary_returns_to_source_card():
+    source_id = uuid4()
+    state = FakeState()
+    draft = source_wizard.SourceDraft.edit(
+        str(source_id),
+        "telegram",
+        {"channel": "python_news", "fetch_limit": 20},
+        enabled=True,
+    )
+    raw = draft.to_storage()
+    raw.update(screen="summary", history=["source_card", "edit_fields"])
+    await state.update_data(
+        source_draft=raw,
+        last_card="Шаг 3 из 3\n\nTelegram-канал",
+    )
+    await state.set_state(SourceForm.summary)
+
+    callback = FakeCallback("source:back")
+    await source_wizard.go_back(callback, state)
+
+    assert state.cleared is True
+    assert callback.message.answers[-1][0].startswith("Telegram-канал")
+    assert "Изменить" in labels(
+        callback.message.answers[-1][1]["reply_markup"]
+    )
