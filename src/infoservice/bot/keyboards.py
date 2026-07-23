@@ -1,13 +1,34 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-MAIN_MENU_CALLBACKS = ("reports", "llm", "settings", "help")
+MAIN_MENU_CALLBACKS = ("reports", "report:create", "llm", "settings", "help")
 
 
 def main_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Отчёты", callback_data="reports"), InlineKeyboardButton(text="LLM", callback_data="llm")],
-        [InlineKeyboardButton(text="Настройки", callback_data="settings"), InlineKeyboardButton(text="Помощь", callback_data="help")],
+        [
+            InlineKeyboardButton(text="📰 Мои отчёты", callback_data="reports"),
+            InlineKeyboardButton(text="➕ Новый отчёт", callback_data="report:create"),
+        ],
+        [
+            InlineKeyboardButton(text="🔑 DeepSeek", callback_data="llm"),
+            InlineKeyboardButton(text="⚙️ Настройки", callback_data="settings"),
+        ],
+        [InlineKeyboardButton(text="❓ Помощь", callback_data="help")],
+    ])
+
+
+def settings_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🔑 DeepSeek", callback_data="llm")],
+        [InlineKeyboardButton(text="🌍 Часовой пояс", callback_data="settings:timezone")],
+        [InlineKeyboardButton(text="‹ Главное меню", callback_data="menu")],
+    ])
+
+
+def back_to_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="‹ Главное меню", callback_data="menu")],
     ])
 
 

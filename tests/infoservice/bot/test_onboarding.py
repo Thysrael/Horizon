@@ -14,7 +14,7 @@ from src.infoservice.settings import Settings
 
 
 def test_main_menu_exposes_the_required_callback_ids():
-    assert MAIN_MENU_CALLBACKS == ("reports", "llm", "settings", "help")
+    assert MAIN_MENU_CALLBACKS == ("reports", "report:create", "llm", "settings", "help")
 
 
 def test_onboarding_has_a_timezone_state():

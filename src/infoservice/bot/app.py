@@ -8,7 +8,9 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from src.infoservice.bot.commands import configure_bot_commands
 from src.infoservice.bot.handlers.credentials import router as credentials_router
+from src.infoservice.bot.handlers.navigation import router as navigation_router
 from src.infoservice.bot.handlers.start import router as start_router
 from src.infoservice.bot.handlers.reports import router as reports_router
 from src.infoservice.bot.handlers.rules import router as rules_router
@@ -32,7 +34,15 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
     )
     dispatcher.message.outer_middleware(PrivateUserMiddleware(session_factory))
     dispatcher.callback_query.outer_middleware(PrivateUserMiddleware(session_factory))
-    dispatcher.include_routers(start_router, credentials_router, reports_router, rules_router, schedules_router, sources_router)
+    dispatcher.include_routers(
+        navigation_router,
+        start_router,
+        credentials_router,
+        reports_router,
+        rules_router,
+        schedules_router,
+        sources_router,
+    )
     return dispatcher
 
 
@@ -41,6 +51,7 @@ async def run() -> None:
     session_factory = create_session_factory(settings.database_url)
     dispatcher = create_dispatcher(settings, session_factory)
     bot = Bot(settings.telegram_bot_token.get_secret_value())
+    await configure_bot_commands(bot)
     stop_event = asyncio.Event()
 
     async def heartbeat() -> None:

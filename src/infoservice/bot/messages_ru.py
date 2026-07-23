@@ -4,6 +4,23 @@ TIMEZONE_SAVED = "Часовой пояс сохранён."
 TIMEZONE_INVALID = "Не удалось распознать часовой пояс. Например: Europe/Moscow."
 WELCOME = "Добро пожаловать в InfoService."
 MAIN_MENU = "Главное меню"
+COMMAND_HELP = """Команды InfoService:
+/menu — главное меню
+/reports — мои отчёты
+/newreport — создать отчёт
+/sources — источники выбранного отчёта
+/settings — часовой пояс и DeepSeek
+/help — помощь и примеры
+/cancel — отменить текущее действие
+
+Примеры источников:
+Telegram: @durov
+GitHub: owner/repo
+RSS: https://example.com/feed.xml
+Hacker News добавляется без адреса."""
+SETTINGS_MENU = "Настройки\nЧасовой пояс: {timezone}"
+NOTHING_TO_CANCEL = "Сейчас нет незавершённого действия."
+ACTION_CANCELLED_MENU = "Действие отменено.\nГлавное меню"
 LLM_MENU = "Управление ключом DeepSeek."
 KEY_REQUEST = "Отправьте ключ DeepSeek одним сообщением. После проверки это сообщение будет удалено."
 REPLACE_CONFIRMATION = "Ключ DeepSeek уже добавлен. Заменить его?"

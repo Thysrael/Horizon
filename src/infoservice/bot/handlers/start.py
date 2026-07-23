@@ -3,6 +3,7 @@ from __future__ import annotations
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from aiogram import F, Router
+from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,7 @@ async def _save_timezone(message: Message, state: FSMContext, session: AsyncSess
     await message.answer(f"{TIMEZONE_SAVED}\n{MAIN_MENU}", reply_markup=main_menu())
 
 
-@router.message(F.text == "/start")
+@router.message(CommandStart())
 async def start(message: Message, state: FSMContext) -> None:
     await state.set_state(Onboarding.timezone)
     await message.answer(f"{WELCOME}\n{TIMEZONE_REQUEST}", reply_markup=timezone_menu())
