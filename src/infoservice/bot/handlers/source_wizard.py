@@ -540,6 +540,7 @@ async def _render_previous(
             callback.message,
             f"{step_label(draft, 'field_input')}\n"
             f"{SOURCE_FIELD_PROMPTS[draft.current_field]}",
+            primary_input_menu(),
         )
         return
 

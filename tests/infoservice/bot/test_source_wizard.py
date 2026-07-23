@@ -505,6 +505,29 @@ async def test_valid_field_requires_next_before_returning_to_options():
 
 
 @pytest.mark.asyncio
+async def test_back_from_field_review_restores_field_input_navigation():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw["current_field"] = "fetch_limit"
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.field_input
+    )
+
+    await source_wizard.receive_field(FakeMessage("50"), state)
+    callback = FakeCallback("source:back")
+    await source_wizard.go_back(callback, state)
+
+    assert state.value == SourceForm.field_input
+    assert labels(callback.message.answers[-1][1]["reply_markup"]) == [
+        "‹ Назад",
+        "Отмена",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_back_from_field_input_returns_to_advanced_field_menu():
     state = FakeState()
     draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
