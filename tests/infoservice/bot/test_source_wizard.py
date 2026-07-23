@@ -13,7 +13,7 @@ from src.infoservice.bot.keyboards import (
     source_options_menu,
     summary_menu,
 )
-from src.infoservice.bot.handlers import sources
+from src.infoservice.bot.handlers import source_wizard, sources
 from src.infoservice.bot.states import SourceForm
 
 
@@ -41,7 +41,7 @@ def test_catalog_contains_only_four_stable_sources():
 
 
 @pytest.mark.asyncio
-async def test_legacy_open_catalog_signature_uses_stable_labels(monkeypatch):
+async def test_open_catalog_uses_stable_labels(monkeypatch):
     report_id = uuid4()
 
     class Repository:
@@ -51,10 +51,13 @@ async def test_legacy_open_catalog_signature_uses_stable_labels(monkeypatch):
         async def get_owned(self, *_args):
             return object()
 
+        async def list_sources(self, *_args):
+            return []
+
     class Message:
         answers = []
 
-        async def answer(self, text, **kwargs):
+        async def edit_text(self, text, **kwargs):
             self.answers.append((text, kwargs))
 
     class Callback:
@@ -111,6 +114,7 @@ async def test_delete_back_clears_confirmation_and_restores_owned_source_card(mo
                 id=source_id,
                 display_name="Python News",
                 source_type="telegram",
+                config={"channel": "python_news", "fetch_limit": 20},
                 enabled=True,
             )
 
@@ -126,7 +130,7 @@ async def test_delete_back_clears_confirmation_and_restores_owned_source_card(mo
     class Message:
         answers = []
 
-        async def answer(self, text, **kwargs):
+        async def edit_text(self, text, **kwargs):
             self.answers.append((text, kwargs))
 
     class Callback:
@@ -144,7 +148,9 @@ async def test_delete_back_clears_confirmation_and_restores_owned_source_card(mo
 
     assert state.cleared is True
     assert callback.answered is True
-    assert callback.message.answers[0][0] == "Python News\nТип: telegram"
+    assert callback.message.answers[0][0].startswith(
+        "Telegram-канал\nКанал: @python_news"
+    )
     assert labels(callback.message.answers[0][1]["reply_markup"]) == [
         "Изменить", "Отключить", "Удалить", "‹ Главное меню",
     ]
@@ -167,3 +173,199 @@ def test_summary_and_edit_keyboards_are_human_readable():
 
 def test_beta_source_has_no_edit_button():
     assert "Изменить" not in labels(source_menu("source-id", True, editable=False))
+
+
+class FakeState:
+    def __init__(self):
+        self.data = {}
+        self.value = None
+        self.cleared = False
+
+    async def update_data(self, **values):
+        self.data.update(values)
+
+    async def get_data(self):
+        return self.data
+
+    async def set_state(self, value):
+        self.value = value
+
+    async def clear(self):
+        self.data = {}
+        self.value = None
+        self.cleared = True
+
+
+class FakeMessage:
+    def __init__(self, text=""):
+        self.text = text
+        self.answers = []
+
+    async def answer(self, text, **kwargs):
+        self.answers.append((text, kwargs))
+        return self
+
+    async def edit_text(self, text, **kwargs):
+        self.answers.append((text, kwargs))
+        return self
+
+
+class FakeCallback:
+    def __init__(self, data, message=None):
+        self.data = data
+        self.message = message or FakeMessage()
+        self.answers = []
+
+    async def answer(self, text=None, **kwargs):
+        self.answers.append((text, kwargs))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_type", "primary", "github_kind"),
+    [
+        ("rss", "https://example.com/feed.xml", None),
+        ("telegram", "https://t.me/python_news", None),
+        ("github", "pallets/flask", "repo_releases"),
+        ("hackernews", None, None),
+    ],
+)
+async def test_creation_flow_reaches_summary_without_writing(
+    monkeypatch, source_type, primary, github_kind
+):
+    report_id = uuid4()
+    state = FakeState()
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def get_owned(self, candidate, _user_id):
+            assert candidate == report_id
+            return SimpleNamespace(id=report_id)
+
+        async def add_source(self, *_args):
+            raise AssertionError("summary must not write")
+
+    monkeypatch.setattr(source_wizard, "ReportRepository", Repository)
+    if source_type == "rss":
+
+        async def name(_url, _client=None):
+            return "Example Feed"
+
+        monkeypatch.setattr(source_wizard, "resolve_rss_name", name)
+
+    start = FakeCallback(f"source:create:{source_type}:{report_id}")
+    await source_wizard.begin_create(
+        start, state, object(), SimpleNamespace(id=uuid4())
+    )
+
+    if github_kind:
+        await source_wizard.choose_github_kind(
+            FakeCallback(f"source:github-kind:{github_kind}"), state
+        )
+    if primary is not None:
+        await source_wizard.receive_primary(FakeMessage(primary), state)
+        assert state.value == SourceForm.value_review
+        await source_wizard.accept_primary(FakeCallback("source:next"), state)
+    await source_wizard.show_summary(
+        FakeCallback("source:summary"),
+        state,
+        SimpleNamespace(enable_twitter=False, enable_openbb=False),
+    )
+
+    assert state.value == SourceForm.summary
+    assert "{" not in state.data["last_card"]
+    expected_progress = "Шаг 2 из 2" if source_type == "hackernews" else "Шаг 3 из 3"
+    assert state.data["last_card"].startswith(expected_progress)
+
+
+@pytest.mark.asyncio
+async def test_invalid_primary_keeps_state_and_shows_example():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram")
+    await source_wizard.store_draft(state, draft, SourceForm.primary_input)
+    message = FakeMessage("https://t.me/+private")
+
+    await source_wizard.receive_primary(message, state)
+
+    assert state.value == SourceForm.primary_input
+    assert "@durov" in message.answers[-1][0]
+    assert state.data["source_draft"]["values"]["fetch_limit"] == 20
+
+
+@pytest.mark.asyncio
+async def test_back_from_options_returns_to_value_review():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(
+        str(uuid4()), "telegram"
+    ).with_values(channel="python_news")
+    raw = draft.to_storage()
+    raw.update(screen="options", history=["primary", "value_review"])
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.options
+    )
+    callback = FakeCallback("source:back")
+
+    await source_wizard.go_back(callback, state)
+
+    assert state.value == SourceForm.value_review
+    assert "Принято" in callback.message.answers[-1][0]
+
+
+@pytest.mark.asyncio
+async def test_save_validates_then_creates_once(monkeypatch):
+    report_id, user_id = uuid4(), uuid4()
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(
+        str(report_id), "telegram"
+    ).with_values(channel="python_news")
+    await source_wizard.store_draft(state, draft, SourceForm.summary)
+    created = []
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def add_source(self, candidate_report, candidate_user, data):
+            created.append((candidate_report, candidate_user, data))
+            return SimpleNamespace(id=uuid4(), enabled=True)
+
+    monkeypatch.setattr(source_wizard, "ReportRepository", Repository)
+    callback = FakeCallback("source:save")
+    await source_wizard.save_source(
+        callback,
+        state,
+        object(),
+        SimpleNamespace(id=user_id),
+        SimpleNamespace(enable_twitter=False, enable_openbb=False),
+    )
+
+    assert len(created) == 1
+    assert created[0][0] == report_id
+    assert created[0][1] == user_id
+    assert created[0][2].config["channel"] == "python_news"
+    assert state.cleared is True
+
+
+@pytest.mark.asyncio
+async def test_advanced_staging_keeps_supported_options_screen():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(
+        str(uuid4()), "telegram"
+    ).with_values(channel="python_news")
+    raw = draft.to_storage()
+    raw.update(screen="options", history=["catalog", "primary", "value_review"])
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.options
+    )
+    callback = FakeCallback("source:advanced")
+
+    await source_wizard.show_advanced(callback, state)
+
+    assert state.value == SourceForm.options
+    assert state.data["source_draft"]["screen"] == "options"
+    assert "значениями по умолчанию" in callback.message.answers[-1][0]
+    assert "source:field:" not in str(
+        callback.message.answers[-1][1]["reply_markup"]
+    )

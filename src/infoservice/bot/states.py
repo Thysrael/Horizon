@@ -37,5 +37,3 @@ class SourceForm(StatesGroup):
     field_input = State()
     summary = State()
     delete_confirmation = State()
-    # Transitional state for the legacy handler; it is not used by the wizard.
-    config = State()

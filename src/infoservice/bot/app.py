@@ -15,6 +15,9 @@ from src.infoservice.bot.handlers.start import router as start_router
 from src.infoservice.bot.handlers.reports import router as reports_router
 from src.infoservice.bot.handlers.rules import router as rules_router
 from src.infoservice.bot.handlers.schedules import router as schedules_router
+from src.infoservice.bot.handlers.source_wizard import (
+    router as source_wizard_router,
+)
 from src.infoservice.bot.handlers.sources import router as sources_router
 from src.infoservice.bot.middleware import PrivateUserMiddleware
 from src.infoservice.db.session import create_session_factory
@@ -41,6 +44,7 @@ def create_dispatcher(settings: Settings, session_factory: async_sessionmaker[As
         reports_router,
         rules_router,
         schedules_router,
+        source_wizard_router,
         sources_router,
     )
     return dispatcher

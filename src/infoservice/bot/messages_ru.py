@@ -61,7 +61,6 @@ SOURCE_FIELD_PROMPTS = {
     "min_score": "Введите минимальный рейтинг от 0 до 100000.\nПример: 100",
 }
 SOURCE_FIELD_ERROR = "Не удалось принять поле «{field}»: {reason}\nПример: {example}"
-SOURCE_CONFIG_REQUEST = "Отправьте JSON-конфигурацию источника. Поля: {fields}."
 SOURCE_CREATED = "Источник добавлен."
 SOURCE_NOT_FOUND = "Источник не найден"
 SOURCE_INVALID = "Некорректная конфигурация источника."
@@ -69,4 +68,3 @@ SOURCE_DELETE_CONFIRMATION = "Удалить источник?"
 SOURCE_DELETED = "Источник удалён."
 SOURCE_UPDATED = "Источник обновлён."
 SOURCE_UNAVAILABLE = "Этот источник сейчас недоступен на сервере."
-SOURCE_OPTIONAL_PREREQUISITE = "Источник использует включённую серверную интеграцию; её доступность может меняться у администратора."

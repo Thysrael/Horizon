@@ -1,65 +1,143 @@
-import json
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from src.infoservice.bot.handlers import sources
+from src.infoservice.db.repositories.reports import ReportRepository
 
 
-def valid_payload(source_type: str) -> dict:
-    return {
-        "rss": {"name": "Python", "url": "https://example.com/feed.xml"},
-        "telegram": {"channel": "python_news"},
-        "hackernews": {},
-        "github": {"type": "user_events", "username": "octocat"},
-        "reddit": {"subreddit": "python"},
-        "google_news": {"query": "Python"},
-        "gdelt": {"query": "Python"},
-        "ossinsight": {},
-        "twitter": {"users": ["python"]},
-        "openbb": {"name": "Tech", "symbols": ["MSFT"]},
-    }[source_type]
+class FakeMessage:
+    def __init__(self):
+        self.answers = []
+
+    async def edit_text(self, text, **kwargs):
+        self.answers.append((text, kwargs))
+        return self
 
 
-@pytest.mark.parametrize("source_type", ["rss", "telegram", "hackernews", "github", "reddit", "google_news", "gdelt", "ossinsight", "twitter", "openbb"])
+class FakeCallback:
+    def __init__(self, data):
+        self.data = data
+        self.message = FakeMessage()
+        self.answers = []
+
+    async def answer(self, text=None, **kwargs):
+        self.answers.append((text, kwargs))
+
+
+def button_labels(message):
+    markup = message.answers[-1][1]["reply_markup"]
+    return [button.text for row in markup.inline_keyboard for button in row]
+
+
 @pytest.mark.asyncio
-async def test_stable_source_can_be_added(monkeypatch, source_type):
+async def test_catalog_refuses_creation_at_repository_limit(monkeypatch):
     report_id = uuid4()
-    created = []
+    user_id = uuid4()
 
     class Repository:
-        def __init__(self, session): pass
-        async def add_source(self, owner_id, user_id, data):
-            assert owner_id == report_id
-            created.append(data)
-            return SimpleNamespace(id=uuid4(), display_name=data.display_name, enabled=True)
+        max_sources_per_report = ReportRepository.max_sources_per_report
 
-    class State:
-        data = {"source_draft": {"report_id": str(report_id), "source_type": source_type}}
-        async def get_data(self): return self.data
-        async def clear(self): pass
+        def __init__(self, _session):
+            pass
 
-    class Message:
-        text = json.dumps(valid_payload(source_type))
-        answers = []
-        async def answer(self, text, **_kwargs): self.answers.append(text)
+        async def get_owned(self, candidate_report, candidate_user):
+            assert (candidate_report, candidate_user) == (report_id, user_id)
+            return object()
+
+        async def list_sources(self, candidate_report, candidate_user):
+            assert (candidate_report, candidate_user) == (report_id, user_id)
+            return [object()] * self.max_sources_per_report
 
     monkeypatch.setattr(sources, "ReportRepository", Repository)
-    message = Message()
-    await sources.receive_source_config(message, State(), object(), SimpleNamespace(id=uuid4()), SimpleNamespace(enable_twitter=True, enable_openbb=True))
+    callback = FakeCallback(f"source:catalog:{report_id}")
 
-    assert created[0].source_type == source_type
+    await sources.open_catalog(
+        callback,
+        object(),
+        SimpleNamespace(id=user_id),
+        SimpleNamespace(enable_twitter=True, enable_openbb=True),
+    )
+
+    assert callback.message.answers == []
+    assert callback.answers == [
+        ("В отчёте может быть не более 30 источников", {"show_alert": True})
+    ]
 
 
-def test_disabled_optional_source_is_not_offered():
-    labels = sources.available_source_labels(SimpleNamespace(enable_twitter=False, enable_openbb=False))
-    assert "Twitter / X" not in labels
-    assert "OpenBB" not in labels
-    assert "RSS-лента" in labels
+@pytest.mark.asyncio
+async def test_catalog_calls_stable_menu_with_report_only(monkeypatch):
+    report_id = uuid4()
+    calls = []
+
+    class Repository:
+        max_sources_per_report = 30
+
+        def __init__(self, _session):
+            pass
+
+        async def get_owned(self, *_args):
+            return object()
+
+        async def list_sources(self, *_args):
+            return []
+
+    def catalog_menu(candidate_report):
+        calls.append(candidate_report)
+        return "stable-menu"
+
+    monkeypatch.setattr(sources, "ReportRepository", Repository)
+    monkeypatch.setattr(sources, "source_catalog_menu", catalog_menu)
+    callback = FakeCallback(f"source:catalog:{report_id}")
+
+    await sources.open_catalog(
+        callback,
+        object(),
+        SimpleNamespace(id=uuid4()),
+        SimpleNamespace(enable_twitter=True, enable_openbb=True),
+    )
+
+    assert calls == [str(report_id)]
+    assert callback.message.answers[-1][1]["reply_markup"] == "stable-menu"
 
 
-def test_enabled_optional_sources_are_offered():
-    labels = sources.available_source_labels(SimpleNamespace(enable_twitter=True, enable_openbb=True))
-    assert "Twitter / X" in labels
-    assert "OpenBB" in labels
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_type", "config", "editable", "card_fragment"),
+    [
+        (
+            "telegram",
+            {"channel": "python_news", "fetch_limit": 20},
+            True,
+            "Канал: @python_news",
+        ),
+        ("reddit", {"subreddit": "python"}, False, "Legacy Reddit\nТип: reddit"),
+    ],
+)
+async def test_source_card_respects_stability(
+    monkeypatch, source_type, config, editable, card_fragment
+):
+    source_id = uuid4()
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def get_source_owned(self, *_args):
+            return SimpleNamespace(
+                id=source_id,
+                display_name="Legacy Reddit",
+                source_type=source_type,
+                config=config,
+                enabled=True,
+            )
+
+    monkeypatch.setattr(sources, "ReportRepository", Repository)
+    callback = FakeCallback(f"source:view:{source_id}")
+
+    await sources.view_source(callback, object(), SimpleNamespace(id=uuid4()))
+
+    assert card_fragment in callback.message.answers[-1][0]
+    labels = button_labels(callback.message)
+    assert ("Изменить" in labels) is editable
