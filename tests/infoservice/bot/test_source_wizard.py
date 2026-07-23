@@ -349,7 +349,7 @@ async def test_save_validates_then_creates_once(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_advanced_staging_keeps_supported_options_screen():
+async def test_advanced_shows_supported_field_menu():
     state = FakeState()
     draft = source_wizard.SourceDraft.new(
         str(uuid4()), "telegram"
@@ -364,8 +364,131 @@ async def test_advanced_staging_keeps_supported_options_screen():
     await source_wizard.show_advanced(callback, state)
 
     assert state.value == SourceForm.options
-    assert state.data["source_draft"]["screen"] == "options"
-    assert "значениями по умолчанию" in callback.message.answers[-1][0]
-    assert "source:field:" not in str(
+    assert state.data["source_draft"]["screen"] == "advanced"
+    assert "Выберите параметр" in callback.message.answers[-1][0]
+    assert "source:field:fetch_limit" in str(
         callback.message.answers[-1][1]["reply_markup"]
     )
+
+
+@pytest.mark.asyncio
+async def test_field_error_preserves_draft_and_current_field():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw["current_field"] = "fetch_limit"
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.field_input
+    )
+    message = FakeMessage("13")
+
+    await source_wizard.receive_field(message, state)
+
+    assert state.value == SourceForm.field_input
+    assert state.data["source_draft"]["values"]["fetch_limit"] == 20
+    assert "20" in message.answers[-1][0]
+
+
+@pytest.mark.asyncio
+async def test_valid_field_requires_next_before_returning_to_options():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw["current_field"] = "fetch_limit"
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.field_input
+    )
+    message = FakeMessage("50")
+
+    await source_wizard.receive_field(message, state)
+
+    assert state.value == SourceForm.value_review
+    assert state.data["source_draft"]["values"]["fetch_limit"] == 50
+    assert "Далее →" in labels(message.answers[-1][1]["reply_markup"])
+
+
+@pytest.mark.asyncio
+async def test_back_from_field_input_returns_to_advanced_field_menu():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw.update(
+        current_field="fetch_limit",
+        screen="field_input",
+        history=["catalog", "primary", "value_review", "options", "advanced"],
+    )
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.field_input
+    )
+
+    callback = FakeCallback("source:back")
+    await source_wizard.go_back(callback, state)
+
+    assert state.value == SourceForm.options
+    assert state.data["source_draft"]["screen"] == "advanced"
+    assert "source:field:fetch_limit" in str(
+        callback.message.answers[-1][1]["reply_markup"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_back_from_advanced_returns_to_summary_when_editing_summary():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw.update(screen="advanced", history=["catalog", "primary", "value_review", "options", "summary"])
+    await state.update_data(
+        source_draft=raw,
+        last_card="Шаг 3 из 3\n\nTelegram-канал",
+    )
+    await state.set_state(SourceForm.options)
+
+    callback = FakeCallback("source:back")
+    await source_wizard.go_back(callback, state)
+
+    assert state.value == SourceForm.summary
+    assert callback.message.answers[-1][0] == "Шаг 3 из 3\n\nTelegram-канал"
+    assert "✅ Сохранить источник" in labels(
+        callback.message.answers[-1][1]["reply_markup"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_edit_stable_source_starts_from_existing_config(monkeypatch):
+    source_id = uuid4()
+    state = FakeState()
+    source = SimpleNamespace(
+        id=source_id,
+        source_type="telegram",
+        config={"channel": "python_news", "fetch_limit": 20},
+        enabled=True,
+    )
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def get_source_owned(self, candidate, _user_id):
+            assert candidate == source_id
+            return source
+
+    monkeypatch.setattr(source_wizard, "ReportRepository", Repository)
+    await source_wizard.begin_edit(
+        FakeCallback(f"source:edit:{source_id}"),
+        state,
+        object(),
+        SimpleNamespace(id=uuid4()),
+    )
+
+    raw = state.data["source_draft"]
+    assert raw["mode"] == "edit"
+    assert raw["values"]["channel"] == "python_news"
+    assert state.value == SourceForm.options

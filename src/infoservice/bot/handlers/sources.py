@@ -5,8 +5,9 @@ from __future__ import annotations
 from uuid import UUID
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from src.infoservice.bot.keyboards import (
     delete_confirmation_menu,
@@ -77,6 +78,25 @@ async def _source_or_hidden(
     except NotFound:
         await callback.answer(SOURCE_NOT_FOUND, show_alert=True)
         return None
+
+
+@router.message(Command("sources"))
+async def sources_command(message: Message, state: FSMContext, session, user) -> None:
+    await state.clear()
+    reports = await ReportRepository(session).list_owned(user.id)
+    if not reports:
+        await message.answer(
+            "Сначала создайте отчёт.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                InlineKeyboardButton(text="➕ Новый отчёт", callback_data="report:create")
+            ]]),
+        )
+        return
+    markup = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=report.name, callback_data=f"source:list:{report.id}")]
+        for report in reports
+    ])
+    await message.answer("Выберите отчёт.", reply_markup=markup)
 
 
 @router.callback_query(F.data.startswith("source:list:"))

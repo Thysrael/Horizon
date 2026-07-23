@@ -16,6 +16,7 @@ from aiogram.types import (
 
 from src.infoservice.bot.keyboards import (
     accepted_value_menu,
+    field_menu,
     primary_input_menu,
     source_catalog_menu,
     source_menu,
@@ -24,6 +25,7 @@ from src.infoservice.bot.keyboards import (
 )
 from src.infoservice.bot.messages_ru import (
     SOURCE_FIELD_ERROR,
+    SOURCE_FIELD_PROMPTS,
     SOURCE_OPTIONS,
     SOURCE_PRIMARY_PROMPTS,
     SOURCE_VALUE_ACCEPTED,
@@ -31,6 +33,8 @@ from src.infoservice.bot.messages_ru import (
 from src.infoservice.bot.source_forms import (
     SourceDraft,
     SourceFieldError,
+    STABLE_SOURCE_TYPES,
+    apply_field,
     format_source_card,
     parse_primary,
     resolve_rss_name,
@@ -268,6 +272,21 @@ async def accept_primary(
     state: FSMContext,
 ) -> None:
     draft = await load_draft(state)
+    if draft.current_field is not None and draft.screen == "field_review":
+        history = list(draft.history)
+        if history[-2:] == ["advanced", "field_input"]:
+            history = history[:-2]
+        raw = draft.to_storage()
+        raw.update(screen="advanced", current_field=None, history=history)
+        draft = SourceDraft.from_storage(raw)
+        await store_draft(state, draft, SourceForm.options)
+        await callback.answer()
+        await replace_or_answer(
+            callback.message,
+            f"{step_label(draft, 'advanced')}\nПараметр сохранён. Можно изменить ещё один.",
+            field_menu(draft.source_type),
+        )
+        return
     draft = _with_screen(
         draft,
         "options",
@@ -288,20 +307,103 @@ async def show_advanced(
     callback: CallbackQuery,
     state: FSMContext,
 ) -> None:
-    """Keep advanced navigation safe until Task 5 owns field input."""
     draft = await load_draft(state)
-    await callback.answer(
-        "Дополнительные настройки будут доступны на следующем шаге разработки."
-    )
-    if draft.screen == "summary":
-        card = str((await state.get_data()).get("last_card") or "")
-        await replace_or_answer(callback.message, card, summary_menu())
-        return
+    draft = _with_screen(draft, "advanced", [*draft.history, draft.screen])
     await store_draft(state, draft, SourceForm.options)
+    await callback.answer()
     await replace_or_answer(
         callback.message,
-        f"{step_label(draft, 'options')}\n{SOURCE_OPTIONS}",
-        source_options_menu(),
+        f"{step_label(draft, 'advanced')}\nВыберите параметр для изменения.",
+        field_menu(draft.source_type),
+    )
+
+
+@router.callback_query(SourceForm.options, F.data.startswith("source:field:"))
+async def choose_field(callback: CallbackQuery, state: FSMContext) -> None:
+    draft = await load_draft(state)
+    field_name = (callback.data or "").rsplit(":", 1)[-1]
+    allowed_fields = {
+        "rss": {"name", "category"},
+        "telegram": {"category", "fetch_limit"},
+        "github": {"category"},
+        "hackernews": {"fetch_top_stories", "min_score", "category"},
+    }[draft.source_type]
+    if field_name not in SOURCE_FIELD_PROMPTS or field_name not in allowed_fields:
+        await callback.answer("Поле недоступно", show_alert=True)
+        return
+    raw = draft.to_storage()
+    raw.update(
+        current_field=field_name,
+        screen="field_input",
+        history=[*draft.history, "advanced"],
+    )
+    draft = SourceDraft.from_storage(raw)
+    await store_draft(state, draft, SourceForm.field_input)
+    await callback.answer()
+    await replace_or_answer(
+        callback.message,
+        f"{step_label(draft, 'field_input')}\n{SOURCE_FIELD_PROMPTS[field_name]}",
+    )
+
+
+@router.message(SourceForm.field_input, F.text)
+async def receive_field(message: Message, state: FSMContext) -> None:
+    draft = await load_draft(state)
+    if draft.current_field is None:
+        await message.answer("Выберите поле заново.")
+        return
+    try:
+        draft = apply_field(draft, draft.current_field, message.text)
+    except SourceFieldError as exc:
+        await message.answer(
+            SOURCE_FIELD_ERROR.format(
+                field=exc.field,
+                reason=exc.reason,
+                example=exc.example,
+            )
+        )
+        return
+    raw = draft.to_storage()
+    raw.update(screen="field_review", history=[*draft.history, "field_input"])
+    draft = SourceDraft.from_storage(raw)
+    await store_draft(state, draft, SourceForm.value_review)
+    await message.answer(
+        f"{step_label(draft, 'field_review')}\n"
+        f"{SOURCE_VALUE_ACCEPTED.format(value=message.text.strip())}",
+        reply_markup=accepted_value_menu(),
+    )
+
+
+@router.callback_query(F.data.startswith("source:edit:"))
+async def begin_edit(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session,
+    user,
+) -> None:
+    source_id = _uuid((callback.data or "").rsplit(":", 1)[-1])
+    try:
+        if source_id is None:
+            raise NotFound("Источник не найден")
+        source = await ReportRepository(session).get_source_owned(source_id, user.id)
+    except NotFound:
+        await callback.answer("Источник не найден", show_alert=True)
+        return
+    if source.source_type not in STABLE_SOURCE_TYPES:
+        await callback.answer(
+            "Редактирование этого типа пока недоступно. Его можно отключить или удалить.",
+            show_alert=True,
+        )
+        return
+    draft = SourceDraft.edit(
+        str(source.id), source.source_type, source.config, source.enabled
+    )
+    await store_draft(state, draft, SourceForm.options)
+    await callback.answer()
+    await replace_or_answer(
+        callback.message,
+        format_source_card(source.source_type, source.config, source.enabled),
+        field_menu(source.source_type),
     )
 
 
@@ -410,6 +512,33 @@ async def _render_previous(
             callback.message,
             f"{step_label(draft, 'options')}\n{SOURCE_OPTIONS}",
             source_options_menu(),
+        )
+        return
+
+    if previous == "advanced":
+        raw = draft.to_storage()
+        raw.update(screen="advanced", current_field=None)
+        draft = SourceDraft.from_storage(raw)
+        await store_draft(state, draft, SourceForm.options)
+        await replace_or_answer(
+            callback.message,
+            f"{step_label(draft, 'advanced')}\nВыберите параметр для изменения.",
+            field_menu(draft.source_type),
+        )
+        return
+
+    if previous == "summary":
+        await store_draft(state, draft, SourceForm.summary)
+        card = str((await state.get_data()).get("last_card") or "")
+        await replace_or_answer(callback.message, card, summary_menu())
+        return
+
+    if previous == "field_input" and draft.current_field is not None:
+        await store_draft(state, draft, SourceForm.field_input)
+        await replace_or_answer(
+            callback.message,
+            f"{step_label(draft, 'field_input')}\n"
+            f"{SOURCE_FIELD_PROMPTS[draft.current_field]}",
         )
         return
 

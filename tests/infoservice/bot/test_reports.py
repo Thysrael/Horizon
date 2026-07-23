@@ -91,3 +91,67 @@ async def test_manual_run_requires_credential(monkeypatch):
     callback = Callback()
     await reports.manual_run(callback, Session(), SimpleNamespace(id=uuid4()))
     assert callback.calls == [("Для запуска добавьте ключ DeepSeek.", {"show_alert": True})]
+
+
+@pytest.mark.asyncio
+async def test_newreport_command_starts_name_state():
+    replies = []
+
+    class Message:
+        async def answer(self, text, **kwargs):
+            replies.append((text, kwargs))
+
+    class State:
+        value = None
+
+        async def clear(self):
+            self.value = None
+
+        async def set_state(self, value):
+            self.value = value
+
+    state = State()
+    await reports.new_report_command(Message(), state)
+
+    assert state.value == CreateReport.name
+    assert "название" in replies[-1][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_reports_command_clears_state_and_lists_owned_reports(monkeypatch):
+    owned_reports = [SimpleNamespace(id=uuid4(), name="Python")]
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def list_owned(self, user_id):
+            assert user_id == "user-id"
+            return owned_reports
+
+    class Message:
+        replies = []
+
+        async def answer(self, text, **kwargs):
+            self.replies.append((text, kwargs))
+
+    class State:
+        cleared = False
+
+        async def clear(self):
+            self.cleared = True
+
+    monkeypatch.setattr(reports, "ReportRepository", Repository)
+    message = Message()
+    state = State()
+    await reports.reports_command(
+        message, state, object(), SimpleNamespace(id="user-id")
+    )
+
+    assert state.cleared is True
+    callbacks = [
+        button.callback_data
+        for row in message.replies[-1][1]["reply_markup"].inline_keyboard
+        for button in row
+    ]
+    assert f"report:view:{owned_reports[0].id}" in callbacks

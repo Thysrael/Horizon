@@ -141,3 +141,41 @@ async def test_source_card_respects_stability(
     assert card_fragment in callback.message.answers[-1][0]
     labels = button_labels(callback.message)
     assert ("Изменить" in labels) is editable
+
+
+@pytest.mark.asyncio
+async def test_sources_command_lists_owned_reports(monkeypatch):
+    reports = [SimpleNamespace(id=uuid4(), name="Python"), SimpleNamespace(id=uuid4(), name="AI")]
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def list_owned(self, user_id):
+            assert user_id == "user-id"
+            return reports
+
+    class Message:
+        answers = []
+
+        async def answer(self, text, **kwargs):
+            self.answers.append((text, kwargs))
+
+    class State:
+        cleared = False
+
+        async def clear(self):
+            self.cleared = True
+
+    monkeypatch.setattr(sources, "ReportRepository", Repository)
+    message = Message()
+    state = State()
+    await sources.sources_command(message, state, object(), SimpleNamespace(id="user-id"))
+
+    assert state.cleared is True
+    callbacks = [
+        button.callback_data
+        for row in message.answers[-1][1]["reply_markup"].inline_keyboard
+        for button in row
+    ]
+    assert callbacks == [f"source:list:{report.id}" for report in reports]

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from pydantic import BaseModel, Field
@@ -57,14 +58,37 @@ async def _owned(callback: CallbackQuery, session: AsyncSession, user, report_id
         return None
 
 
+def report_list_markup(reports) -> InlineKeyboardMarkup:
+    buttons = [[InlineKeyboardButton(text="Создать отчёт", callback_data="report:create")]]
+    buttons.extend(
+        [InlineKeyboardButton(text=report.name, callback_data=f"report:view:{report.id}")]
+        for report in reports
+    )
+    buttons.append([InlineKeyboardButton(text="‹ Главное меню", callback_data="menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+@router.message(Command("reports"))
+async def reports_command(message: Message, state: FSMContext, session, user) -> None:
+    await state.clear()
+    reports = await ReportRepository(session).list_owned(user.id)
+    text = REPORTS_MENU if reports else f"{REPORTS_MENU}\nСоздайте первый отчёт."
+    await message.answer(text, reply_markup=report_list_markup(reports))
+
+
+@router.message(Command("newreport"))
+async def new_report_command(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(CreateReport.name)
+    await message.answer(REPORT_NAME_REQUEST)
+
+
 @router.callback_query(F.data == "reports")
 async def list_reports(callback: CallbackQuery, session: AsyncSession, user) -> None:
     await callback.answer()
     reports = await ReportRepository(session).list_owned(user.id)
     text = REPORTS_MENU if reports else f"{REPORTS_MENU}\nСоздайте первый отчёт."
-    buttons = [[InlineKeyboardButton(text="Создать отчёт", callback_data="report:create")]]
-    buttons.extend([[InlineKeyboardButton(text=report.name, callback_data=f"report:view:{report.id}")]] for report in reports)
-    await callback.message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await callback.message.answer(text, reply_markup=report_list_markup(reports))
 
 
 @router.callback_query(F.data == "report:create")
