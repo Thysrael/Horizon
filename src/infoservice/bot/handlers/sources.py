@@ -9,7 +9,7 @@ from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from src.infoservice.bot.keyboards import source_catalog_menu, source_menu
+from src.infoservice.bot.keyboards import delete_confirmation_menu, source_catalog_menu, source_menu
 from src.infoservice.bot.messages_ru import (SOURCE_CONFIG_REQUEST, SOURCE_CREATED, SOURCE_DELETED, SOURCE_DELETE_CONFIRMATION, SOURCE_INVALID,
     SOURCE_NOT_FOUND, SOURCE_OPTIONAL_PREREQUISITE, SOURCE_UNAVAILABLE, SOURCE_UPDATED, SOURCES_MENU)
 from src.infoservice.bot.states import SourceForm
@@ -172,7 +172,7 @@ async def request_delete_source(callback: CallbackQuery, state: FSMContext, sess
     source_id = _uuid(callback.data.rsplit(":", 1)[-1])
     if source_id is None or await _source_or_hidden(callback, session, user, source_id) is None: return
     await state.update_data(source_delete_id=str(source_id)); await state.set_state(SourceForm.delete_confirmation)
-    await callback.answer(); await callback.message.answer(SOURCE_DELETE_CONFIRMATION, reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Да, удалить", callback_data="source:delete-confirm")]]))
+    await callback.answer(); await callback.message.answer(SOURCE_DELETE_CONFIRMATION, reply_markup=delete_confirmation_menu())
 
 
 @router.callback_query(SourceForm.delete_confirmation, F.data == "source:delete-confirm")

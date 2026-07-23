@@ -74,7 +74,7 @@ def report_menu(report_id: str, enabled: bool = True) -> InlineKeyboardMarkup:
     ])
 
 
-def source_catalog_menu(report_id: str) -> InlineKeyboardMarkup:
+def source_catalog_menu(report_id: str, _capabilities=None) -> InlineKeyboardMarkup:
     labels = {
         "rss": "🟠 RSS / Atom",
         "telegram": "🔵 Telegram-канал",
@@ -90,6 +90,16 @@ def source_catalog_menu(report_id: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
     ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def delete_confirmation_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Да, удалить", callback_data="source:delete-confirm")],
+        [
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+        ],
+    ])
 
 
 def primary_input_menu() -> InlineKeyboardMarkup:
