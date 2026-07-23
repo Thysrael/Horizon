@@ -157,6 +157,76 @@ async def test_delete_back_clears_confirmation_and_restores_owned_source_card(mo
     ]
 
 
+@pytest.mark.asyncio
+async def test_dispatcher_routes_delete_confirmation_callbacks_before_delete_prefix(
+    monkeypatch,
+):
+    """Exact delete callbacks must win over the broad source:delete: route."""
+    source_id = uuid4()
+    user = SimpleNamespace(id=uuid4())
+    deleted = []
+
+    class Repository:
+        def __init__(self, session):
+            pass
+
+        async def get_source_owned(self, requested_source_id, requested_user_id):
+            assert (requested_source_id, requested_user_id) == (source_id, user.id)
+            return SimpleNamespace(
+                id=source_id,
+                display_name="Python News",
+                source_type="telegram",
+                config={"channel": "python_news", "fetch_limit": 20},
+                enabled=True,
+            )
+
+        async def delete_source(self, requested_source_id, requested_user_id):
+            assert (requested_source_id, requested_user_id) == (source_id, user.id)
+            deleted.append(source_id)
+
+    monkeypatch.setattr(sources, "ReportRepository", Repository)
+    state = FakeState()
+    message = FakeMessage()
+
+    for data, raw_state in [
+        (f"source:delete:{source_id}", None),
+        ("source:delete-back", SourceForm.delete_confirmation.state),
+    ]:
+        callback = FakeCallback(data, message)
+        await sources.router.propagate_event(
+            "callback_query",
+            callback,
+            state=state,
+            session=object(),
+            user=user,
+            raw_state=raw_state,
+        )
+
+    assert message.answers[-1][0].startswith("Telegram-канал\nКанал: @python_news")
+    assert state.cleared is True
+
+    state.cleared = False
+    await sources.router.propagate_event(
+        "callback_query",
+        FakeCallback(f"source:delete:{source_id}", message),
+        state=state,
+        session=object(),
+        user=user,
+        raw_state=None,
+    )
+    await sources.router.propagate_event(
+        "callback_query",
+        FakeCallback("source:delete-confirm", message),
+        state=state,
+        session=object(),
+        user=user,
+        raw_state=SourceForm.delete_confirmation.state,
+    )
+
+    assert deleted == [source_id]
+    assert message.answers[-1][0] == "Источник удалён."
+
+
 def test_first_two_steps_have_explicit_next_action():
     assert "Далее →" in labels(accepted_value_menu())
     assert "Далее →" in labels(source_options_menu())

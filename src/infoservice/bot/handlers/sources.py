@@ -228,35 +228,6 @@ async def toggle_source(callback: CallbackQuery, session, user, settings) -> Non
     )
 
 
-@router.callback_query(F.data.startswith("source:delete:"))
-async def request_delete_source(
-    callback: CallbackQuery,
-    state: FSMContext,
-    session,
-    user,
-) -> None:
-    source_id = _uuid((callback.data or "").rsplit(":", 1)[-1])
-    if source_id is None:
-        await callback.answer(SOURCE_NOT_FOUND, show_alert=True)
-        return
-    source = await _source_or_hidden(
-        callback,
-        session,
-        user,
-        source_id,
-    )
-    if source is None:
-        return
-    await state.update_data(source_delete_id=str(source_id))
-    await state.set_state(SourceForm.delete_confirmation)
-    await callback.answer()
-    await replace_or_answer(
-        callback.message,
-        SOURCE_DELETE_CONFIRMATION,
-        delete_confirmation_menu(),
-    )
-
-
 @router.callback_query(
     SourceForm.delete_confirmation,
     F.data == "source:delete-back",
@@ -314,3 +285,32 @@ async def delete_source(
     await state.clear()
     await callback.answer()
     await replace_or_answer(callback.message, SOURCE_DELETED)
+
+
+@router.callback_query(F.data.startswith("source:delete:"))
+async def request_delete_source(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session,
+    user,
+) -> None:
+    source_id = _uuid((callback.data or "").rsplit(":", 1)[-1])
+    if source_id is None:
+        await callback.answer(SOURCE_NOT_FOUND, show_alert=True)
+        return
+    source = await _source_or_hidden(
+        callback,
+        session,
+        user,
+        source_id,
+    )
+    if source is None:
+        return
+    await state.update_data(source_delete_id=str(source_id))
+    await state.set_state(SourceForm.delete_confirmation)
+    await callback.answer()
+    await replace_or_answer(
+        callback.message,
+        SOURCE_DELETE_CONFIRMATION,
+        delete_confirmation_menu(),
+    )
