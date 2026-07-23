@@ -61,11 +61,50 @@ def test_hackernews_defaults_validate_through_source_catalog():
     assert validated_config(draft, settings())["min_score"] == 100
 
 
+@pytest.mark.parametrize("source_type", ("reddit", "twitter"))
+def test_edit_rejects_non_stable_source_types(source_type):
+    with pytest.raises(ValueError, match="unsupported stable source type"):
+        SourceDraft.edit("source-id", source_type, {}, enabled=True)
+
+
+@pytest.mark.parametrize("source_type", ("reddit", "twitter"))
+def test_validated_config_rejects_non_stable_source_types(source_type):
+    draft = SourceDraft(report_id="report-id", source_type=source_type)
+
+    with pytest.raises(ValueError, match="unsupported stable source type"):
+        validated_config(draft, settings())
+
+
 def test_apply_field_returns_new_draft_and_normalizes_optional_category():
     draft = SourceDraft.new("report-id", "telegram").with_values(channel="python_news")
     updated = apply_field(draft, "category", "-")
     assert updated is not draft
     assert updated.values["category"] is None
+
+
+def test_draft_values_are_immutable_and_storage_round_trip_is_defensive():
+    draft = SourceDraft.new("report-id", "telegram").with_values(
+        channel="python_news",
+        filters={"authors": ["alice"]},
+    )
+
+    with pytest.raises(TypeError):
+        draft.values["fetch_limit"] = 50
+    with pytest.raises(AttributeError):
+        draft.values["filters"]["authors"].append("bob")
+
+    stored = draft.to_storage()
+    assert stored["values"] == {
+        "enabled": True,
+        "fetch_limit": 20,
+        "channel": "python_news",
+        "filters": {"authors": ["alice"]},
+    }
+    restored = SourceDraft.from_storage(stored)
+    stored["values"]["filters"]["authors"].append("bob")
+
+    assert restored == draft
+    assert restored.values["filters"]["authors"] == ("alice",)
 
 
 def test_invalid_target_has_field_reason_and_example():

@@ -35,6 +35,29 @@ DEFAULTS: Mapping[str, Mapping[str, Any]] = MappingProxyType(
 )
 
 
+def _require_stable_source_type(source_type: str) -> None:
+    if source_type not in STABLE_SOURCE_TYPES:
+        raise ValueError("unsupported stable source type")
+
+
+def _freeze_json_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return MappingProxyType(
+            {key: _freeze_json_value(nested) for key, nested in value.items()}
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_freeze_json_value(nested) for nested in value)
+    return value
+
+
+def _storage_json_value(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _storage_json_value(nested) for key, nested in value.items()}
+    if isinstance(value, tuple):
+        return [_storage_json_value(nested) for nested in value]
+    return value
+
+
 class SourceFieldError(ValueError):
     """An input error that can be displayed next to a particular form field."""
 
@@ -54,15 +77,17 @@ class SourceDraft:
     source_id: str | None = None
     mode: str = "create"
     enabled: bool = True
-    values: dict[str, Any] = field(default_factory=dict)
+    values: Mapping[str, Any] = field(default_factory=dict)
     current_field: str | None = None
     screen: str = "primary"
     history: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "values", _freeze_json_value(self.values))
+
     @classmethod
     def new(cls, report_id: str, source_type: str) -> SourceDraft:
-        if source_type not in STABLE_SOURCE_TYPES:
-            raise ValueError("unsupported stable source type")
+        _require_stable_source_type(source_type)
         return cls(
             report_id=report_id,
             source_type=source_type,
@@ -77,6 +102,7 @@ class SourceDraft:
         values: Mapping[str, Any],
         enabled: bool,
     ) -> SourceDraft:
+        _require_stable_source_type(source_type)
         return cls(
             report_id=None,
             source_id=source_id,
@@ -98,7 +124,7 @@ class SourceDraft:
             "source_id": self.source_id,
             "mode": self.mode,
             "enabled": self.enabled,
-            "values": self.values,
+            "values": _storage_json_value(self.values),
             "current_field": self.current_field,
             "screen": self.screen,
             "history": list(self.history),
@@ -266,8 +292,11 @@ async def resolve_rss_name(url: str, client: httpx.AsyncClient | None = None) ->
 
 def validated_config(draft: SourceDraft, settings: Settings) -> dict[str, Any]:
     """Run the unchanged source catalog validation for a completed draft."""
+    _require_stable_source_type(draft.source_type)
     try:
-        result = SourceCatalog.validate(draft.source_type, draft.values, settings)
+        result = SourceCatalog.validate(
+            draft.source_type, _storage_json_value(draft.values), settings
+        )
     except SourceValidationError as exc:
         raise SourceFieldError(
             draft.current_field or "config",
