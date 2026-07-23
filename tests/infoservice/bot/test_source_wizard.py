@@ -443,6 +443,28 @@ async def test_advanced_shows_supported_field_menu():
 
 
 @pytest.mark.asyncio
+async def test_choose_field_shows_navigation_controls():
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(
+        channel="python_news"
+    )
+    raw = draft.to_storage()
+    raw.update(screen="advanced", history=["catalog", "primary", "value_review"])
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.options
+    )
+    callback = FakeCallback("source:field:fetch_limit")
+
+    await source_wizard.choose_field(callback, state)
+
+    assert state.value == SourceForm.field_input
+    assert labels(callback.message.answers[-1][1]["reply_markup"]) == [
+        "‹ Назад",
+        "Отмена",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_field_error_preserves_draft_and_current_field():
     state = FakeState()
     draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram").with_values(

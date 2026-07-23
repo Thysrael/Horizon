@@ -343,6 +343,7 @@ async def choose_field(callback: CallbackQuery, state: FSMContext) -> None:
     await replace_or_answer(
         callback.message,
         f"{step_label(draft, 'field_input')}\n{SOURCE_FIELD_PROMPTS[field_name]}",
+        primary_input_menu(),
     )
 
 
