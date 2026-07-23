@@ -15,6 +15,7 @@ from src.infoservice.bot.keyboards import (
 )
 from src.infoservice.bot.handlers import source_wizard, sources
 from src.infoservice.bot.states import SourceForm
+from src.infoservice.errors import LimitExceeded
 
 
 def labels(markup):
@@ -519,4 +520,141 @@ async def test_back_from_edit_summary_returns_to_source_card():
     assert callback.message.answers[-1][0].startswith("Telegram-канал")
     assert "Изменить" in labels(
         callback.message.answers[-1][1]["reply_markup"]
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "active_state",
+    [
+        SourceForm.primary_input,
+        SourceForm.value_review,
+        SourceForm.options,
+        SourceForm.field_input,
+        SourceForm.summary,
+    ],
+)
+async def test_inline_cancel_clears_every_source_wizard_state(active_state):
+    from src.infoservice.bot.handlers.navigation import cancel_callback
+
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(str(uuid4()), "telegram")
+    await source_wizard.store_draft(state, draft, active_state)
+    callback = FakeCallback("cancel")
+
+    await cancel_callback(callback, state)
+
+    assert state.cleared is True
+    assert "отменено" in callback.message.answers[-1][0].lower()
+
+
+@pytest.mark.asyncio
+async def test_back_from_first_input_returns_to_stable_catalog():
+    state = FakeState()
+    report_id = uuid4()
+    draft = source_wizard.SourceDraft.new(str(report_id), "telegram")
+    raw = draft.to_storage()
+    raw.update(screen="primary", history=["catalog"])
+    await source_wizard.store_draft(
+        state, source_wizard.SourceDraft.from_storage(raw), SourceForm.primary_input
+    )
+    callback = FakeCallback("source:back")
+
+    await source_wizard.go_back(callback, state)
+
+    assert state.cleared is True
+    assert labels(callback.message.answers[-1][1]["reply_markup"])[:4] == [
+        "🟠 RSS / Atom",
+        "🔵 Telegram-канал",
+        "⚫ GitHub",
+        "🟠 Hacker News",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_back_from_edit_options_returns_to_source_card():
+    state = FakeState()
+    source_id = uuid4()
+    draft = source_wizard.SourceDraft.edit(
+        str(source_id),
+        "telegram",
+        {"channel": "python_news", "fetch_limit": 20},
+        enabled=False,
+    )
+    await source_wizard.store_draft(state, draft, SourceForm.options)
+    callback = FakeCallback("source:back")
+
+    await source_wizard.go_back(callback, state)
+
+    assert state.cleared is True
+    assert "приостановлен" in callback.message.answers[-1][0]
+    assert "Изменить" in labels(callback.message.answers[-1][1]["reply_markup"])
+
+
+@pytest.mark.asyncio
+async def test_foreign_report_is_hidden_before_draft_creation(monkeypatch):
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def get_owned(self, *_args):
+            from src.infoservice.errors import NotFound
+
+            raise NotFound("Отчёт не найден")
+
+    monkeypatch.setattr(source_wizard, "ReportRepository", Repository)
+    state = FakeState()
+    callback = FakeCallback(f"source:create:rss:{uuid4()}")
+
+    await source_wizard.begin_create(
+        callback, state, object(), SimpleNamespace(id=uuid4())
+    )
+
+    assert state.data == {}
+    assert callback.answers[-1][1]["show_alert"] is True
+
+
+def test_new_source_ui_contains_no_json_prompt():
+    from src.infoservice.bot import messages_ru
+
+    source_messages = [
+        value
+        for name, value in vars(messages_ru).items()
+        if name.startswith("SOURCE_") and isinstance(value, str)
+    ]
+    assert all("json" not in text.lower() for text in source_messages)
+
+
+@pytest.mark.asyncio
+async def test_save_at_source_limit_keeps_draft_and_shows_limit(monkeypatch):
+    report_id, user_id = uuid4(), uuid4()
+    state = FakeState()
+    draft = source_wizard.SourceDraft.new(
+        str(report_id), "telegram"
+    ).with_values(channel="python_news")
+    await source_wizard.store_draft(state, draft, SourceForm.summary)
+
+    class Repository:
+        def __init__(self, _session):
+            pass
+
+        async def add_source(self, *_args):
+            raise LimitExceeded("В отчёте может быть не более 30 источников")
+
+    monkeypatch.setattr(source_wizard, "ReportRepository", Repository)
+    callback = FakeCallback("source:save")
+
+    await source_wizard.save_source(
+        callback,
+        state,
+        object(),
+        SimpleNamespace(id=user_id),
+        SimpleNamespace(enable_twitter=False, enable_openbb=False),
+    )
+
+    assert state.cleared is False
+    assert state.data["source_draft"]["report_id"] == str(report_id)
+    assert callback.answers[-1] == (
+        "В отчёте может быть не более 30 источников",
+        {"show_alert": True},
     )
