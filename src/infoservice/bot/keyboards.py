@@ -96,7 +96,7 @@ def delete_confirmation_menu() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Да, удалить", callback_data="source:delete-confirm")],
         [
-            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:delete-back"),
             InlineKeyboardButton(text="Отмена", callback_data="cancel"),
         ],
     ])

@@ -88,3 +88,40 @@
 - `uv run pytest -v` — 527 passed, 13 skipped, 1 existing third-party
   `google.genai` deprecation warning.
 - `git diff --check` — clean.
+
+## P1 review fix: deletion confirmation back action
+
+### Scope
+
+- Changed only the deletion confirmation's back callback to
+  `source:delete-back`, keeping it distinct from the wizard's generic
+  `source:back` action.
+- Added a `SourceForm.delete_confirmation` callback handler that reads the
+  pending source ID from state, owner-loads that source, clears the
+  confirmation state, and restores the normal source card and its actions.
+- If the state ID is absent or the source is no longer owned by the current
+  user, the handler shows the existing not-found alert and leaves state intact.
+
+### TDD evidence
+
+1. Updated the confirmation-keyboard contract and added
+   `test_delete_back_clears_confirmation_and_restores_owned_source_card`
+   before changing production code. The regression invokes the handler,
+   asserts the repository receives both the state-held source ID and current
+   user ID, asserts state is cleared, and asserts the returned card retains
+   its edit/enable/delete/menu actions.
+2. RED run:
+   `uv run pytest tests/infoservice/bot/test_source_wizard.py -v` — 2 failed,
+   exactly because the keyboard still emitted `source:back` and
+   `return_to_source_from_delete` did not exist.
+3. Added the distinct callback and the minimal owner-scoped return handler.
+4. GREEN focused runs:
+   - `uv run pytest tests/infoservice/bot/test_source_wizard.py -v` — 8 passed.
+   - `uv run pytest tests/infoservice/bot/test_sources.py -v` — 12 passed.
+   - `git diff --check` — clean.
+
+### Final verification
+
+- `uv run pytest -v` — 528 passed, 13 skipped, 1 existing third-party
+  `google.genai` deprecation warning.
+- `git diff --check` — clean.

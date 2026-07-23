@@ -175,6 +175,23 @@ async def request_delete_source(callback: CallbackQuery, state: FSMContext, sess
     await callback.answer(); await callback.message.answer(SOURCE_DELETE_CONFIRMATION, reply_markup=delete_confirmation_menu())
 
 
+@router.callback_query(SourceForm.delete_confirmation, F.data == "source:delete-back")
+async def return_to_source_from_delete(callback: CallbackQuery, state: FSMContext, session, user) -> None:
+    source_id = _uuid((await state.get_data()).get("source_delete_id"))
+    if source_id is None:
+        await callback.answer(SOURCE_NOT_FOUND, show_alert=True)
+        return
+    source = await _source_or_hidden(callback, session, user, source_id)
+    if source is None:
+        return
+    await state.clear()
+    await callback.answer()
+    await callback.message.answer(
+        f"{source.display_name}\nТип: {source.source_type}",
+        reply_markup=source_menu(str(source.id), source.enabled),
+    )
+
+
 @router.callback_query(SourceForm.delete_confirmation, F.data == "source:delete-confirm")
 async def delete_source(callback: CallbackQuery, state: FSMContext, session, user) -> None:
     source_id = _uuid((await state.get_data()).get("source_delete_id"))

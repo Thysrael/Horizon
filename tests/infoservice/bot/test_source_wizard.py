@@ -90,8 +90,63 @@ def test_delete_confirmation_has_source_flow_controls():
     assert [button.text for button in buttons] == ["Да, удалить", "‹ Назад", "Отмена"]
     assert [button.callback_data for button in buttons] == [
         "source:delete-confirm",
-        "source:back",
+        "source:delete-back",
         "cancel",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_delete_back_clears_confirmation_and_restores_owned_source_card(monkeypatch):
+    source_id = uuid4()
+    user = SimpleNamespace(id=uuid4())
+
+    class Repository:
+        def __init__(self, session):
+            pass
+
+        async def get_source_owned(self, requested_source_id, requested_user_id):
+            assert requested_source_id == source_id
+            assert requested_user_id == user.id
+            return SimpleNamespace(
+                id=source_id,
+                display_name="Python News",
+                source_type="telegram",
+                enabled=True,
+            )
+
+    class State:
+        cleared = False
+
+        async def get_data(self):
+            return {"source_delete_id": str(source_id)}
+
+        async def clear(self):
+            self.cleared = True
+
+    class Message:
+        answers = []
+
+        async def answer(self, text, **kwargs):
+            self.answers.append((text, kwargs))
+
+    class Callback:
+        message = Message()
+        answered = False
+
+        async def answer(self, *_args, **_kwargs):
+            self.answered = True
+
+    monkeypatch.setattr(sources, "ReportRepository", Repository)
+    state = State()
+    callback = Callback()
+
+    await sources.return_to_source_from_delete(callback, state, object(), user)
+
+    assert state.cleared is True
+    assert callback.answered is True
+    assert callback.message.answers[0][0] == "Python News\nТип: telegram"
+    assert labels(callback.message.answers[0][1]["reply_markup"]) == [
+        "Изменить", "Отключить", "Удалить", "‹ Главное меню",
     ]
 
 
