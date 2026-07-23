@@ -1,5 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+from src.infoservice.bot.source_forms import STABLE_SOURCE_TYPES
+
 
 MAIN_MENU_CALLBACKS = ("reports", "report:create", "llm", "settings", "help")
 
@@ -72,18 +74,104 @@ def report_menu(report_id: str, enabled: bool = True) -> InlineKeyboardMarkup:
     ])
 
 
-def source_catalog_menu(report_id: str, capabilities) -> InlineKeyboardMarkup:
-    rows = []
-    for capability in capabilities:
-        suffix = " β" if capability.stability == "beta" else ""
-        rows.append([InlineKeyboardButton(text=f"{capability.label}{suffix}", callback_data=f"source:create:{capability.type}:{report_id}")])
+def source_catalog_menu(report_id: str) -> InlineKeyboardMarkup:
+    labels = {
+        "rss": "🟠 RSS / Atom",
+        "telegram": "🔵 Telegram-канал",
+        "github": "⚫ GitHub",
+        "hackernews": "🟠 Hacker News",
+    }
+    rows = [
+        [InlineKeyboardButton(text=labels[source_type], callback_data=f"source:create:{source_type}:{report_id}")]
+        for source_type in STABLE_SOURCE_TYPES
+    ]
+    rows.extend([
+        [InlineKeyboardButton(text="‹ Назад", callback_data=f"source:list:{report_id}")],
+        [InlineKeyboardButton(text="Отмена", callback_data="cancel")],
+    ])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
-def source_menu(source_id: str, enabled: bool) -> InlineKeyboardMarkup:
+def primary_input_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+        InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+    ]])
+
+
+def accepted_value_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Далее →", callback_data="source:next")],
+        [
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+        ],
+    ])
+
+
+def source_options_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="Далее →", callback_data="source:summary")],
+        [InlineKeyboardButton(text="⚙️ Дополнительные настройки", callback_data="source:advanced")],
+        [InlineKeyboardButton(text="Значения по умолчанию", callback_data="source:summary")],
+        [
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+        ],
+    ])
+
+
+def field_menu(source_type: str) -> InlineKeyboardMarkup:
+    fields = {
+        "rss": [("Название", "name"), ("Категория", "category")],
+        "telegram": [("Категория", "category"), ("Количество сообщений", "fetch_limit")],
+        "github": [("Категория", "category")],
+        "hackernews": [
+            ("Количество публикаций", "fetch_top_stories"),
+            ("Минимальный рейтинг", "min_score"),
+            ("Категория", "category"),
+        ],
+    }[source_type]
+    rows = [
+        [InlineKeyboardButton(text=label, callback_data=f"source:field:{name}")]
+        for label, name in fields
+    ]
+    rows.extend([
+        [InlineKeyboardButton(text="Готово", callback_data="source:summary")],
+        [
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+        ],
+    ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def summary_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Сохранить источник", callback_data="source:save"),
+            InlineKeyboardButton(text="✏️ Изменить", callback_data="source:advanced"),
+        ],
+        [
+            InlineKeyboardButton(text="‹ Назад", callback_data="source:back"),
+            InlineKeyboardButton(text="Отмена", callback_data="cancel"),
+        ],
+    ])
+
+
+def source_menu(
+    source_id: str,
+    enabled: bool,
+    editable: bool = True,
+) -> InlineKeyboardMarkup:
     toggle = "disable" if enabled else "enable"
     label = "Отключить" if enabled else "Включить"
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="Изменить", callback_data=f"source:edit:{source_id}"), InlineKeyboardButton(text=label, callback_data=f"source:{toggle}:{source_id}")],
+    rows = []
+    if editable:
+        rows.append([InlineKeyboardButton(text="Изменить", callback_data=f"source:edit:{source_id}")])
+    rows.extend([
+        [InlineKeyboardButton(text=label, callback_data=f"source:{toggle}:{source_id}")],
         [InlineKeyboardButton(text="Удалить", callback_data=f"source:delete:{source_id}")],
+        [InlineKeyboardButton(text="‹ Главное меню", callback_data="menu")],
     ])
+    return InlineKeyboardMarkup(inline_keyboard=rows)

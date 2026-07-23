@@ -45,6 +45,22 @@ MANUAL_RUN_UNAVAILABLE = "Для запуска добавьте ключ DeepSe
 MANUAL_RUN_COOLDOWN = "Отчёт уже запускался недавно."
 HISTORY_EMPTY = "История запусков пуста."
 SOURCES_MENU = "Источники отчёта"
+SOURCE_TYPE_REQUEST = "Выберите тип источника."
+SOURCE_PRIMARY_PROMPTS = {
+    "rss": "Отправьте ссылку на RSS/Atom-ленту.\nПример: https://example.com/feed.xml",
+    "telegram": "Отправьте @username или публичную ссылку t.me.\nПример: @durov",
+    "github": "Отправьте цель GitHub.\nПример: pallets/flask",
+}
+SOURCE_VALUE_ACCEPTED = "Принято: {value}"
+SOURCE_OPTIONS = "Можно продолжить со значениями по умолчанию или изменить дополнительные настройки."
+SOURCE_FIELD_PROMPTS = {
+    "name": "Введите отображаемое название.\nПример: Python Weekly",
+    "category": "Введите категорию или «-», чтобы пропустить.\nПример: Технологии",
+    "fetch_limit": "Выберите 10, 20 или 50 сообщений.",
+    "fetch_top_stories": "Введите количество публикаций от 1 до 500.\nПример: 30",
+    "min_score": "Введите минимальный рейтинг от 0 до 100000.\nПример: 100",
+}
+SOURCE_FIELD_ERROR = "Не удалось принять поле «{field}»: {reason}\nПример: {example}"
 SOURCE_CONFIG_REQUEST = "Отправьте JSON-конфигурацию источника. Поля: {fields}."
 SOURCE_CREATED = "Источник добавлен."
 SOURCE_NOT_FOUND = "Источник не найден"

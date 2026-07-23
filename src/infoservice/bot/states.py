@@ -31,5 +31,11 @@ class EditSchedule(StatesGroup):
 
 
 class SourceForm(StatesGroup):
-    config = State()
+    primary_input = State()
+    value_review = State()
+    options = State()
+    field_input = State()
+    summary = State()
     delete_confirmation = State()
+    # Transitional state for the legacy handler; it is not used by the wizard.
+    config = State()
