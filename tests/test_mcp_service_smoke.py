@@ -51,6 +51,8 @@ def test_validate_config_smoke(tmp_path: Path) -> None:
     assert result["config_path"] == str(config_path.resolve())
     assert result["enabled_sources"]
     assert result["missing_env"] == []
+    assert result["filtering"]["filter_mode"] == "any"
+    assert result["filtering"]["score_criteria"] is None
 
 
 def test_get_effective_config_can_filter_sources(tmp_path: Path) -> None:
@@ -206,6 +208,83 @@ def test_fetch_items_includes_fetch_report_in_response_and_metadata(
     assert result["fetch_report"]["sources"][1]["source"] == "GitHub"
     assert result["meta"]["fetch_status"] == "partial_failure"
     assert service.run_store.load_meta(result["run_id"])["fetch_report"] == result["fetch_report"]
+
+
+def test_score_items_uses_custom_scoring_semantics(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    service = HorizonPipelineService(runs_root=tmp_path / "mcp-runs")
+    service.run_store.create_run("run-custom-score")
+    filtering = FilteringConfig(
+        filter_mode="any",
+        score_criteria=[
+            {
+                "name": "tech",
+                "description": "Technical relevance",
+                "threshold": 8.0,
+            },
+            {
+                "name": "finance",
+                "description": "Financial relevance",
+                "threshold": 6.0,
+            },
+        ],
+    )
+    item = make_item("item-custom")
+
+    class FakeAnalyzer:
+        def __init__(self, ai_client, received_filtering):  # type: ignore[no-untyped-def]
+            assert received_filtering is filtering
+
+        async def analyze_batch(self, items):  # type: ignore[no-untyped-def]
+            items[0].ai_scores = {"tech": 4.0, "finance": 6.0}
+            items[0].ai_score = 6.0
+            return items
+
+    runtime = SimpleNamespace(
+        create_ai_client=lambda config: object(),
+        ContentAnalyzer=FakeAnalyzer,
+    )
+    config = SimpleNamespace(ai=object(), filtering=filtering)
+    ctx = SimpleNamespace(
+        runtime=runtime,
+        config_path=tmp_path / "config.json",
+        config=config,
+    )
+    monkeypatch.setattr(
+        service,
+        "_load_stage_items",
+        lambda **kwargs: ([item], ctx),
+    )
+    monkeypatch.setattr(
+        "src.mcp.service.make_storage",
+        lambda runtime, config_path: object(),
+    )
+
+    def make_filtering_orchestrator():  # type: ignore[no-untyped-def]
+        orchestrator = HorizonOrchestrator.__new__(HorizonOrchestrator)
+        orchestrator.config = config
+        orchestrator.console = SimpleNamespace(print=lambda *args, **kwargs: None)
+        return orchestrator
+
+    monkeypatch.setattr(
+        "src.mcp.service.make_orchestrator",
+        lambda runtime, loaded_config, storage: make_filtering_orchestrator(),
+    )
+
+    result = asyncio.run(
+        service.score_items(
+            run_id="run-custom-score",
+            source_stage="raw",
+        )
+    )
+
+    assert result["above_threshold"] == 1
+    assert result["unscored"] == 0
+    assert result["filter_mode"] == "any"
+    stored = service.run_store.load_items("run-custom-score", "scored")
+    assert stored[0]["ai_scores"] == {"tech": 4.0, "finance": 6.0}
 
 
 def test_filter_items_uses_public_filtering_pipeline_api(tmp_path: Path, monkeypatch) -> None:

@@ -260,6 +260,9 @@ class HorizonPipelineService:
                 if ctx.config.webhook.url_env and not os.getenv(ctx.config.webhook.url_env):
                     missing_env.append(ctx.config.webhook.url_env)
 
+        score_criteria = getattr(ctx.config.filtering, "score_criteria", None)
+        filter_mode = getattr(ctx.config.filtering, "filter_mode", "any")
+
         return {
             "horizon_path": str(ctx.horizon_path),
             "config_path": str(ctx.config_path),
@@ -271,6 +274,15 @@ class HorizonPipelineService:
             },
             "filtering": {
                 "ai_score_threshold": ctx.config.filtering.ai_score_threshold,
+                "filter_mode": filter_mode,
+                "score_criteria": (
+                    [
+                        criterion.model_dump(mode="json")
+                        for criterion in score_criteria
+                    ]
+                    if score_criteria is not None
+                    else None
+                ),
                 "time_window_hours": ctx.config.filtering.time_window_hours,
                 "max_items": ctx.config.filtering.max_items,
                 "category_groups": {
@@ -361,12 +373,32 @@ class HorizonPipelineService:
             raise HorizonMcpError(code="HZ_EMPTY_INPUT", message="No items available for scoring.")
 
         ai_client = ctx.runtime.create_ai_client(ctx.config.ai)
-        analyzer = ctx.runtime.ContentAnalyzer(ai_client)
+        try:
+            analyzer = ctx.runtime.ContentAnalyzer(ai_client, ctx.config.filtering)
+        except TypeError:
+            if getattr(ctx.config.filtering, "score_criteria", None) is not None:
+                raise
+            analyzer = ctx.runtime.ContentAnalyzer(ai_client)
         scored_items = await analyzer.analyze_batch(items)
 
         self.run_store.save_items(run_id, "scored", items_to_dicts(scored_items))
-        score_threshold = ctx.config.filtering.ai_score_threshold
-        above_threshold = [x for x in scored_items if x.ai_score and x.ai_score >= score_threshold]
+        storage = make_storage(ctx.runtime, ctx.config_path)
+        orchestrator = make_orchestrator(ctx.runtime, ctx.config, storage)
+        score_filter_result = await orchestrator.filter_items(
+            scored_items,
+            topic_dedup=False,
+            apply_balance=False,
+            log=False,
+        )
+        above_threshold = score_filter_result.items
+        score_criteria = getattr(ctx.config.filtering, "score_criteria", None)
+        filter_mode = getattr(ctx.config.filtering, "filter_mode", "any")
+        unscored_count = getattr(score_filter_result, "unscored_count", 0)
+        score_threshold = (
+            ctx.config.filtering.ai_score_threshold
+            if score_criteria is None
+            else None
+        )
 
         meta = self.run_store.update_meta(
             run_id,
@@ -374,6 +406,8 @@ class HorizonPipelineService:
                 "scored_count": len(scored_items),
                 "scored_threshold": score_threshold,
                 "scored_above_threshold": len(above_threshold),
+                "scored_unscored": unscored_count,
+                "filter_mode": filter_mode,
             },
         )
 
@@ -381,6 +415,8 @@ class HorizonPipelineService:
             "run_id": run_id,
             "scored": len(scored_items),
             "above_threshold": len(above_threshold),
+            "unscored": unscored_count,
+            "filter_mode": filter_mode,
             "score_distribution": self._score_distribution(scored_items),
             "artifact": str((self.run_store.run_dir(run_id) / "scored_items.json").resolve()),
             "meta": meta,
@@ -402,16 +438,21 @@ class HorizonPipelineService:
             config_path=config_path,
         )
 
-        effective_threshold = (
-            threshold
-            if threshold is not None
-            else ctx.config.filtering.ai_score_threshold
+        score_criteria = getattr(ctx.config.filtering, "score_criteria", None)
+        filter_mode = getattr(ctx.config.filtering, "filter_mode", "any")
+        effective_threshold = threshold
+        if effective_threshold is None and score_criteria is None:
+            effective_threshold = ctx.config.filtering.ai_score_threshold
+        orchestrator_threshold = (
+            effective_threshold
+            if score_criteria is None
+            else threshold
         )
         storage = make_storage(ctx.runtime, ctx.config_path)
         orchestrator = make_orchestrator(ctx.runtime, ctx.config, storage)
         filtering_result = await orchestrator.filter_items(
             items,
-            threshold=effective_threshold,
+            threshold=orchestrator_threshold,
             topic_dedup=topic_dedup,
             log=False,
         )
@@ -426,6 +467,8 @@ class HorizonPipelineService:
             {
                 "filtered_count": len(important_items),
                 "filter_threshold": effective_threshold,
+                "filter_mode": filter_mode,
+                "filter_unscored": getattr(filtering_result, "unscored_count", 0),
                 "topic_dedup_enabled": topic_dedup,
                 "topic_dedup_removed": filtering_result.topic_dedup_removed,
                 "balanced_digest_enabled": balanced_enabled,
@@ -440,6 +483,8 @@ class HorizonPipelineService:
             "run_id": run_id,
             "kept": len(important_items),
             "threshold": effective_threshold,
+            "filter_mode": filter_mode,
+            "unscored": getattr(filtering_result, "unscored_count", 0),
             "removed_by_topic_dedup": filtering_result.topic_dedup_removed,
             "removed_by_balanced_digest": (
                 filtering_result.topic_dedup_count - len(important_items)

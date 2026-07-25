@@ -449,7 +449,8 @@ No API key is required.
 
 ## Filtering
 
-Content is scored 0-10:
+Without `score_criteria`, Horizon uses its original technical-news prompt and
+one 0-10 score:
 
 - **9-10**: Groundbreaking - Major breakthroughs, paradigm shifts
 - **7-8**: High Value - Important developments, deep technical content
@@ -461,6 +462,8 @@ Content is scored 0-10:
 {
   "filtering": {
     "ai_score_threshold": 7.0,
+    "filter_mode": "any",
+    "score_criteria": null,
     "time_window_hours": 24,
     "max_items": 20,
     "category_groups": {
@@ -481,7 +484,14 @@ Content is scored 0-10:
 }
 ```
 
-- `ai_score_threshold`: Only include content scoring >= this value
+- `ai_score_threshold`: Only include content scoring >= this value when
+  `score_criteria` is omitted or `null`
+- `filter_mode`: Custom-criteria logic. `any` keeps an item when at least one
+  criterion reaches its threshold; `all` requires every criterion. Default:
+  `any`
+- `score_criteria`: Optional list of custom scoring dimensions. Omit it or set
+  it to `null` to preserve the original prompt, response format, and
+  `ai_score_threshold` behavior
 - `time_window_hours`: Fetch content from last N hours
 - `max_items`: Optional final cap after all group limits are applied
 - `category_groups`: Optional map of quota groups. Each group requires a positive
@@ -492,6 +502,59 @@ Content is scored 0-10:
   configured group. Default is `other`.
 - `default_group_limit`: Optional positive limit for unmatched items. If omitted,
   unmatched items are unlimited except for `max_items`.
+
+### User-defined scoring criteria
+
+Each criterion has a stable machine-readable `name`, a prompt
+`description`, and its own inclusive `threshold`:
+
+```json
+{
+  "filtering": {
+    "filter_mode": "any",
+    "score_criteria": [
+      {
+        "name": "tech",
+        "description": "Relevance to software engineering, AI/ML, and systems research",
+        "threshold": 7.0
+      },
+      {
+        "name": "english_learning",
+        "description": "High-quality authentic English suitable for B2-C1 learners",
+        "threshold": 6.0
+      },
+      {
+        "name": "finance",
+        "description": "Relevance to financial markets, macroeconomics, or investment decisions",
+        "threshold": 6.0
+      }
+    ]
+  }
+}
+```
+
+Configuration rules are intentionally strict so mistakes fail during startup:
+
+- `name` must be 1-64 characters, begin with an ASCII letter, and contain only
+  ASCII letters, digits, `_`, or `-`
+- names must be unique ignoring letter case
+- `description` must contain non-whitespace text
+- `threshold` and legacy `ai_score_threshold` must be finite numbers from 0
+  through 10
+- `filter_mode` must be exactly `any` or `all`
+- an explicit empty `score_criteria: []` is invalid; omit the field or use
+  `null` for legacy scoring
+
+For custom criteria, Horizon asks the model for a `scores` object containing
+exactly one numeric score for every configured name. Missing, extra,
+non-numeric, non-finite, or out-of-range scores leave the item unscored and
+record a diagnostic in `ai_analysis_error`; they are never converted to a low
+score. The filtering stage reports how many unscored items it excludes.
+
+Horizon still stores one aggregate `ai_score` for existing sorting, summaries,
+and delivery templates: `any` uses the highest configured score and `all` uses
+the lowest. Passing or failing is always calculated from every configured
+criterion and its own threshold, using an inclusive `>=` comparison.
 
 Balanced digest filtering runs after AI score threshold filtering and topic
 deduplication, but before enrichment. This reduces enrichment calls to only the

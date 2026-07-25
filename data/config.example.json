@@ -130,6 +130,8 @@
   },
   "filtering": {
     "ai_score_threshold": 6.0,
+    "filter_mode": "any",
+    "score_criteria": null,
     "time_window_hours": 24,
     "max_items": null,
     "category_groups": {},

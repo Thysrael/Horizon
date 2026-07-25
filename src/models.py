@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 from enum import Enum
+from math import isfinite
 import re
 from typing import Annotated, Literal, Optional, List, Dict, Any, NamedTuple, Union
 from pydantic import BaseModel, HttpUrl, Field, field_validator
@@ -59,9 +60,11 @@ class ContentItem(BaseModel):
 
     # AI analysis results
     ai_score: Optional[float] = None  # 0-10 importance score
+    ai_scores: Dict[str, float] = Field(default_factory=dict)
     ai_reason: Optional[str] = None
     ai_summary: Optional[str] = None
     ai_tags: List[str] = Field(default_factory=list)
+    ai_analysis_error: Optional[str] = None
 
 
 class AIProvider(str, Enum):
@@ -478,15 +481,89 @@ class CategoryGroupConfig(BaseModel):
     categories: List[str] = Field(min_length=1)
 
 
+class ScoreCriterionConfig(BaseModel):
+    """One stable, user-defined scoring dimension."""
+
+    name: str = Field(
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z][A-Za-z0-9_-]*$",
+    )
+    description: str = Field(min_length=1, max_length=2000)
+    threshold: float = Field(ge=0, le=10, allow_inf_nan=False)
+
+    @field_validator("threshold", mode="before")
+    @classmethod
+    def validate_threshold(cls, value: object) -> object:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not isfinite(float(value))
+        ):
+            raise ValueError("score criterion threshold must be a finite number")
+        return value
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str) -> str:
+        description = value.strip()
+        if not description:
+            raise ValueError("score criterion description must not be blank")
+        return description
+
+
 class FilteringConfig(BaseModel):
     """Content filtering configuration."""
 
-    ai_score_threshold: float = 7.0
+    ai_score_threshold: float = Field(
+        default=7.0,
+        ge=0,
+        le=10,
+        allow_inf_nan=False,
+    )
+    filter_mode: Literal["any", "all"] = "any"
+    score_criteria: Optional[List[ScoreCriterionConfig]] = None
     time_window_hours: int = 24
     max_items: Optional[int] = Field(default=None, gt=0)
     category_groups: Dict[str, CategoryGroupConfig] = Field(default_factory=dict)
     default_group: str = "other"
     default_group_limit: Optional[int] = Field(default=None, gt=0)
+
+    @field_validator("ai_score_threshold", mode="before")
+    @classmethod
+    def validate_legacy_threshold(cls, value: object) -> object:
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not isfinite(float(value))
+        ):
+            raise ValueError("filtering.ai_score_threshold must be a finite number")
+        return value
+
+    @field_validator("score_criteria")
+    @classmethod
+    def validate_score_criteria(
+        cls,
+        criteria: Optional[List[ScoreCriterionConfig]],
+    ) -> Optional[List[ScoreCriterionConfig]]:
+        if criteria is None:
+            return None
+        if not criteria:
+            raise ValueError(
+                "filtering.score_criteria must contain at least one criterion "
+                "when configured; omit the field to use legacy scoring"
+            )
+
+        seen: Dict[str, str] = {}
+        for criterion in criteria:
+            normalized = criterion.name.casefold()
+            if normalized in seen:
+                raise ValueError(
+                    "filtering.score_criteria contains duplicate names "
+                    f"'{seen[normalized]}' and '{criterion.name}'"
+                )
+            seen[normalized] = criterion.name
+        return criteria
 
 
 class Config(BaseModel):

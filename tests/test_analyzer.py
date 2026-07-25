@@ -98,6 +98,24 @@ def test_analyze_batch_concurrent_preserves_order(monkeypatch):
     assert [item.id for item in result] == [item.id for item in items]
 
 
+def test_analyze_batch_provider_failure_stays_unscored(monkeypatch):
+    analyzer = ContentAnalyzer(SimpleNamespace())
+    item = _make_item("rss:test:provider-failure")
+
+    async def fail_analysis(input_item):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(analyzer, "_analyze_item", fail_analysis)
+
+    result = asyncio.run(analyzer.analyze_batch([item]))
+
+    assert result == [item]
+    assert item.ai_score is None
+    assert item.ai_scores == {}
+    assert item.ai_reason is None
+    assert item.ai_analysis_error == "AI analysis failed after retries (RuntimeError)"
+
+
 def test_analyze_item_accepts_valid_result():
     result = {
         "score": 8.5,
@@ -131,7 +149,7 @@ def test_analyze_item_accepts_valid_result():
         {"score": 5, "reason": "ok", "tags": []},
     ],
 )
-def test_analyze_item_malformed_json_result_uses_fallback(result):
+def test_analyze_item_malformed_json_result_stays_unscored(result):
     async def complete(**kwargs):
         return json.dumps(result)
 
@@ -139,7 +157,9 @@ def test_analyze_item_malformed_json_result_uses_fallback(result):
 
     asyncio.run(ContentAnalyzer(SimpleNamespace(complete=complete))._analyze_item(item))
 
-    assert item.ai_score == 0.0
-    assert item.ai_reason == "Analysis response parse failed"
+    assert item.ai_score is None
+    assert item.ai_scores == {}
+    assert item.ai_reason is None
     assert item.ai_summary == item.title
     assert item.ai_tags == []
+    assert item.ai_analysis_error

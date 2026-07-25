@@ -85,7 +85,7 @@ But Horizon is not just another summarizer. AI is great at reducing noise, but n
 - **📧 Deliver by Email** — Run a self-hosted SMTP/IMAP newsletter with automatic subscribe and unsubscribe handling
 - **🔔 Push to Chat or Automations** — Send templated results to Feishu/Lark, DingTalk, Slack, Discord, or custom webhook endpoints
 - **🧙 Start From Your Interests** — Use the setup wizard to generate a personalized source configuration
-- **⚙️ Tune the Radar** — Customize sources, thresholds, models, languages, and delivery channels from one JSON config
+- **⚙️ Tune the Radar** — Customize sources, scoring dimensions, thresholds, filter logic, models, languages, and delivery channels from one JSON config
 
 ## How It Works
 
@@ -256,6 +256,36 @@ Minimal manual configuration:
   }
 }
 ```
+
+**Custom scoring criteria (optional)**
+
+Define domain-specific scoring dimensions under `filtering.score_criteria`.
+`filter_mode: "any"` keeps an item that reaches at least one configured
+threshold; `"all"` requires every configured threshold:
+
+```jsonc
+{
+  "filtering": {
+    "filter_mode": "any",
+    "score_criteria": [
+      {
+        "name": "tech",
+        "description": "Relevance to software engineering, AI/ML, and systems research",
+        "threshold": 7.0
+      },
+      {
+        "name": "finance",
+        "description": "Relevance to financial markets, macroeconomics, or investment decisions",
+        "threshold": 6.0
+      }
+    ]
+  }
+}
+```
+
+Omit `score_criteria` (or set it to `null`) to preserve the original
+single-score prompt and `ai_score_threshold` behavior. See
+[Scoring](docs/scoring.md) for validation and model-response error handling.
 
 **Balanced digest (optional)**
 

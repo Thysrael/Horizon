@@ -29,6 +29,7 @@ from .ai.analyzer import ContentAnalyzer
 from .ai.summarizer import DailySummarizer
 from .ai.enricher import ContentEnricher
 from .ai.tokens import get_usage_snapshot
+from .scoring import evaluate_item_score
 
 
 _TRACKING_QUERY_PARAMETERS = {
@@ -92,6 +93,7 @@ class FilteringPipelineResult:
 
     items: List[ContentItem]
     threshold_count: int
+    unscored_count: int
     topic_dedup_count: int
     topic_dedup_removed: int
     balanced_digest: BalancedDigestResult
@@ -238,8 +240,17 @@ class HorizonOrchestrator:
             # 5.5 Optional second-stage Twitter reply expansion + targeted re-analysis
             await self._expand_twitter_discussion(important_items)
 
-            # 5.6 Apply digest limits after any targeted re-analysis changes scores.
-            important_items = self.apply_balanced_digest(important_items).items
+            # 5.6 Re-apply score semantics and digest limits after targeted
+            # re-analysis changes either scalar or per-criterion scores.
+            post_expansion_result = await self.filter_items(
+                important_items,
+                topic_dedup=False,
+                apply_balance=False,
+                log=False,
+            )
+            important_items = self.apply_balanced_digest(
+                post_expansion_result.items
+            ).items
 
             # Show per-sub-source selection breakdown
             selected_counts: Dict[str, int] = defaultdict(int)
@@ -642,22 +653,57 @@ class HorizonOrchestrator:
         log: bool = True,
     ) -> FilteringPipelineResult:
         """Apply score thresholding, optional topic dedup, and digest balancing."""
-        effective_threshold = (
-            threshold
-            if threshold is not None
-            else self.config.filtering.ai_score_threshold
+        filtering = self.config.filtering
+        threshold_items: List[ContentItem] = []
+        unscored_count = 0
+        for item in items:
+            evaluation = evaluate_item_score(
+                item,
+                filtering,
+                threshold_override=threshold,
+            )
+            if evaluation.error is not None:
+                unscored_count += 1
+                if item.ai_analysis_error is None:
+                    item.ai_analysis_error = evaluation.error
+                continue
+            item.ai_analysis_error = None
+            item.ai_score = evaluation.aggregate_score
+            if evaluation.passed:
+                threshold_items.append(item)
+
+        threshold_items.sort(
+            key=lambda item: (
+                item.ai_score if item.ai_score is not None else -1.0
+            ),
+            reverse=True,
         )
-        threshold_items = [
-            item
-            for item in items
-            if item.ai_score is not None and item.ai_score >= effective_threshold
-        ]
-        threshold_items.sort(key=lambda item: item.ai_score or 0, reverse=True)
 
         if log:
-            self.console.print(
-                f"⭐️ {len(threshold_items)} items scored ≥ {effective_threshold}\n"
-            )
+            if filtering.score_criteria is None:
+                effective_threshold = (
+                    threshold
+                    if threshold is not None
+                    else filtering.ai_score_threshold
+                )
+                self.console.print(
+                    f"⭐️ {len(threshold_items)} items scored ≥ {effective_threshold}\n"
+                )
+            else:
+                override_label = (
+                    f" with uniform threshold override {threshold}"
+                    if threshold is not None
+                    else ""
+                )
+                self.console.print(
+                    f"⭐️ {len(threshold_items)} items matched "
+                    f"'{filtering.filter_mode}' scoring criteria{override_label}\n"
+                )
+            if unscored_count:
+                self.console.print(
+                    f"[yellow]⚠️  Excluded {unscored_count} unscored or invalid "
+                    "items; see ai_analysis_error for diagnostics.[/yellow]\n"
+                )
 
         deduped_items = threshold_items
         if topic_dedup and deduped_items:
@@ -678,6 +724,7 @@ class HorizonOrchestrator:
         return FilteringPipelineResult(
             items=balanced_digest.items,
             threshold_count=len(threshold_items),
+            unscored_count=unscored_count,
             topic_dedup_count=len(deduped_items),
             topic_dedup_removed=topic_dedup_removed,
             balanced_digest=balanced_digest,
@@ -845,7 +892,7 @@ class HorizonOrchestrator:
             f"   Re-analyzing {len(expanded)} Twitter items with reply context...\n"
         )
         ai_client = create_ai_client(self.config.ai)
-        analyzer = ContentAnalyzer(ai_client)
+        analyzer = ContentAnalyzer(ai_client, self.config.filtering)
         await analyzer.analyze_batch(expanded)
 
     async def _enrich_important_items(self, items: List[ContentItem]) -> None:
@@ -878,7 +925,7 @@ class HorizonOrchestrator:
         self.console.print("🤖 Analyzing content with AI...")
 
         ai_client = create_ai_client(self.config.ai)
-        analyzer = ContentAnalyzer(ai_client)
+        analyzer = ContentAnalyzer(ai_client, self.config.filtering)
 
         return await analyzer.analyze_batch(items)
 

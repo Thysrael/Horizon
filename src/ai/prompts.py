@@ -1,5 +1,11 @@
 """AI prompts for content analysis and summarization."""
 
+import json
+from typing import TYPE_CHECKING, Sequence
+
+if TYPE_CHECKING:
+    from ..models import ScoreCriterionConfig
+
 TOPIC_DEDUP_SYSTEM = """You are a news deduplication assistant. Identify groups of news items that cover the exact same real-world event, release, or announcement.
 
 Rules:
@@ -80,6 +86,98 @@ Respond with valid JSON only:
   "summary": "<one-sentence-summary>",
   "tags": ["<tag1>", "<tag2>", ...]
 }}"""
+
+
+def build_content_analysis_system(
+    criteria: Sequence["ScoreCriterionConfig"] | None,
+) -> str:
+    """Build the legacy or user-defined scoring system prompt."""
+
+    if criteria is None:
+        return CONTENT_ANALYSIS_SYSTEM
+
+    criteria_payload = json.dumps(
+        [
+            {
+                "name": criterion.name,
+                "description": criterion.description,
+                "filter_threshold": criterion.threshold,
+            }
+            for criterion in criteria
+        ],
+        ensure_ascii=False,
+        indent=2,
+    )
+    return f"""You are an expert content curator. Score each configured criterion independently on a 0-10 scale.
+
+Use the criterion descriptions as the complete definition of relevance. The filter
+thresholds are shown for transparency only; do not inflate or deflate a score to
+force an item through the filter.
+
+Configured criteria:
+{criteria_payload}
+
+General score calibration:
+- 9-10: exceptional match with strong evidence, depth, or impact
+- 7-8: high-value match worth immediate attention
+- 5-6: meaningful but moderate match
+- 3-4: weak or incidental match
+- 0-2: no meaningful match, noise, or off-topic
+
+Consider writing quality, evidence, substantive community discussion, and
+engagement signals where they are relevant. Return one score for every configured
+criterion, using each configured name exactly. Never add, remove, or rename score
+keys."""
+
+
+def build_content_analysis_user(
+    *,
+    criteria: Sequence["ScoreCriterionConfig"] | None,
+    title: str,
+    source: str,
+    author: str,
+    url: str,
+    content_section: str,
+    discussion_section: str,
+) -> str:
+    """Build the legacy or user-defined analysis request."""
+
+    fields = {
+        "title": title,
+        "source": source,
+        "author": author,
+        "url": url,
+        "content_section": content_section,
+        "discussion_section": discussion_section,
+    }
+    if criteria is None:
+        return CONTENT_ANALYSIS_USER.format(**fields)
+
+    response_shape = {
+        "scores": {
+            criterion.name: "<number 0-10>"
+            for criterion in criteria
+        },
+        "reason": "<brief explanation covering the configured criteria>",
+        "summary": "<one-sentence-summary>",
+        "tags": ["<tag1>", "<tag2>", "..."],
+    }
+    return f"""Analyze the following content and provide a JSON response with:
+- scores: An object with exactly one numeric 0-10 score for every configured criterion
+- reason: Brief explanation for the scores (mention discussion quality if comments are provided)
+- summary: One-sentence summary of the content
+- tags: Relevant topic tags (3-5 tags)
+
+Content:
+Title: {title}
+Source: {source}
+Author: {author}
+URL: {url}
+{content_section}
+{discussion_section}
+
+Respond with valid JSON only:
+{json.dumps(response_shape, ensure_ascii=False, indent=2)}"""
 
 CONCEPT_EXTRACTION_SYSTEM = """You identify technical concepts in news that a reader might not know.
 Given a news item, return 1-3 search queries for concepts that need explanation.
