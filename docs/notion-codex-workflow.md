@@ -227,7 +227,7 @@ Required properties:
 
 | Property | Type | Purpose |
 |---|---|---|
-| `Task title` | Title | Short implementation title |
+| `Task` | Title | Short implementation title |
 | `Status` | Select or Status | Intake and result state |
 
 Status values:
