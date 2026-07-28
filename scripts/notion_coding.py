@@ -115,11 +115,28 @@ class NotionClient:
         if not data_source_id:
             raise ValueError("NOTION_DATA_SOURCE_ID is required")
         encoded_id = urllib.parse.quote(data_source_id, safe="")
+        data_source = self._request("GET", f"/data_sources/{encoded_id}")
+        properties = data_source.get("properties", {})
+        status_schema = (
+            properties.get(status_property)
+            if isinstance(properties, Mapping)
+            else None
+        )
+        status_type = (
+            status_schema.get("type")
+            if isinstance(status_schema, Mapping)
+            else None
+        )
+        if status_type not in {"status", "select"}:
+            raise ValueError(
+                f"Notion property {status_property!r} must be a status or "
+                "select property"
+            )
         payload = {
             "page_size": 1,
             "filter": {
                 "property": status_property,
-                "status": {"equals": ready_status},
+                status_type: {"equals": ready_status},
             },
             "sorts": [{"timestamp": "created_time", "direction": "ascending"}],
         }

@@ -23,7 +23,7 @@ Variables 覆盖，但建议先使用默认值。
 | 属性 | 类型 | 必需 | 说明 |
 |---|---|---:|---|
 | `Task` | Title | 是 | PR 标题和任务名称 |
-| `Status` | Status | 是 | 必须包含下面列出的状态 |
+| `Status` | Status 或 Select | 是 | 必须包含下面列出的状态 |
 | `Agent Run ID` | Text | 否 | 记录认领任务的 Workflow Run |
 | `PR URL` | URL | 否 | 自动回写 Draft PR 地址 |
 | `Agent Result` | Text | 否 | 自动回写执行结果 |

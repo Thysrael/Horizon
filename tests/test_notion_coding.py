@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 MODULE_PATH = Path(__file__).parents[1] / "scripts" / "notion_coding.py"
 SPEC = importlib.util.spec_from_file_location("notion_coding", MODULE_PATH)
 assert SPEC and SPEC.loader
@@ -72,6 +74,63 @@ class FakeBlockClient:
 
     def retrieve_block_children(self, block_id: str) -> list[dict[str, Any]]:
         return self.blocks[block_id]
+
+
+class FakeQueryClient(notion_coding.NotionClient):
+    def __init__(self, property_type: str) -> None:
+        super().__init__("test-token")
+        self.property_type = property_type
+        self.requests: list[tuple[str, str, dict[str, Any] | None]] = []
+
+    def _request(
+        self,
+        method: str,
+        path: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self.requests.append((method, path, payload))
+        if method == "GET":
+            return {
+                "properties": {
+                    "Status": {"type": self.property_type},
+                }
+            }
+        return {"results": [{"id": "ready-page"}]}
+
+
+@pytest.mark.parametrize("property_type", ["status", "select"])
+def test_query_ready_page_uses_property_filter_type(
+    property_type: str,
+) -> None:
+    client = FakeQueryClient(property_type)
+
+    page = client.query_ready_page(
+        "data-source-id",
+        status_property="Status",
+        ready_status="Ready for Codex",
+    )
+
+    assert page == {"id": "ready-page"}
+    assert client.requests == [
+        ("GET", "/data_sources/data-source-id", None),
+        (
+            "POST",
+            "/data_sources/data-source-id/query",
+            {
+                "page_size": 1,
+                "filter": {
+                    "property": "Status",
+                    property_type: {"equals": "Ready for Codex"},
+                },
+                "sorts": [
+                    {
+                        "timestamp": "created_time",
+                        "direction": "ascending",
+                    }
+                ],
+            },
+        ),
+    ]
 
 
 def test_collect_page_content_preserves_structure() -> None:
