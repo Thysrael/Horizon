@@ -98,6 +98,28 @@ class FakeQueryClient(notion_coding.NotionClient):
         return {"results": [{"id": "ready-page"}]}
 
 
+class FakeClaimClient:
+    def __init__(self, page: dict[str, Any]) -> None:
+        self.page = page
+        self.updates: list[dict[str, Any]] = []
+
+    def retrieve_page(self, page_id: str) -> dict[str, Any]:
+        assert page_id == self.page["id"]
+        return self.page
+
+    def retrieve_block_children(self, block_id: str) -> list[dict[str, Any]]:
+        assert block_id == self.page["id"]
+        return []
+
+    def update_page(
+        self,
+        page_id: str,
+        properties: dict[str, Any],
+    ) -> dict[str, Any]:
+        self.updates.append(properties)
+        return {}
+
+
 @pytest.mark.parametrize("property_type", ["status", "select"])
 def test_query_ready_page_uses_property_filter_type(
     property_type: str,
@@ -257,3 +279,70 @@ def test_pr_metadata_handles_non_object_result(tmp_path, monkeypatch) -> None:
     assert notion_coding.pr_metadata(args) == 0
     assert "non-object structured result" in body_file.read_text(encoding="utf-8")
     assert "pr_title=Codex: Safe title" in output_file.read_text(encoding="utf-8")
+
+
+def test_workflow_job_id_prefers_local_override(monkeypatch) -> None:
+    monkeypatch.setenv("CODEX_JOB_ID", "local-event-123")
+    monkeypatch.setenv("GITHUB_RUN_ID", "42")
+
+    assert notion_coding._workflow_job_id() == "local-event-123"
+
+
+def test_claim_parser_supports_ignoring_duplicate_webhook_events() -> None:
+    args = notion_coding.build_parser().parse_args(
+        [
+            "claim",
+            "--page-id",
+            "page-id",
+            "--task-file",
+            "task.json",
+            "--github-output",
+            "output",
+            "--ignore-non-ready",
+            "--resume-own-claim",
+        ]
+    )
+
+    assert args.ignore_non_ready is True
+    assert args.resume_own_claim is True
+
+
+def test_claim_resumes_its_own_interrupted_coding_page(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    page = _page()
+    page["properties"]["Status"] = {
+        "type": "status",
+        "status": {"name": "Coding"},
+    }
+    page["properties"]["Agent Run ID"] = {
+        "type": "rich_text",
+        "rich_text": _rich_text("local-event-123"),
+    }
+    client = FakeClaimClient(page)
+    monkeypatch.setattr(notion_coding, "NotionClient", lambda *args, **kwargs: client)
+    monkeypatch.setenv("NOTION_TOKEN", "test-token")
+    monkeypatch.setenv("CODEX_JOB_ID", "local-event-123")
+    task_file = tmp_path / "task.json"
+    output_file = tmp_path / "output"
+    args = notion_coding.build_parser().parse_args(
+        [
+            "claim",
+            "--page-id",
+            "page-id",
+            "--task-file",
+            str(task_file),
+            "--github-output",
+            str(output_file),
+            "--ignore-non-ready",
+            "--resume-own-claim",
+        ]
+    )
+
+    assert notion_coding.claim_task(args) == 0
+    assert json.loads(task_file.read_text(encoding="utf-8"))["job_id"] == (
+        "local-event-123"
+    )
+    assert "has_task=true" in output_file.read_text(encoding="utf-8")
+    assert client.updates == []

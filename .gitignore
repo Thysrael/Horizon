@@ -64,3 +64,5 @@ logs/*.log
 todo.txt
 .ruff_cache
 .pytest_cache
+.codex-runtime/
+.env.notion-agent

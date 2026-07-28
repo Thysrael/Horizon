@@ -400,6 +400,9 @@ def _append_github_output(path: str, name: str, value: str) -> None:
 
 
 def _workflow_job_id() -> str:
+    configured = _env("CODEX_JOB_ID")
+    if configured:
+        return configured
     run_id = _env("GITHUB_RUN_ID", "local")
     attempt = _env("GITHUB_RUN_ATTEMPT", "1")
     return f"github-{run_id}-{attempt}"
@@ -412,12 +415,24 @@ def claim_task(args: argparse.Namespace) -> int:
     )
     status_property = _env("NOTION_STATUS_PROPERTY", "Status")
     ready_status = _env("NOTION_READY_STATUS", "Ready for Codex")
+    working_status = _env("NOTION_WORKING_STATUS", "Coding")
+    run_id_property = _env("NOTION_RUN_ID_PROPERTY", "Agent Run ID")
+    job_id = _workflow_job_id()
     page_id = args.page_id.strip()
+    resume_claim = False
 
     if page_id:
         page = client.retrieve_page(page_id)
         actual_status = page_status(page, status_property)
-        if actual_status != ready_status:
+        resume_claim = (
+            args.resume_own_claim
+            and actual_status == working_status
+            and optional_text_property(page, run_id_property) == job_id
+        )
+        if actual_status != ready_status and not resume_claim:
+            if args.ignore_non_ready:
+                _append_github_output(args.github_output, "has_task", "false")
+                return 0
             raise ValueError(
                 f"Notion page status is {actual_status!r}; expected {ready_status!r}"
             )
@@ -440,7 +455,7 @@ def claim_task(args: argparse.Namespace) -> int:
         raise ValueError("NOTION_MAX_TASK_CHARS must be at least 1000")
     task = {
         "schema_version": 1,
-        "job_id": _workflow_job_id(),
+        "job_id": job_id,
         "page_id": page_id,
         "page_url": str(page.get("url") or ""),
         "title": page_title(
@@ -467,17 +482,20 @@ def claim_task(args: argparse.Namespace) -> int:
         encoding="utf-8",
     )
 
-    working_status = _env("NOTION_WORKING_STATUS", "Coding")
-    updates = build_page_updates(
-        page,
-        status_property=status_property,
-        status=working_status,
-        run_id_property=_env("NOTION_RUN_ID_PROPERTY", "Agent Run ID"),
-        run_id=task["job_id"],
-        result_property=_env("NOTION_RESULT_PROPERTY", "Agent Result"),
-        result=f"Claimed by GitHub Actions run {task['job_id']}",
-    )
-    client.update_page(page_id, updates)
+    if not resume_claim:
+        updates = build_page_updates(
+            page,
+            status_property=status_property,
+            status=working_status,
+            run_id_property=run_id_property,
+            run_id=task["job_id"],
+            result_property=_env("NOTION_RESULT_PROPERTY", "Agent Result"),
+            result=(
+                f"Claimed by {_env('CODEX_EXECUTION_SOURCE', 'GitHub Actions')} "
+                f"run {task['job_id']}"
+            ),
+        )
+        client.update_page(page_id, updates)
 
     _append_github_output(args.github_output, "has_task", "true")
     _append_github_output(args.github_output, "page_id", page_id)
@@ -654,6 +672,16 @@ def build_parser() -> argparse.ArgumentParser:
     claim.add_argument("--page-id", default="")
     claim.add_argument("--task-file", required=True)
     claim.add_argument("--github-output", required=True)
+    claim.add_argument(
+        "--ignore-non-ready",
+        action="store_true",
+        help="Exit successfully when an explicitly requested page is no longer ready",
+    )
+    claim.add_argument(
+        "--resume-own-claim",
+        action="store_true",
+        help="Resume a Coding page when its Agent Run ID matches this job",
+    )
     claim.set_defaults(func=claim_task)
 
     render = subparsers.add_parser("render", help="Render the trusted Codex prompt")
