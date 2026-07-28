@@ -139,6 +139,9 @@ cloudflared tunnel --url http://127.0.0.1:4782
 Quick Tunnel URLs change after restart and have no uptime guarantee. Use a
 named tunnel and stable hostname for normal operation, for example:
 
+After a Quick Tunnel test, delete its temporary Notion webhook subscription
+because the random URL cannot be reused.
+
 ```text
 https://horizon-agent.example.com/notion/webhook
 ```
