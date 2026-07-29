@@ -1,0 +1,6 @@
+interface:
+  display_name: "Horizon Vibe Coding"
+  short_description: "Create, monitor, and troubleshoot Notion coding tasks"
+  default_prompt: "Use $horizon-vibe-coding to create and monitor a safe Notion coding task for Horizon."
+policy:
+  allow_implicit_invocation: false

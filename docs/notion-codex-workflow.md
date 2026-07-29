@@ -46,6 +46,8 @@ long-running coding task is never executed inside the HTTP request.
 - `src/notion_agent/executor.py`: Codex, worktree, test, and PR orchestration
 - `src/notion_agent/cli.py`: listener, preflight, status, and queue commands
 - `scripts/notion_coding.py`: shared Notion page parsing and status updates
+- `.agents/skills/horizon-vibe-coding/`: explicit-use task authoring and
+  operations skill
 - `.github/codex/prompts/notion-task.md`: trusted Codex prompt
 - `.github/codex/schemas/notion-result.schema.json`: structured result schema
 - `config/notion-agent.env.example`: configuration template
@@ -289,6 +291,16 @@ must remain available.
 
 ## 7. Operate and diagnose
 
+Invoke the repository skill from an interactive Codex session to author,
+trigger, monitor, or troubleshoot a task:
+
+```text
+$horizon-vibe-coding create and run a low-risk Notion task for Horizon
+```
+
+The skill is explicit-use only. The background `codex exec` implementation run
+does not invoke it implicitly.
+
 Inspect queue counts:
 
 ```bash
@@ -322,8 +334,8 @@ are reliably collected elsewhere.
 - Notion content is untrusted product input and cannot override `AGENTS.md`,
   local configuration, sandboxing, or publication gates.
 - Automated tasks cannot modify any `AGENTS.md`, `.codex/**`,
-  `.github/workflows/**`, `.github/codex/**`, secret env file, or private-key
-  path.
+  `.agents/skills/**`, `.github/workflows/**`, `.github/codex/**`, secret env
+  file, or private-key path.
 - `Allowed Paths` is enforced after Codex finishes and before staging.
 - Missing Allowed Paths, non-low risk, or excessive changed-file counts block
   publication with the default local policy.
