@@ -104,7 +104,7 @@ def configure_ai() -> Optional[AIConfig]:
 
 
 def _ai_recommendations_available(ai_config: AIConfig) -> bool:
-    if ai_config.provider == AIProvider.OLLAMA:
+    if ai_config.provider in {AIProvider.CODEX, AIProvider.OLLAMA}:
         return True
     return bool(ai_config.api_key_env and os.getenv(ai_config.api_key_env))
 

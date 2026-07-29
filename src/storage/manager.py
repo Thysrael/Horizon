@@ -63,9 +63,17 @@ class ConfigError(ValueError):
 class StorageManager:
     """Manages file-based storage for configuration and state."""
 
-    def __init__(self, data_dir: str = "data"):
+    def __init__(
+        self,
+        data_dir: str = "data",
+        config_path: str | Path | None = None,
+    ):
         self.data_dir = Path(data_dir)
-        self.config_path = self.data_dir / "config.json"
+        self.config_path = (
+            Path(config_path)
+            if config_path is not None
+            else self.data_dir / "config.json"
+        )
         self.summaries_dir = self.data_dir / "summaries"
 
         self.data_dir.mkdir(parents=True, exist_ok=True)

@@ -28,6 +28,7 @@ Common API key variable names:
 
 | Provider | `api_key_env` value |
 | --- | --- |
+| Codex CLI | `""` (no API key) |
 | Anthropic | `ANTHROPIC_API_KEY` |
 | OpenAI | `OPENAI_API_KEY` |
 | Azure OpenAI | `AZURE_OPENAI_API_KEY` |
@@ -36,6 +37,38 @@ Common API key variable names:
 | Aliyun DashScope | `DASHSCOPE_API_KEY` |
 | Doubao | `DOUBAO_API_KEY` |
 | DeepSeek | `DEEPSEEK_API_KEY` |
+
+**Codex CLI**:
+
+The Codex provider uses an existing local Codex login instead of an API key.
+It is intended for personal automation on a computer where the Codex CLI is
+installed and authenticated:
+
+```bash
+codex login status
+```
+
+```json
+{
+  "ai": {
+    "provider": "codex",
+    "model": "default",
+    "api_key_env": "",
+    "throttle_sec": 0
+  }
+}
+```
+
+Set `model` to `default` to use the model selected by Codex, or provide an
+explicit Codex model name. Each request runs through an ephemeral `codex exec`
+process in an empty temporary directory with user configuration ignored and
+the sandbox set to read-only. Horizon does not create or read an API key for
+this provider.
+
+The following optional environment variables control the local process:
+
+- `HORIZON_CODEX_BIN`: Override the `codex` executable.
+- `HORIZON_CODEX_TIMEOUT_SEC`: Completion timeout in seconds. Default is `300`.
 
 **Anthropic Claude**:
 
@@ -220,6 +253,89 @@ By default, AI scoring and enrichment run one item at a time. If your API endpoi
 ```
 
 For OpenAI-compatible gateways, Horizon sends `temperature` by default. If a newer reasoning-style model rejects that parameter with an error such as `temperature is deprecated for this model`, Horizon retries once without it and remembers that capability for later requests.
+
+### Reliable local Codex daily runs
+
+`horizon-codex-daily` is a guarded local runner for computers that are not
+always on. It remains specific to `ai.provider: "codex"` so it can verify the
+local login before starting Horizon.
+
+Run it directly:
+
+```bash
+uv run horizon-codex-daily \
+  --config data/config.json \
+  --timezone Asia/Shanghai \
+  --daily-at 08:00
+```
+
+The runner can be invoked repeatedly by a scheduler:
+
+- Before `--daily-at`, it prints `SKIP`.
+- After that time, the first invocation runs Horizon.
+- Later invocations on the same local calendar day print `SKIP` after a
+  successful run.
+- If the computer was off, the next invocation after the configured time
+  expands the fetch window to cover time since the last successful run, plus a
+  two-hour overlap. Catch-up is capped at seven days.
+- A failed invocation records the error but does not record a success, so the
+  next scheduled invocation retries.
+
+Options:
+
+| Option | Behavior |
+| --- | --- |
+| `--config PATH` | Horizon configuration; default `data/config.json` |
+| `--timezone ZONE` | IANA timezone; default is the computer's local timezone |
+| `--daily-at HH:MM` | Earliest local start time; default `00:00` |
+| `--force` | Ignore the time gate and today's successful state |
+| `--status` | Print saved state without running Horizon |
+
+State is stored next to the selected configuration:
+
+- `codex-daily-state.json`
+- `codex-daily.lock`
+- `run-reports/`
+
+The command uses stable status prefixes: `DONE` and `SKIP` exit with status
+zero; `FAILED` exits with status one and includes the failure report path.
+
+For cron, invoke the runner every hour and use absolute paths:
+
+```cron
+0 * * * * cd /absolute/path/to/Horizon && /absolute/path/to/uv run horizon-codex-daily --timezone Asia/Shanghai --daily-at 08:00 >> /absolute/path/to/Horizon/data/codex-daily.log 2>&1
+```
+
+On macOS, save a LaunchAgent such as
+`~/Library/LaunchAgents/top.horizon.codex-daily.plist`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>top.horizon.codex-daily</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/env</string>
+    <string>bash</string>
+    <string>-lc</string>
+    <string>cd /absolute/path/to/Horizon &amp;&amp; /absolute/path/to/uv run horizon-codex-daily --daily-at 08:00</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>3600</integer>
+</dict>
+</plist>
+```
+
+Systemd timers, Windows Task Scheduler, and local automation tools can call the
+same command on an hourly interval. This command is not a background daemon:
+it cannot run while the computer is off, but it safely catches up when a later
+scheduled invocation occurs.
 
 ## Information Sources
 

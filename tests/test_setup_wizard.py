@@ -41,6 +41,16 @@ def test_ai_recommendations_available_for_ollama_without_api_key():
     assert wizard._ai_recommendations_available(config) is True
 
 
+def test_ai_recommendations_available_for_codex_without_api_key():
+    config = AIConfig(
+        provider=AIProvider.CODEX,
+        model="default",
+        api_key_env="",
+    )
+
+    assert wizard._ai_recommendations_available(config) is True
+
+
 def test_ai_recommendations_require_api_key_for_cloud_provider(monkeypatch):
     config = AIConfig(
         provider=AIProvider.OPENAI,

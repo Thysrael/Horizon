@@ -1,7 +1,11 @@
 """AI client abstraction supporting multiple providers."""
 
+import asyncio
+import math
 import os
 import re
+import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from openai import AsyncAzureOpenAI, AsyncOpenAI
@@ -109,6 +113,109 @@ class AIClient(ABC):
             str: Generated completion text
         """
         pass
+
+
+class CodexCLIClient(AIClient):
+    """AI client backed by a locally authenticated Codex CLI session.
+
+    The client is intended for trusted local automation. It uses ``codex
+    exec`` rather than an API key and runs each completion in an empty,
+    temporary working directory with a read-only sandbox.
+    """
+
+    _DEFAULT_TIMEOUT_SEC = 300.0
+
+    def __init__(self, config: AIConfig):
+        self.config = config
+        self.model = config.model.strip()
+        binary = os.getenv("HORIZON_CODEX_BIN") or shutil.which("codex")
+        if not binary:
+            raise ValueError(
+                "Codex CLI was not found. Install Codex and ensure `codex` "
+                "is available on PATH."
+            )
+        self.binary = binary
+
+        timeout_raw = os.getenv(
+            "HORIZON_CODEX_TIMEOUT_SEC",
+            str(self._DEFAULT_TIMEOUT_SEC),
+        )
+        try:
+            timeout = float(timeout_raw)
+        except ValueError as exc:
+            raise ValueError(
+                "HORIZON_CODEX_TIMEOUT_SEC must be a positive number"
+            ) from exc
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError(
+                "HORIZON_CODEX_TIMEOUT_SEC must be a positive number"
+            )
+        self.timeout_sec = timeout
+
+    def _build_command(self) -> List[str]:
+        command = [
+            self.binary,
+            "exec",
+            "--ephemeral",
+            "--ignore-user-config",
+            "--sandbox",
+            "read-only",
+            "--skip-git-repo-check",
+            "-",
+        ]
+        if self.model and self.model != "default":
+            command[2:2] = ["--model", self.model]
+        return command
+
+    async def complete(
+        self,
+        system: str,
+        user: str,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Generate one structured completion through ``codex exec``."""
+        del temperature, max_tokens
+        prompt = (
+            "Follow the system instruction and answer the user request.\n"
+            "Do not run commands, browse, edit files, or call tools.\n"
+            "Return only the requested JSON object.\n\n"
+            f"<system>\n{system}\n</system>\n\n"
+            f"<user>\n{user}\n</user>\n"
+        )
+
+        with tempfile.TemporaryDirectory(prefix="horizon-codex-") as workdir:
+            process = await asyncio.create_subprocess_exec(
+                *self._build_command(),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=workdir,
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(prompt.encode("utf-8")),
+                    timeout=self.timeout_sec,
+                )
+            except TimeoutError as exc:
+                process.kill()
+                await process.wait()
+                raise TimeoutError(
+                    f"Codex CLI completion timed out after {self.timeout_sec:g}s"
+                ) from exc
+
+        if process.returncode != 0:
+            detail = stderr.decode("utf-8", errors="replace").strip()
+            if len(detail) > 2000:
+                detail = detail[-2000:]
+            raise RuntimeError(
+                f"Codex CLI exited with status {process.returncode}: {detail}"
+            )
+
+        result = stdout.decode("utf-8", errors="replace").strip()
+        if not result:
+            raise RuntimeError("Codex CLI returned an empty response")
+        return result
 
 
 class AnthropicClient(AIClient):
@@ -538,7 +645,9 @@ def _uses_anthropic_compatible_api(config: AIConfig) -> bool:
 
 def _create_single_client(config: AIConfig) -> AIClient:
     """Create a single AI client instance."""
-    if (
+    if config.provider == AIProvider.CODEX:
+        return CodexCLIClient(config)
+    elif (
         config.provider == AIProvider.ANTHROPIC
         or _uses_anthropic_compatible_api(config)
     ):
