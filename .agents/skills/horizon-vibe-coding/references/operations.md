@@ -13,14 +13,16 @@ execution trace.
 | `Blocked` | A gate or execution step failed; inspect `Agent Result` |
 
 `Coding` alone does not prove that Codex is currently generating code. Confirm
-with `pgrep -af 'codex exec'`, queue state, or a growing `codex.jsonl`.
+with `pgrep -af '[c]odex[[:space:]]+exec'`, queue state, or a growing
+`codex.jsonl`. The bracketed process pattern avoids matching the inspection
+command itself.
 
 ## Health and queue
 
 Run:
 
 ```bash
-.agents/skills/horizon-vibe-coding/scripts/check-health.sh
+bash .agents/skills/horizon-vibe-coding/scripts/check-health.sh
 ```
 
 Interpret the results:
@@ -28,29 +30,33 @@ Interpret the results:
 - Local and public healthy: Listener and Tunnel route are reachable.
 - Local healthy, public failed: diagnose Cloudflare Tunnel or DNS.
 - Both failed: diagnose the Windows listener task or WSL first.
+- If a sandbox could be blocking local or network access, retry the read-only
+  check with narrowly scoped approval before declaring the service unhealthy.
 - `queue.running=1`: one event is being processed.
 - `queue.queued>0`: work is waiting behind the single worker.
 - `queue.failed>0`: at least one durable event failed; correlate with Notion.
 
 ## Local run evidence
 
-Inspect the latest claimed run:
+Fetch the page's `Agent Run ID` from Notion, then inspect that exact run:
 
 ```bash
-.agents/skills/horizon-vibe-coding/scripts/inspect-run.sh
+bash .agents/skills/horizon-vibe-coding/scripts/inspect-run.sh \
+  --run-id local-00000000-0000-0000-0000-000000000000
 ```
 
 Follow Codex or verification output:
 
 ```bash
-.agents/skills/horizon-vibe-coding/scripts/inspect-run.sh --follow
+bash .agents/skills/horizon-vibe-coding/scripts/inspect-run.sh \
+  --run-id local-00000000-0000-0000-0000-000000000000 \
+  --follow
 ```
 
-Inspect a specific Notion `Agent Run ID`:
+Use the latest local run only when exact task identity is not material:
 
 ```bash
-.agents/skills/horizon-vibe-coding/scripts/inspect-run.sh \
-  --run-id local-00000000-0000-0000-0000-000000000000
+bash .agents/skills/horizon-vibe-coding/scripts/inspect-run.sh --latest
 ```
 
 Run directories live under `.codex-runtime/notion-agent/runs/`. Important
@@ -81,7 +87,7 @@ For `Ready for Codex` that does not move:
 For `Coding` that appears stalled:
 
 1. Match `Agent Run ID` to the local run directory.
-2. Check `pgrep -af 'codex exec'`.
+2. Check `pgrep -af '[c]odex[[:space:]]+exec'`.
 3. Follow `codex.jsonl`; if Codex completed, follow `verification.log`.
 4. Check Git/network state only after local execution evidence.
 5. Do not manually reset the page while its durable queue item is running.

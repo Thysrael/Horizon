@@ -33,8 +33,8 @@ Never obtain Notion secrets by reading `.env.notion-agent`.
 
 1. Read the repository's applicable `AGENTS.md` files.
 2. For trigger, monitor, or troubleshooting work, run
-   `scripts/check-health.sh` from this skill. Distinguish local-listener failure
-   from public-tunnel failure.
+   `bash scripts/check-health.sh` from this skill. Distinguish local-listener
+   failure from public-tunnel failure.
 3. For authoring or validation, read
    [references/task-authoring.md](references/task-authoring.md). Inspect the
    repository with `rg` to infer the narrowest practical `Allowed Paths`.
@@ -48,7 +48,10 @@ Never obtain Notion secrets by reading `.env.notion-agent`.
    end-to-end run.
 7. For monitoring or troubleshooting, read
    [references/operations.md](references/operations.md). Use Notion as the
-   user-facing state and `scripts/inspect-run.sh` for local execution evidence.
+   user-facing state. Fetch its `Agent Run ID`, then pass that exact ID to
+   `bash scripts/inspect-run.sh` for local execution evidence. Use `--latest`
+   only when the user explicitly asks about the latest local run and identity
+   is not material.
 8. Continue monitoring through `Review` or `Blocked` when the user requested an
    end-to-end run. Report the PR URL on success or the concrete blocking reason
    and preserved log path on failure.
