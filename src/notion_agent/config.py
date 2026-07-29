@@ -16,6 +16,11 @@ DEFAULT_EVENTS = (
     "page.properties_updated",
     "page.content_updated",
 )
+DEFAULT_CODEX_MODEL = "gpt-5.6-sol"
+DEFAULT_CODEX_REASONING_EFFORT = "xhigh"
+CODEX_REASONING_EFFORTS = frozenset(
+    {"minimal", "low", "medium", "high", "xhigh"}
+)
 
 
 def _env(source: Mapping[str, str], name: str, default: str = "") -> str:
@@ -101,6 +106,7 @@ class AgentConfig:
     repository: str
     base_branch: str
     model: str
+    reasoning_effort: str
     verification_command: tuple[str, ...]
     codex_timeout_seconds: int
     verification_timeout_seconds: int
@@ -180,6 +186,16 @@ class AgentConfig:
             raise ValueError(
                 "GITHUB_REPOSITORY is required when origin is not a GitHub remote"
             )
+        model = _env(values, "CODEX_MODEL") or DEFAULT_CODEX_MODEL
+        reasoning_effort = (
+            _env(values, "CODEX_REASONING_EFFORT")
+            or DEFAULT_CODEX_REASONING_EFFORT
+        ).casefold()
+        if reasoning_effort not in CODEX_REASONING_EFFORTS:
+            supported = ", ".join(sorted(CODEX_REASONING_EFFORTS))
+            raise ValueError(
+                f"CODEX_REASONING_EFFORT must be one of: {supported}"
+            )
 
         return cls(
             repo_root=repo_root,
@@ -219,7 +235,8 @@ class AgentConfig:
             cloudflared_bin=_env(values, "CLOUDFLARED_BIN", "cloudflared"),
             repository=repository,
             base_branch=_env(values, "GITHUB_DEFAULT_BRANCH", "main"),
-            model=_env(values, "CODEX_MODEL"),
+            model=model,
+            reasoning_effort=reasoning_effort,
             verification_command=parsed_command,
             codex_timeout_seconds=_env_int(
                 values,
