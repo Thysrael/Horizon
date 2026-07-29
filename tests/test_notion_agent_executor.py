@@ -5,8 +5,10 @@ from pathlib import Path
 
 import pytest
 
+from src.notion_agent.config import AgentConfig
 from src.notion_agent.executor import (
     ExecutionError,
+    LocalAgentExecutor,
     branch_name,
     is_forbidden_path,
     parse_allowed_paths,
@@ -83,3 +85,43 @@ def test_output_file_parser_ignores_malformed_lines(tmp_path: Path) -> None:
         "has_task": "true",
         "page_id": "abc=123",
     }
+
+
+def test_codex_command_pins_model_and_reasoning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".git").mkdir()
+    config = AgentConfig.from_env(
+        {
+            "HORIZON_REPO_ROOT": str(repo),
+            "NOTION_DATA_SOURCE_ID": "67132048-6501-4156-be51-28a288d6b771",
+            "NOTION_TOKEN": "test-token",
+            "GITHUB_REPOSITORY": "example/horizon",
+        }
+    )
+    executor = LocalAgentExecutor(config)
+    prompt_file = tmp_path / "prompt.md"
+    prompt_file.write_text("Implement the task.", encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    def capture(arguments: list[str], **kwargs: object) -> None:
+        captured["arguments"] = arguments
+        captured.update(kwargs)
+
+    monkeypatch.setattr(executor, "_run_logged", capture)
+
+    executor._run_codex(
+        worktree=repo,
+        prompt_file=prompt_file,
+        run_dir=tmp_path,
+    )
+
+    arguments = captured["arguments"]
+    assert isinstance(arguments, list)
+    assert arguments[arguments.index("--model") + 1] == "gpt-5.6-sol"
+    assert arguments[arguments.index("--config") + 1] == (
+        'model_reasoning_effort="xhigh"'
+    )

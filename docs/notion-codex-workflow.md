@@ -5,6 +5,11 @@ event durably, and start `codex exec` only when a page is actually ready for
 implementation. Codex uses the ChatGPT login already present on that computer;
 the workflow does not require `OPENAI_API_KEY` or a GitHub Actions runner.
 
+The local executor pins each implementation run to `gpt-5.6-sol` with `xhigh`
+reasoning through `CODEX_MODEL` and `CODEX_REASONING_EFFORT`. It passes both
+values directly to `codex exec`; user-level Codex configuration is intentionally
+ignored so unattended runs do not drift when local defaults change.
+
 The automation creates a dedicated Git worktree and branch, runs deterministic
 verification, pushes the branch, opens a draft pull request, and writes the
 result back to Notion. It never merges or deploys automatically.

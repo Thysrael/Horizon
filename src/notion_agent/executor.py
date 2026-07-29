@@ -419,6 +419,14 @@ class LocalAgentExecutor:
         ]
         if self.config.model:
             command.extend(["--model", self.config.model])
+        if self.config.reasoning_effort:
+            command.extend(
+                [
+                    "--config",
+                    "model_reasoning_effort="
+                    + json.dumps(self.config.reasoning_effort),
+                ]
+            )
         command.append("-")
         self._run_logged(
             command,

@@ -65,6 +65,13 @@ def _preflight(config: AgentConfig) -> int:
     )
     checks.append(
         (
+            "Codex model",
+            bool(config.model and config.reasoning_effort),
+            f"{config.model} ({config.reasoning_effort})",
+        )
+    )
+    checks.append(
+        (
             "Webhook verification token",
             bool(VerificationTokenStore(config).get()),
             (
