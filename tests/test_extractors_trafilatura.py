@@ -5,11 +5,13 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
 from src.extractors import TrafilaturaExtractor
 from src.models import TrafilaturaExtractorConfig
 
 URL = "https://example.com/article"
+pytestmark = pytest.mark.usefixtures("mock_public_dns")
 
 
 def _extractor() -> TrafilaturaExtractor:

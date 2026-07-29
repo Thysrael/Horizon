@@ -27,6 +27,7 @@ from src.ai.summarizer import DailySummarizer
 
 _TEST_URL_ENV = "TEST_WEBHOOK_URL"
 _TEST_URL = "https://example.com/webhook"
+pytestmark = pytest.mark.usefixtures("mock_public_dns")
 
 
 # ── Template variable replacement ──
