@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..configuration import ConfigApplicationService
+from .api import router as config_router
 from .security import (
     SESSION_COOKIE_NAME,
     LocalSecurityMiddleware,
@@ -54,6 +55,7 @@ def create_app(
         name="static",
     )
     app.add_middleware(LocalSecurityMiddleware, session_store=sessions)
+    app.include_router(config_router)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error_handler(
