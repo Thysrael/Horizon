@@ -31,6 +31,7 @@ def test_branch_name_contains_only_safe_segments() -> None:
     [
         "AGENTS.md",
         "src/AGENTS.md",
+        ".agents/skills/horizon-vibe-coding/SKILL.md",
         ".codex/config.toml",
         ".github/workflows/release.yml",
         ".github/codex/prompts/task.md",

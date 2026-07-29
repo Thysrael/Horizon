@@ -82,7 +82,12 @@ def is_forbidden_path(path: str) -> bool:
     parts = PurePosixPath(normalized).parts
     name = parts[-1] if parts else ""
     protected_prefix = normalized.startswith(
-        (".codex/", ".github/workflows/", ".github/codex/")
+        (
+            ".agents/skills/",
+            ".codex/",
+            ".github/workflows/",
+            ".github/codex/",
+        )
     )
     return (
         name == "AGENTS.md"
