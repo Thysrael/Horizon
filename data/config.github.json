@@ -60,6 +60,12 @@
         "category": "github-trending"
       },
       {
+        "name": "Zeli",
+        "url": "https://zeli.app/zh/rss.xml",
+        "enabled": true,
+        "category": "ai-news"
+      },
+      {
         "name": "Semianalysis",
         "url": "https://newsletter.semianalysis.com/feed",
         "enabled": true,

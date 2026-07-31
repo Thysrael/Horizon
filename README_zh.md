@@ -227,6 +227,9 @@ docker compose run --rm horizon
 
 # 或自定义时间窗口
 docker compose run --rm horizon --hours 48
+
+# 构建时启用可选扩展（逗号分隔）
+docker compose build --build-arg EXTRAS=trafilatura horizon
 ```
 
 ### 2. 配置
@@ -304,18 +307,21 @@ cp data/config.example.json data/config.json  # 自定义信息源
 #### 本地安装
 
 ```bash
-uv run horizon              # 使用默认 24 小时窗口
-uv run horizon --hours 48   # 抓取最近 48 小时的内容
+uv run horizon                          # 使用默认 24 小时窗口
+uv run horizon --hours 48               # 抓取最近 48 小时的内容
+uv run horizon -d /path/to/data         # 使用自定义数据目录
+uv run horizon -c /path/to/config.json  # 使用自定义配置文件
 ```
 
 #### 使用 Docker
 
 ```bash
-docker compose run --rm horizon              # 使用默认 24 小时窗口
-docker compose run --rm horizon --hours 48   # 抓取最近 48 小时的内容
+docker compose run --rm horizon                          # 使用默认 24 小时窗口
+docker compose run --rm horizon --hours 48               # 抓取最近 48 小时的内容
+docker compose run --rm horizon -c /app/data/alt.json   # 使用自定义配置文件
 ```
 
-生成的日报将保存在 `data/summaries/` 目录中。
+生成的日报将保存在 `data/summaries/` 目录中（如设置了 `--data-dir`，则保存在 `<data-dir>/summaries/`）。
 
 ### 4. 自动化（可选）
 

@@ -1,9 +1,12 @@
 import json
+from types import SimpleNamespace
+from typing import cast
+
 import pytest
 from pathlib import Path
 import src._file_utils as file_utils
 from src.storage.manager import StorageManager, ConfigError, _expand_env_vars, safe_output_path
-from src.models import AIConfig
+from src.models import AIConfig, Config
 from pydantic import ValidationError
 
 def test_load_config_missing_file(tmp_path):
@@ -55,6 +58,28 @@ def test_load_config_success(tmp_path):
     config = storage.load_config()
     assert config.version == "1.0"
     assert config.ai.provider == "anthropic"
+
+
+def test_custom_config_path_overrides_data_directory(tmp_path):
+    config_path = tmp_path / "config" / "custom.json"
+    storage = StorageManager(
+        data_dir=str(tmp_path / "data"),
+        config_path=str(config_path),
+    )
+
+    assert storage.config_path == config_path
+
+
+def test_save_config_creates_custom_config_parent(tmp_path):
+    config_path = tmp_path / "config" / "nested" / "custom.json"
+    storage = StorageManager(
+        data_dir=str(tmp_path / "data"),
+        config_path=str(config_path),
+    )
+    config = cast(Config, SimpleNamespace(model_dump=lambda mode: {"version": "1.0"}))
+
+    assert storage.save_config(config) == config_path
+    assert json.loads(config_path.read_text(encoding="utf-8")) == {"version": "1.0"}
 
 
 class TestExpandEnvVars:

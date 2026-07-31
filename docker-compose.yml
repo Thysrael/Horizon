@@ -1,6 +1,9 @@
 services:
   horizon:
-    build: .
+    build:
+      context: .
+      # args:
+      #   EXTRAS: trafilatura  # comma-separated optional extras, e.g. "trafilatura,openbb"
     container_name: horizon
     volumes:
       - ./data:/app/data

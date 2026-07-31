@@ -63,9 +63,9 @@ class ConfigError(ValueError):
 class StorageManager:
     """Manages file-based storage for configuration and state."""
 
-    def __init__(self, data_dir: str = "data"):
+    def __init__(self, data_dir: str = "data", config_path: str | None = None):
         self.data_dir = Path(data_dir)
-        self.config_path = self.data_dir / "config.json"
+        self.config_path = Path(config_path) if config_path is not None else self.data_dir / "config.json"
         self.summaries_dir = self.data_dir / "summaries"
 
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -109,6 +109,8 @@ class StorageManager:
         Returns:
             Path to the saved config file.
         """
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+
         if backup and self.config_path.exists():
             shutil.copy2(self.config_path, self.config_path.with_suffix(".json.bak"))
 

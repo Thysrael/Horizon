@@ -219,6 +219,9 @@ docker compose run --rm horizon
 
 # またはカスタムの時間枠で実行
 docker compose run --rm horizon --hours 48
+
+# オプションの依存関係グループを含めてビルド（カンマ区切り）
+docker compose build --build-arg EXTRAS=trafilatura horizon
 ```
 
 ### 2. 設定
@@ -312,18 +315,21 @@ Geminiの場合は`GOOGLE_API_KEY`を使用します。
 #### ローカルインストール
 
 ```bash
-uv run horizon           # デフォルトの24時間枠で実行
-uv run horizon --hours 48  # 過去48時間から取得
+uv run horizon                          # デフォルトの24時間枠で実行
+uv run horizon --hours 48               # 過去48時間から取得
+uv run horizon -d /path/to/data         # カスタムデータディレクトリを使用
+uv run horizon -c /path/to/config.json  # カスタム設定ファイルを使用
 ```
 
 #### Dockerで
 
 ```bash
-docker compose run --rm horizon           # デフォルトの24時間枠で実行
-docker compose run --rm horizon --hours 48  # 過去48時間から取得
+docker compose run --rm horizon                          # デフォルトの24時間枠で実行
+docker compose run --rm horizon --hours 48               # 過去48時間から取得
+docker compose run --rm horizon -c /app/data/alt.json   # カスタム設定ファイルを使用
 ```
 
-生成されたレポートは`data/summaries/`に保存されます。
+生成されたレポートは`data/summaries/`に保存されます（`--data-dir`を指定した場合は`<data-dir>/summaries/`）。
 
 ### 4. 自動化（オプション）
 

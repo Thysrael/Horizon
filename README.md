@@ -218,6 +218,9 @@ docker compose run --rm horizon
 
 # Or run with custom time window
 docker compose run --rm horizon --hours 48
+
+# Build with optional extras (comma-separated)
+docker compose build --build-arg EXTRAS=trafilatura horizon
 ```
 
 ### 2. Configure
@@ -315,18 +318,21 @@ For the full reference, see the [Configuration Guide](docs/configuration.md).
 #### Local Installation
 
 ```bash
-uv run horizon           # Run with default 24h window
-uv run horizon --hours 48  # Fetch from last 48 hours
+uv run horizon                          # Run with default 24h window
+uv run horizon --hours 48               # Fetch from last 48 hours
+uv run horizon -d /path/to/data         # Use a custom data directory
+uv run horizon -c /path/to/config.json  # Use a custom config file
 ```
 
 #### With Docker
 
 ```bash
-docker compose run --rm horizon           # Run with default 24h window
-docker compose run --rm horizon --hours 48  # Fetch from last 48 hours
+docker compose run --rm horizon                          # Run with default 24h window
+docker compose run --rm horizon --hours 48               # Fetch from last 48 hours
+docker compose run --rm horizon -c /app/data/alt.json   # Use a custom config file
 ```
 
-The generated report will be saved to `data/summaries/`.
+The generated report will be saved to `data/summaries/` (or `<data-dir>/summaries/` if `--data-dir` is set).
 
 ### 4. Automate (Optional)
 

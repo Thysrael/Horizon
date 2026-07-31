@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import logging
+import shlex
 import sys
 from pathlib import Path
 
@@ -45,33 +46,47 @@ def main():
 
     parser = argparse.ArgumentParser(description="Horizon - AI-Driven Information Aggregation System")
     parser.add_argument("--hours", type=int, help="Force fetch from last N hours")
+    parser.add_argument("-d", "--data-dir", default="data", metavar="PATH",
+                        help="Path to the data directory (default: 'data')")
+    parser.add_argument("-c", "--config", default=None, metavar="PATH",
+                        help="Path to config file (default: <data-dir>/config.json)")
     args = parser.parse_args()
 
     try:
         # Load environment variables from .env file
         load_dotenv()
 
-        # Ensure we're in the project directory or use data/ in current dir
-        data_dir = Path("data")
+        data_dir = Path(args.data_dir)
 
         # Initialize storage manager
-        storage = StorageManager(data_dir=str(data_dir))
+        storage = StorageManager(data_dir=str(data_dir), config_path=args.config)
 
         # Load configuration
         try:
             config = storage.load_config()
         except FileNotFoundError:
             console.print("[bold red]❌ Configuration file not found![/bold red]\n")
-            data_dir_path = data_dir if isinstance(data_dir, Path) else Path(data_dir)
-            example_path = data_dir_path / "config.example.json"
+            console.print(f"Expected config: [cyan]{storage.config_path}[/cyan]\n")
+
+            example_path = data_dir / "config.example.json"
+            if not example_path.exists():
+                example_path = Path("data/config.example.json")
             if example_path.exists():
+                target_parent = storage.config_path.parent
+                if target_parent != Path("."):
+                    console.print(
+                        f"Create the destination directory:\n"
+                        f"  [cyan]mkdir -p {shlex.quote(str(target_parent))}[/cyan]\n"
+                    )
                 console.print(
                     f"Copy the example config and edit it:\n"
-                    f"  [cyan]cp {example_path} {data_dir_path / 'config.json'}[/cyan]\n"
+                    f"  [cyan]cp {shlex.quote(str(example_path))} "
+                    f"{shlex.quote(str(storage.config_path))}[/cyan]\n"
                 )
-            console.print(
-                "Or run [bold cyan]uv run horizon-wizard[/bold cyan] to launch the interactive setup wizard.\n"
-            )
+            if args.config is None and data_dir == Path("data"):
+                console.print(
+                    "Or run [bold cyan]uv run horizon-wizard[/bold cyan] to launch the interactive setup wizard.\n"
+                )
             sys.exit(1)
         except ConfigError as e:
             console.print(f"[bold red]❌ Error loading configuration: {e}[/bold red]")
