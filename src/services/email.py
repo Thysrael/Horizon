@@ -1,6 +1,7 @@
 """Email service for handling subscriptions and sending summaries."""
 
 import email
+import ssl
 import html
 import imaplib
 import logging
@@ -140,6 +141,21 @@ class EmailManager:
         except Exception as e:
             logger.error(f"Error checking subscriptions: {e}")
 
+    def _open_smtp(self):
+        """Decides between SMTP_SSL and STARTTLS based on config.json, and returns the appropriate initiated SMTP connection."""
+        context = ssl.create_default_context()
+        if self.config.smtp_port == 465:
+            server = smtplib.SMTP_SSL(
+                self.config.smtp_server, self.config.smtp_port, context=context
+            )
+        else:
+            server = smtplib.SMTP(
+                self.config.smtp_server, self.config.smtp_port
+            )
+            server.starttls(context=context)
+            server.ehlo() # identify ourselves to the SMTP server
+        return server
+
     def send_daily_summary(self, summary_md: str, subject: str, subscribers: List[str]):
         """Sends the daily summary to all subscribers."""
         if not self.config.enabled or not subscribers:
@@ -178,9 +194,7 @@ class EmailManager:
         """
 
         try:
-            with smtplib.SMTP_SSL(
-                self.config.smtp_server, self.config.smtp_port
-            ) as server:
+            with self._open_smtp() as server:
                 server.login(
                     self.config.smtp_username or self.config.email_address, self.pwd
                 )
@@ -211,9 +225,7 @@ class EmailManager:
     def _send_reply(self, to_email: str, subject: str, body: str):
         """Helper to send a simple reply."""
         try:
-            with smtplib.SMTP_SSL(
-                self.config.smtp_server, self.config.smtp_port
-            ) as server:
+            with self._open_smtp() as server:
                 server.login(
                     self.config.smtp_username or self.config.email_address, self.pwd
                 )
