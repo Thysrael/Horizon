@@ -460,7 +460,7 @@ usable on a narrow viewport without horizontal page scrolling.
 
 ## Delivery Sequence
 
-Implementation will use focused GitButler branches and pull requests:
+Implementation will use focused task branches and pull requests:
 
 1. `codex/config-document-core`
 2. `codex/config-ui-shell`
@@ -468,8 +468,8 @@ Implementation will use focused GitButler branches and pull requests:
 4. `codex/config-ui-diagnostics`
 5. `codex/config-ui-integration`
 
-Later branches are stacked on the preceding dependency. Each branch must contain
-only its own files or hunks and must pass focused tests before publication.
+Later branches depend on the preceding delivery. Each branch must contain only
+its own files or hunks and must pass focused tests before publication.
 
 ## Validation and Release Gates
 

@@ -2,6 +2,13 @@
 
 ## Feature development
 
-- Before starting any new feature, create and switch to a dedicated branch. Do not develop new features directly on the repository's default branch.
-- After implementation and the relevant tests are complete, stage only the files that belong to the feature, commit the changes, push the feature branch to `origin`, and open a pull request against the default branch.
-- Never include secrets, `.env`, personal runtime configuration, or local backup files in a commit or pull request.
+- Keep the default branch (`main`) read-only in the main worktree. Do not develop
+  features or fixes directly on it.
+- Use one sibling Git worktree and one dedicated `feature/*`, `fix/*`, or
+  `refactor/*` branch per task. Personal worktree automation lives in
+  `$manage-worktree`.
+- After implementation and the relevant tests are complete, stage only the files
+  that belong to the feature, commit on the task branch, then push and open a
+  pull request against `main` only when explicitly asked.
+- Never include secrets, `.env`, personal runtime configuration, or local backup
+  files in a commit or pull request.
