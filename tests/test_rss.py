@@ -47,6 +47,19 @@ def test_rss_ids_are_deterministic() -> None:
     assert first_item.profile == "rss-profile"
 
 
+def test_timezone_less_pubdate_is_treated_as_utc() -> None:
+    client = _make_feed_client(_FEED.replace(" GMT", ""))
+    source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
+    scraper = RSSScraper([source], client)
+
+    items = asyncio.run(scraper.fetch(_SINCE))
+
+    assert len(items) == 1
+    assert items[0].published_at == datetime(
+        2026, 4, 24, 12, 0, tzinfo=timezone.utc
+    )
+
+
 def _make_registry(name: str, extractor):
     registry = MagicMock()
     registry.get.side_effect = lambda n: extractor if n == name else None

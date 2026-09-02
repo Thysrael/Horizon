@@ -156,7 +156,10 @@ class RSSScraper(BaseScraper):
                         )
                     # Fallback to string parsing
                     date_str = entry[field]
-                    return parsedate_to_datetime(date_str)
+                    parsed_date = parsedate_to_datetime(date_str)
+                    if parsed_date.tzinfo is None:
+                        parsed_date = parsed_date.replace(tzinfo=timezone.utc)
+                    return parsed_date
                 except Exception:
                     continue
 
