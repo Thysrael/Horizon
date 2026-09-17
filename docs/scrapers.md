@@ -201,12 +201,15 @@ Flow:
 2. Poll `/v2/actor-runs/{run_id}` until status is `SUCCEEDED` or a terminal failure
 3. GET `/v2/datasets/{dataset_id}/items` to retrieve results
 
+Profile timelines use `source_mode: "profiles"`. Keyword discovery and reply expansion reuse `source_mode: "search"` with `search_query`.
+
 **Config** (`sources.twitter`):
 
 ```json
 {
   "enabled": true,
   "users": ["karpathy", "ylecun"],
+  "keywords": ["LLM", "open source"],
   "fetch_limit": 10,
   "fetch_reply_text": false,
   "max_replies_per_tweet": 3,
@@ -218,6 +221,7 @@ Flow:
 ```
 
 - `users` — Twitter screen names to monitor, without the `@` prefix
+- `keywords`: Apify search queries (`source_mode: "search"`), fetched alongside user timelines. Not supported in Playwright mode.
 - `fetch_limit` — maximum tweets to fetch per run
 - `category` — optional tag for balanced digest grouping (applies to all tweets from this source)
 - `fetch_reply_text` — when `true`, a second Apify run fetches reply bodies for each important tweet and appends them under `--- Top Comments ---` for AI analysis

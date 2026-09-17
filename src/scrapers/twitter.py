@@ -32,8 +32,9 @@ class TwitterScraper(BaseScraper):
             return []
 
         users = [u.strip().lstrip("@") for u in self.config.users if u.strip()]
-        if not users:
-            logger.debug("No Twitter users configured, skipping.")
+        keywords = [k.strip() for k in self.config.keywords if k.strip()]
+        if not users and not keywords:
+            logger.debug("No Twitter users or keywords configured, skipping.")
             return []
 
         token = os.environ.get(self.config.apify_token_env)
@@ -43,37 +44,71 @@ class TwitterScraper(BaseScraper):
             )
             return []
 
-        logger.info(f"Fetching Twitter (Apify) for users: {users}")
+        items: List[ContentItem] = []
+        seen_ids: set[str] = set()
+        max_items = max(100, self.config.fetch_limit)
 
-        run_id, dataset_id = await self._start_run(token, users)
-        if not run_id:
-            return []
+        if users:
+            logger.info(f"Fetching Twitter (Apify) for users: {users}")
+            await self._collect_from_payload(
+                token,
+                {
+                    "source_mode": "profiles",
+                    "profile_urls": users,
+                    "search_sort": "Latest",
+                    "max_items": max_items,
+                },
+                since,
+                items,
+                seen_ids,
+            )
 
-        succeeded = await self._wait_for_run(token, run_id)
-        if not succeeded:
-            return []
-
-        raw_items = await self._fetch_dataset(token, dataset_id)
-        items = []
-        for raw in raw_items:
-            if isinstance(raw, dict) and raw.get("noResults"):
-                continue
-            parsed = self._parse_item(raw, since)
-            if parsed:
-                items.append(parsed)
+        for keyword in keywords:
+            logger.info(f"Fetching Twitter (Apify) search for keyword: {keyword}")
+            try:
+                await self._collect_from_payload(
+                    token,
+                    {
+                        "source_mode": "search",
+                        "search_query": keyword,
+                        "search_sort": "Latest",
+                        "max_items": max_items,
+                    },
+                    since,
+                    items,
+                    seen_ids,
+                )
+            except Exception as exc:
+                logger.error(f"Keyword search failed for {keyword!r}: {exc}")
 
         logger.info(f"Fetched {len(items)} tweets via Apify.")
         return items
 
-    async def _start_run(
-        self, token: str, users: List[str]
+    async def _collect_from_payload(
+        self,
+        token: str,
+        payload: dict,
+        since: datetime,
+        items: List[ContentItem],
+        seen_ids: set[str],
+    ) -> None:
+        run_id, dataset_id = await self._start_run_with_payload(token, payload)
+        if not run_id or not dataset_id:
+            return
+        if not await self._wait_for_run(token, run_id):
+            return
+        raw_items = await self._fetch_dataset(token, dataset_id)
+        for raw in raw_items:
+            if isinstance(raw, dict) and raw.get("noResults"):
+                continue
+            parsed = self._parse_item(raw, since)
+            if parsed and parsed.id not in seen_ids:
+                seen_ids.add(parsed.id)
+                items.append(parsed)
+
+    async def _start_run_with_payload(
+        self, token: str, payload: dict
     ) -> tuple[Optional[str], Optional[str]]:
-        payload = {
-            "source_mode": "profiles",
-            "profile_urls": users,
-            "search_sort": "Latest",
-            "max_items": max(100, self.config.fetch_limit),
-        }
         url = f"{_APIFY_BASE}/acts/{self.config.actor_id}/runs?token={token}"
         try:
             resp = await self.client.post(url, json=payload, timeout=30.0)
@@ -86,6 +121,19 @@ class TwitterScraper(BaseScraper):
         except Exception as exc:
             logger.error(f"Failed to start Apify run: {exc}")
             return None, None
+
+    async def _start_run(
+        self, token: str, users: List[str]
+    ) -> tuple[Optional[str], Optional[str]]:
+        return await self._start_run_with_payload(
+            token,
+            {
+                "source_mode": "profiles",
+                "profile_urls": users,
+                "search_sort": "Latest",
+                "max_items": max(100, self.config.fetch_limit),
+            },
+        )
 
     async def _wait_for_run(self, token: str, run_id: str) -> bool:
         url = f"{_APIFY_BASE}/actor-runs/{run_id}?token={token}"
@@ -142,15 +190,8 @@ class TwitterScraper(BaseScraper):
             "max_items": max_items,
         }
 
-        url = f"{_APIFY_BASE}/acts/{self.config.actor_id}/runs?token={token}"
-        try:
-            resp = await self.client.post(url, json=payload, timeout=30.0)
-            resp.raise_for_status()
-            data = resp.json()["data"]
-            run_id = data["id"]
-            dataset_id = data["defaultDatasetId"]
-        except Exception as exc:
-            logger.warning(f"Failed to start replies run for {item.id}: {exc}")
+        run_id, dataset_id = await self._start_run_with_payload(token, payload)
+        if not run_id or not dataset_id:
             return []
 
         if not await self._wait_for_run(token, run_id):

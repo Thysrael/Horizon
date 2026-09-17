@@ -93,7 +93,11 @@ def test_apply_source_filter_handles_twitter_and_openbb() -> None:
                 "api_key_env": "OPENAI_API_KEY",
             },
             "sources": {
-                "twitter": {"enabled": True, "users": ["openai"]},
+                "twitter": {
+                    "enabled": True,
+                    "users": ["openai"],
+                    "keywords": ["LLM"],
+                },
                 "openbb": {
                     "enabled": True,
                     "watchlists": [{"name": "ai", "symbols": ["NVDA"]}],
@@ -109,8 +113,19 @@ def test_apply_source_filter_handles_twitter_and_openbb() -> None:
     assert chosen == ["twitter"]
     assert unknown == []
     assert filtered.sources.twitter.enabled is True
+    assert filtered.sources.twitter.users == ["openai"]
+    assert filtered.sources.twitter.keywords == ["LLM"]
     assert filtered.sources.openbb.enabled is False
     assert filtered.sources.openbb.watchlists == []
+
+    filtered_openbb, chosen_openbb, unknown_openbb = apply_source_filter(
+        config, ["openbb"]
+    )
+    assert chosen_openbb == ["openbb"]
+    assert unknown_openbb == []
+    assert filtered_openbb.sources.twitter.enabled is False
+    assert filtered_openbb.sources.twitter.users == []
+    assert filtered_openbb.sources.twitter.keywords == []
 
 
 def test_mcp_source_registry_covers_model_source_types() -> None:

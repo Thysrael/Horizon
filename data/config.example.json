@@ -138,6 +138,7 @@
     "twitter": {
       "enabled": false,
       "users": ["karpathy", "ylecun"],
+      "keywords": [],
       "fetch_limit": 10,
       "fetch_reply_text": false,
       "max_replies_per_tweet": 3,

@@ -506,7 +506,7 @@ def _count_sources(config: Config) -> int:
     if config.sources.telegram.enabled:
         count += len([s for s in config.sources.telegram.channels if s.enabled])
     if config.sources.twitter and config.sources.twitter.enabled:
-        count += len(config.sources.twitter.users)
+        count += len(config.sources.twitter.users) + len(config.sources.twitter.keywords)
     if config.sources.openbb and config.sources.openbb.enabled:
         count += len([s for s in config.sources.openbb.watchlists if s.enabled])
     if config.sources.ossinsight.enabled:
