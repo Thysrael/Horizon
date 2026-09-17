@@ -454,6 +454,7 @@ Requires an [Apify](https://apify.com) account. Set `APIFY_TOKEN` in your `.env`
     "twitter": {
       "enabled": true,
       "users": ["karpathy", "ylecun"],
+      "keywords": ["LLM", "open source"],
       "fetch_limit": 10,
       "category": "social",
       "fetch_reply_text": false,
@@ -466,6 +467,7 @@ Requires an [Apify](https://apify.com) account. Set `APIFY_TOKEN` in your `.env`
 ```
 
 - `users` — Twitter screen names to monitor, without the `@` prefix
+- `keywords`: search queries fetched via Apify scweet `source_mode: "search"` (same actor as profile timelines). Playwright mode logs a warning and skips keyword fetch.
 - `fetch_limit` — maximum tweets to fetch per run (across all users combined; minimum 100 due to actor constraint)
 - `category` — optional tag for balanced digest grouping (applies to all tweets from this source)
 - `fetch_reply_text` — when `true`, fetch actual reply bodies for important tweets and append them under `--- Top Comments ---` so the AI can factor in community discussion. Disabled by default.
