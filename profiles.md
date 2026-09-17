@@ -18,7 +18,7 @@ rather than process the item with all of them.
 
 | Profile | What it looks for | What it produces |
 | --- | --- | --- |
-| `tech-news` | Releases, incidents, research results, and technology-industry developments | Summary and background; impact and community discussion when useful |
+| `tech-news` | Releases, incidents, research results, and technology-industry developments | Concrete changes and necessary background, with relevant past coverage, impact, and community discussion when useful |
 | `tech-blog` | Engineering deep dives, tutorials, investigations, and retrospectives | Background, solution, and takeaways |
 | `finance-news` | Markets, macroeconomics, company finance, and economically material policy | Summary and background; direct impact when useful |
 | `ai-creator` | AI developments with potential for content creation | Summary; timely hooks, content angles, and community discussion when useful |
@@ -152,7 +152,7 @@ profiles are found or the default does not exist.
       {
         "id": "background",
         "type": "section",
-        "tools": ["web_search"]
+        "tools": ["history_search", "web_search"]
       },
       {
         "id": "community_discussion",
@@ -276,10 +276,11 @@ deduplication.
 Required blocks must be present; optional blocks can be omitted when they add no
 useful content. Generated output cannot contain unknown or duplicate blocks.
 
-Tools are allowed per block through its `tools` array. The only built-in tool is
-`web_search`, and a block may use it only when that block explicitly declares
-`"tools": ["web_search"]`. Use an empty array for blocks that need no tools.
-Unknown tools are rejected when the enricher is initialized.
+Tools are allowed per block through its `tools` array. The built-in tools are
+`web_search` (external web results) and `history_search` (past Horizon digests).
+A block may use a tool only when it explicitly declares it. Use an empty array
+for blocks that need no tools. Unknown tools are rejected when the enricher is
+initialized.
 
 Tool planning receives each block's required or optional status. For required
 blocks with tools, the prompt asks the model to use a tool unless the source
@@ -288,6 +289,51 @@ not make a required block optional.
 
 Search-backed statements cite tool results through source references. Horizon
 rejects references that were not returned by a tool call.
+
+### Historical news search
+
+`history_search` reads the existing `horizon-YYYY-MM-DD*.md` files under your
+data directory's `summaries/` folder. It uses local BM25 ranking over individual
+news titles, main summaries, and tags, with extra weight for titles. The index is
+loaded lazily once per enrichment batch; it needs no additional dependency,
+database, embedding service, or AI relevance-scoring call.
+
+Tool arguments:
+
+```json
+{"query": "vLLM batch inference", "days": 90}
+```
+
+- `query` is required. Prefer specific product, project, or event names; include
+  useful aliases rather than broad terms such as "AI news".
+- `days` is optional, defaults to 90, and accepts 1–365. Only digests before the
+  current item's UTC publication date (and before today) are eligible.
+- Dates come from filenames and identify the **digest**, not necessarily the
+  original event date.
+- Each item gets at most one history search, shared across output languages.
+  It returns at most three candidates, each with a dated title, original URL,
+  archive filename, and up to 500 characters of the main summary.
+- Results exclude the current URL and collapse repeated links, including
+  translations and fragment/trailing-slash variants. Earlier background,
+  historical callbacks, comments, and reference lists are not indexed as evidence.
+- Tokenization uses Latin words and overlapping two-character Chinese tokens.
+  It can match Chinese phrases without an extra segmenter, but does not infer
+  synonyms or cross-language equivalence. No matching terms means no results.
+
+The built-in `tech-news` profile uses history in its existing `background` block.
+Its prompt requires a direct predecessor, follow-up, or concrete change, limits
+historical references to two, and discards candidates connected only by a broad
+topic or company name. Results are candidates, not proof of a relationship.
+Normal block generation decides whether to use them, so their short excerpts
+add some input tokens but no separate AI screening stage.
+
+To try it, keep past Markdown digests in the same data directory used by the
+next run. CLI `--data-dir` and the existing Docker data mount are respected. MCP
+uses `summaries/` beside its config file; per-run MCP artifacts alone are not
+searched (export a digest with `save_to_horizon_data` to include it). An empty or
+missing archive simply returns no results. Scheduled runners need to restore
+past digest files before running; publishing old Pages posts alone does not
+make them available in a fresh checkout.
 
 ## Content Selection
 
