@@ -5,31 +5,36 @@ title: Processing Profiles
 
 # Processing Profiles
 
-Processing profiles define how Horizon matches, analyzes, enriches, and renders
-different kinds of content. User preferences such as score thresholds and topic
-deduplication live in the runtime configuration so profiles remain stable.
+News needs context. An engineering deep dive needs an explanation of the solution.
+A profile tells Horizon what to look for, how to judge it, and what to write—using
+Markdown prompts and a JSON block definition.
+
+Profiles define reusable editorial rules. Your sources, AI model, score thresholds,
+digest limits, languages, and delivery channels stay in the runtime configuration.
+Each item is routed to one profile; a candidate list lets AI choose among several,
+rather than process the item with all of them.
+
+## Built-in Profiles
+
+| Profile | What it looks for | What it produces |
+| --- | --- | --- |
+| `tech-news` | Releases, incidents, research results, and technology-industry developments | Summary and background; impact and community discussion when useful |
+| `tech-blog` | Engineering deep dives, tutorials, investigations, and retrospectives | Background, solution, and takeaways |
+| `finance-news` | Markets, macroeconomics, company finance, and economically material policy | Summary and background; direct impact when useful |
+| `ai-creator` | AI developments with potential for content creation | Summary; timely hooks, content angles, and community discussion when useful |
+
+Start with a built-in profile, then adjust its prompts or blocks to match your reading needs.
 
 ## Directory Layout
 
-Profiles live under `profiles/<id>/`:
+Each profile lives under `profiles/<id>/` with the same four-file layout:
 
 ```text
-profiles/
-|-- finance-news/
-|   |-- profile.json
-|   |-- match.md
-|   |-- analysis.md
-|   `-- enrichment.md
-|-- tech-news/
-|   |-- profile.json
-|   |-- match.md
-|   |-- analysis.md
-|   `-- enrichment.md
-`-- tech-blog/
-    |-- profile.json
-    |-- match.md
-    |-- analysis.md
-    `-- enrichment.md
+profiles/tech-blog/
+|-- profile.json
+|-- match.md
+|-- analysis.md
+`-- enrichment.md
 ```
 
 - `profile.json` defines the profile contract.
@@ -37,17 +42,10 @@ profiles/
 - `analysis.md` defines the first-pass analysis and scoring rubric.
 - `enrichment.md` defines how to write the localized output blocks.
 
-## Built-in Profiles
+## Try a Different Reading Style
 
-| Profile | Purpose | Output |
-| --- | --- | --- |
-| `finance-news` | Macroeconomics, markets, company finance, and economically material policy | Concise summary, necessary background, and optional direct impact |
-| `tech-news` | Timely releases, incidents, research results, and technology-industry developments | Compact summary and background with optional impact and community discussion |
-| `tech-blog` | Long-form engineering deep dives, tutorials, investigations, retrospectives, and technical arguments | Required background, solution, and takeaway sections |
-
-The blog profile uses larger input budgets and head-middle-tail sampling. For RSS
-feeds, pair it with a full-text extractor so the profile receives the article
-rather than only the feed excerpt:
+For an engineering feed, use `tech-blog` to extract the problem, solution, and
+lessons. Add an entry like this to `sources.rss`:
 
 ```json
 {
@@ -58,9 +56,19 @@ rather than only the feed excerpt:
 }
 ```
 
-Install the optional extractor locally with `uv sync --extra trafilatura`, or
-build Docker with `--build-arg EXTRAS=trafilatura`. Extraction
-failures fall back to the feed-provided content.
+`trafilatura` is included in the base install. It fetches the article body;
+extraction failures fall back to the feed excerpt. The blog profile uses larger
+input budgets and head-middle-tail sampling for long articles.
+
+To create your own profile:
+
+1. Copy a profile directory and give its `profile.json` a unique `id` and name.
+2. Edit `match.md` and `analysis.md` to describe the content and evaluation criteria.
+3. Set the output blocks in `profile.json` and their writing instructions in `enrichment.md`.
+4. Set a source's `profile` to your new ID, then tune its threshold under `processing.profile_settings`.
+
+No Python changes are needed when using the existing block type and tools. Each
+new profile also joins the candidates for unrestricted automatic routing.
 
 ## Contributing a Profile
 
@@ -230,9 +238,10 @@ field directly.
 ## Analysis
 
 After routing, Horizon sends the item to the selected profile's `analysis.md`
-prompt. The analysis result contains a nullable 0-10 score, a reason, a
-one-sentence summary, and tags. The profile owns the rubric, so profiles can
-evaluate different content forms by different standards.
+prompt. A successful analysis contains a 0-10 score, a reason, a one-sentence
+summary, and tags. A failed analysis may be stored with a null score. The profile
+owns the rubric, so profiles can evaluate different content forms by different
+standards.
 
 ## Filtering
 
@@ -270,11 +279,15 @@ useful content. Generated output cannot contain unknown or duplicate blocks.
 Tools are allowed per block through its `tools` array. The only built-in tool is
 `web_search`, and a block may use it only when that block explicitly declares
 `"tools": ["web_search"]`. Use an empty array for blocks that need no tools.
-Unknown tools are rejected when profiles are initialized.
+Unknown tools are rejected when the enricher is initialized.
 
 Tool planning receives each block's required or optional status. For required
-blocks with tools, it uses a tool unless the source already provides enough
-evidence; tool failures do not make the block optional.
+blocks with tools, the prompt asks the model to use a tool unless the source
+already provides enough evidence. A search is not guaranteed; tool failures do
+not make a required block optional.
+
+Search-backed statements cite tool results through source references. Horizon
+rejects references that were not returned by a tool call.
 
 ## Content Selection
 
@@ -314,12 +327,11 @@ where different treatments of the same subject should remain separate:
 
 `topic_dedup` defaults to `true` when it or the profile's settings are omitted.
 
-This does not disable conservative cross-source URL deduplication. Items with
-the same normalized URL and requested Profile are still merged before analysis;
-the same URL routed to different Profiles remains separate.
-
-Search-backed statements cite tool results through source references. Horizon
-rejects references that were not returned by a tool call.
+Topic deduplication runs within each resolved profile. Disabling it does not
+disable the orchestrator's earlier URL deduplication: items with the same
+normalized URL and requested profile or candidate list are still merged before
+analysis. Different requested routes stay separate at that stage; individual
+scrapers may also deduplicate their results before routing.
 
 ## Localized Output
 
@@ -340,5 +352,8 @@ its bold localized title on the same line as its content. External references
 follow the blocks when used. Items
 are grouped by Profile: the briefing title is H1, localized Profile names are H2
 sections, and items are H3 headings. Set `digest.profile_order` to control the H2
-section priority. Loaded Profiles omitted from the list are appended automatically
-in discovery order; unknown or duplicate IDs are rejected.
+section priority. When this list is non-empty, loaded Profiles omitted from it
+are appended in discovery order; unknown or duplicate IDs are rejected. With an
+empty or omitted list, sections follow the order in which profiles first appear
+in the selected items. The final Markdown is rendered by code, without another
+AI summarization call.

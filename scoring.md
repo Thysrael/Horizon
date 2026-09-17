@@ -5,28 +5,30 @@ title: Scoring System
 
 # Scoring System
 
-After fetching content, Horizon resolves a processing profile for each item and
-uses that profile's analysis prompt to score items on a 0-10 scale. The runtime
-configuration may filter them at a user-selected threshold.
+A release announcement and an engineering deep dive earn their place for
+different reasons. Horizon routes each item to one profile and scores it from
+0 to 10 using that profile's rubric. You choose the threshold for each profile
+in the runtime configuration.
 
 ## Pipeline
 
 1. **Profile resolution** — An explicit source profile is used directly. A
-   missing profile or `"auto"` is matched by AI using the loaded `match.md`
-   prompts.
-2. **Content preparation** — Content is truncated to 800 characters when
-   comments are present and 1000 otherwise. Available comments and engagement
-   metadata are added separately.
+   missing profile or `"auto"` is matched by AI using all loaded `match.md`
+   prompts; a candidate array limits that choice to the listed profiles.
+2. **Content preparation** — The profile's `content.analysis_max_chars` and
+   `content.sampling` control how much article text reaches the model. Sampling
+   keeps either the opening or excerpts from the beginning, middle, and end.
+   Available comments and engagement metadata are added separately.
 3. **Profile analysis** — The selected profile's `analysis.md` prompt evaluates
    the item and returns a score, reason, one-sentence summary, and tags.
 4. **Validation and retry** — Responses are parsed as JSON. Failed AI calls are
-   retried with exponential backoff; a structurally invalid result is recorded
-   as an analysis failure.
+   retried with exponential backoff. An invalid analysis response gets one repair
+   attempt; if it still fails validation, the analysis is stored with a null score.
 5. **Profile filtering** — If a runtime threshold is configured for the resolved
    profile, only items meeting it continue. Without a threshold, analyzed items
    continue without score filtering.
-6. **Digest selection** — Topic deduplication and optional category quotas or a
-   final item cap run before enrichment.
+6. **Digest selection** — Topic deduplication runs within each profile. Optional
+   category quotas and a final item cap select the items to enrich.
 
 Analysis and enrichment concurrency are configured through
 `ai.analysis_concurrency` and `ai.enrichment_concurrency`. Result order is
@@ -83,7 +85,8 @@ the profile's settings:
 
 A threshold passed to an MCP operation overrides all configured profile
 thresholds for that operation. Analysis still produces scores when filtering is
-disabled; only the selection step is bypassed.
+disabled; only score-based filtering is bypassed. Topic deduplication and digest
+limits still apply when configured.
 
 Collection and balanced digest settings remain in the runtime configuration:
 
@@ -118,5 +121,6 @@ and block contract. A block can call a tool only when that tool is declared in
 the block's `tools` list. The only built-in tool is `web_search`.
 
 For every configured language, Horizon produces a localized title, section
-blocks, and cited sources. See [Processing Profiles](profiles.md)
-for the complete profile schema and output behavior.
+blocks, and references when tool sources are cited. The renderer groups these
+artifacts by profile and builds the Markdown briefing without a final AI call.
+See [Processing Profiles](profiles.md) for the complete schema and output behavior.

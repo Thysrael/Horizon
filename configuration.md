@@ -70,6 +70,11 @@ and webhook message content are unchanged.
 
 ## Processing Profiles
 
+Profiles define how to evaluate and present content; the runtime configuration
+defines what you collect, how much you keep, and where it goes. Use `tech-news`
+for events and context, `tech-blog` for engineering lessons, `finance-news` for
+market developments, or `ai-creator` for content ideas.
+
 The `processing` section controls profile discovery and the fallback used when
 automatic matching cannot select a profile:
 
@@ -320,11 +325,18 @@ For OpenAI-compatible gateways, Horizon sends `temperature` by default. If a new
 ## Information Sources
 
 All sources are configured under the top-level `sources` key in `config.json`.
-Source entries also accept `profile`. An explicit profile ID uses that profile
-without an AI matching call. If `profile` is missing or set to `"auto"`, Horizon
-matches the item against the loaded profiles. An unknown explicit ID is an
-error. For nested sources, set the field on the item-producing entry, such as an
-RSS feed, Reddit subreddit or user, or OpenBB watchlist.
+Source entries also accept `profile`:
+
+| Value | Behavior |
+| --- | --- |
+| `"tech-blog"` | Use that profile directly, without an AI matching call |
+| `"auto"` or omitted | Let AI choose one of all loaded profiles |
+| `["tech-news", "finance-news"]` | Let AI choose one profile from this candidate list |
+
+An unknown profile ID is an error. For nested sources, set the field on the
+item-producing entry, such as an RSS feed, Reddit subreddit or user, Telegram
+channel, or OpenBB watchlist. See [Source Routing](profiles.md#source-routing)
+for validation and fallback rules.
 
 ### GitHub
 
@@ -603,10 +615,11 @@ digest limits:
 ```
 
 - `max_items`: Optional final cap after all group limits are applied
-- `profile_order`: Optional final-summary section priority. Loaded profiles not
-  listed here are appended automatically in profile discovery order. Unknown or
-  duplicate profile IDs are rejected. The example prioritizes the three listed
-  profiles in that order.
+- `profile_order`: Optional final-summary section priority. When non-empty,
+  loaded profiles not listed here are appended in profile discovery order.
+  When empty or omitted, sections follow their first appearance in the selected
+  items. Unknown or duplicate IDs are rejected. The example prioritizes the
+  three listed profiles in that order.
 - `category_groups`: Optional map of quota groups. Each group requires a positive
   `limit` and a non-empty `categories` list. Items within each group are kept by
   analysis score, highest first.
@@ -918,7 +931,7 @@ uv run horizon-webhook --dry-run
 
 ## Static Site
 
-Horizon writes generated summaries to `data/summaries/` (or `<data-dir>/summaries/` when `--data-dir` is set) and copies publishable Markdown into `docs/` for the GitHub Pages site. The repository includes a ready-to-use workflow at `.github/workflows/daily-summary.yml`.
+Horizon writes generated summaries to `data/summaries/` (or `<data-dir>/summaries/` when `--data-dir` is set) and copies publishable Markdown into `docs/` for the GitHub Pages site. The repository includes a disabled daily workflow template at [`.github/workflows/daily-summary.yml.disabled`](../.github/workflows/daily-summary.yml.disabled). Configure it for your deployment and rename it to `daily-summary.yml` to enable scheduled generation.
 
 To use GitHub Pages, enable Pages for the repository and run the scheduled workflow or trigger it manually. The generated site is built from the `docs/` directory.
 
