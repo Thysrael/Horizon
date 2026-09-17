@@ -203,6 +203,8 @@ Flow:
 
 Profile timelines use `source_mode: "profiles"`. Keyword discovery and reply expansion reuse `source_mode: "search"` with `search_query`.
 
+When users are configured, a single profile run fetches their timelines together. Each non-empty keyword query starts a separate search run, independently of the configured users. Either path can be used on its own. Results are filtered to the current time window and merged with deduplication by tweet ID across all runs.
+
 **Config** (`sources.twitter`):
 
 ```json
@@ -221,8 +223,8 @@ Profile timelines use `source_mode: "profiles"`. Keyword discovery and reply exp
 ```
 
 - `users` — Twitter screen names to monitor, without the `@` prefix
-- `keywords`: Apify search queries (`source_mode: "search"`), fetched alongside user timelines. Not supported in Playwright mode.
-- `fetch_limit` — maximum tweets to fetch per run
+- `keywords` — independent Apify search queries (`source_mode: "search"`), not filters on the configured users' timelines. Not supported in Playwright mode.
+- `fetch_limit` — in Apify mode, each profile or keyword-search actor run requests up to `max(100, fetch_limit)` tweets. This is not a combined limit: the example above starts three discovery runs with a limit of 100 tweets each, before time filtering and deduplication. Each keyword adds an actor run and associated Apify usage.
 - `category` — optional tag for balanced digest grouping (applies to all tweets from this source)
 - `fetch_reply_text` — when `true`, a second Apify run fetches reply bodies for each important tweet and appends them under `--- Top Comments ---` for AI analysis
 - `max_replies_per_tweet` — maximum reply lines per tweet (sorted by engagement score)
