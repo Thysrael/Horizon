@@ -22,6 +22,7 @@ dependencies = [
     "mcp>=1.0.0",
     "opencc-python-reimplemented>=0.1.7",
     "trafilatura>=2.1.0",
+    "qrcode>=7.4",
 ]
 
 [project.optional-dependencies]
@@ -42,6 +43,7 @@ horizon = "src.main:main"
 horizon-mcp = "src.mcp.server:main"
 horizon-wizard = "src.setup.wizard:main"
 horizon-webhook = "src.services.webhook_cli:main"
+horizon-wechat = "src.services.wechat_cli:main"
 
 [build-system]
 requires = ["hatchling"]

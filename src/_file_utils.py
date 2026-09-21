@@ -1,8 +1,10 @@
 """Internal file-system utilities."""
 
+import json
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 
 
 def _atomic_write_text(path: Path, content: str) -> None:
@@ -23,3 +25,9 @@ def _atomic_write_text(path: Path, content: str) -> None:
     finally:
         if temp_path is not None:
             temp_path.unlink(missing_ok=True)
+
+
+def _atomic_write_json(path: Path, data: Any) -> None:
+    """Serialize *data* as pretty UTF-8 JSON and write it atomically."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")

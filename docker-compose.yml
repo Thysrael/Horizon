@@ -14,3 +14,16 @@ services:
     # Run daily at 8:00 AM UTC (adjust as needed)
     # For one-time run, use: docker compose run --rm horizon
     command: ["--hours", "24"]
+
+  # Optional: answer WeChat chat commands (日报 / 1 / 2 / 帮助) instantly instead of at
+  # the next daily run. Requires a session created with `horizon-wechat login`.
+  # horizon-wechat:
+  #   build:
+  #     context: .
+  #   container_name: horizon-wechat
+  #   volumes:
+  #     - ./data:/app/data
+  #     - ./.env:/app/.env:ro
+  #   entrypoint: ["uv", "run", "horizon-wechat"]
+  #   command: ["listen"]
+  #   restart: unless-stopped

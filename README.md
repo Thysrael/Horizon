@@ -309,6 +309,7 @@ Horizon can publish or deliver the generated briefing in several ways:
 | **GitHub Pages Daily Site** | Copies generated Markdown into `docs/` so GitHub Pages can publish a daily-updated briefing site |
 | **Email Subscription** | Sends the daily briefing to subscribers and handles subscribe/unsubscribe requests through SMTP/IMAP |
 | **Webhook Notification** | Pushes success or failure results to Feishu/Lark, DingTalk, Slack, Discord, or any custom webhook endpoint |
+| **WeChat Notification** | Pushes the briefing to your WeChat through the official iLink Bot API — scan a QR code once with `horizon-wechat login` |
 
 For delivery setup, see the [Configuration Guide](docs/configuration.md). To run pipeline stages from an AI assistant, use the **MCP Server**: [tools](src/mcp/README.md) · [client setup](src/mcp/integration.md).
 
@@ -326,7 +327,8 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 
 | Guide | Description |
 |-------|-------------|
-| [Configuration](docs/configuration.md) | AI providers, sources, profiles, filtering, email, webhook, GitHub Pages, and MCP setup |
+| [Configuration](docs/configuration.md) | AI providers, sources, profiles, filtering, email, webhook, WeChat, GitHub Pages, and MCP setup |
+| [WeChat Delivery](docs/wechat.md) | Push briefings to WeChat through the iLink Bot API: QR login, chat commands, styles, reply budget |
 | [Processing Profiles](docs/profiles.md) | Profile routing, prompts, runtime filtering preferences, enrichment blocks, and tools |
 | [Scoring](docs/scoring.md) | How Horizon evaluates and ranks news items |
 | [Scrapers](docs/scrapers.md) | Source scraper details and extension notes |
@@ -335,7 +337,7 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 
 ## Project Status
 
-Horizon already supports the full daily briefing loop: multi-source collection, profile-driven analysis and enrichment, deduplication, comment summaries, bilingual generation, GitHub Pages publishing, email delivery, webhook delivery, Docker deployment, MCP integration, and the setup wizard.
+Horizon already supports the full daily briefing loop: multi-source collection, profile-driven analysis and enrichment, deduplication, comment summaries, bilingual generation, GitHub Pages publishing, email delivery, webhook delivery, WeChat delivery, Docker deployment, MCP integration, and the setup wizard.
 
 Planned improvements:
 

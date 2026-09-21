@@ -305,6 +305,7 @@ Horizonは、生成されたブリーフィングをいくつかの方法で公�
 | **GitHub Pages 日次サイト** | 生成されたMarkdownを`docs/`にコピーし、GitHub Pagesが毎日更新されるブリーフィングサイトを公開できるようにします |
 | **メール購読** | 日次ブリーフィングを購読者に送信し、SMTP/IMAPを通じて購読・購読解除リクエストを処理します |
 | **Webhook通知** | 成功または失敗の結果をFeishu/Lark、DingTalk、Slack、Discord、または任意のカスタムWebhookエンドポイントへプッシュします |
+| **WeChat通知** | 公式のiLink Bot APIを通じて日報をWeChatへプッシュします。`horizon-wechat login` でQRコードを一度スキャンするだけです |
 
 配信の設定は[設定ガイド](docs/configuration.md)を参照してください。AIアシスタントから各段階を呼び出すには**MCPサーバー**を利用できます：[ツール一覧](src/mcp/README.md)・[クライアント設定](src/mcp/integration.md)。
 
@@ -322,7 +323,8 @@ Horizonは余暇に運営されているオープンソースプロジェクト�
 
 | ガイド | 説明 |
 |-------|-------------|
-| [設定](docs/configuration.md) | AIプロバイダー、情報源、処理プロファイル、フィルタリング、メール、webhook、GitHub Pages、MCPのセットアップ |
+| [設定](docs/configuration.md) | AIプロバイダー、情報源、処理プロファイル、フィルタリング、メール、webhook、WeChat、GitHub Pages、MCPのセットアップ |
+| [WeChat配信](docs/wechat.md) | iLink Bot APIで日報をWeChatへプッシュ：QRログイン、チャットコマンド、スタイル、返信上限 |
 | [処理プロファイル](docs/profiles.md) | プロファイルの振り分け、プロンプト、実行時フィルター設定、エンリッチブロック、ツール |
 | [スコアリング](docs/scoring.md) | Horizonがニュース項目を評価・ランク付けする方法 |
 | [スクレイパー](docs/scrapers.md) | 情報源スクレイパーの詳細と拡張に関する注記 |
@@ -331,7 +333,7 @@ Horizonは余暇に運営されているオープンソースプロジェクト�
 
 ## プロジェクトの状況
 
-Horizonはすでに日次ブリーフィングの全ループをサポートしています。マルチソース収集、プロファイル駆動の分析とエンリッチ、重複排除、コメント要約、2言語生成、GitHub Pages公開、メール配信、webhook配信、Dockerデプロイ、MCP統合、セットアップウィザードです。
+Horizonはすでに日次ブリーフィングの全ループをサポートしています。マルチソース収集、プロファイル駆動の分析とエンリッチ、重複排除、コメント要約、2言語生成、GitHub Pages公開、メール配信、webhook配信、WeChat配信、Dockerデプロイ、MCP統合、セットアップウィザードです。
 
 予定している改善:
 

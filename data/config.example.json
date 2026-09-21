@@ -137,7 +137,10 @@
     },
     "twitter": {
       "enabled": false,
-      "users": ["karpathy", "ylecun"],
+      "users": [
+        "karpathy",
+        "ylecun"
+      ],
       "keywords": [],
       "fetch_limit": 10,
       "fetch_reply_text": false,
@@ -157,7 +160,15 @@
           "provider": "yfinance",
           "fetch_limit": 20,
           "category": "equities",
-          "symbols": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA"],
+          "symbols": [
+            "AAPL",
+            "MSFT",
+            "NVDA",
+            "GOOGL",
+            "AMZN",
+            "META",
+            "TSLA"
+          ],
           "profile": "tech-news"
         }
       ]
@@ -165,7 +176,11 @@
     "ossinsight": {
       "enabled": false,
       "period": "past_24_hours",
-      "languages": ["All", "Python", "TypeScript"],
+      "languages": [
+        "All",
+        "Python",
+        "TypeScript"
+      ],
       "keywords": [],
       "min_stars": 10,
       "max_items": 30,
@@ -178,7 +193,10 @@
           "channel": "zaihuapd",
           "enabled": true,
           "fetch_limit": 20,
-          "profile": ["tech-news", "finance-news"]
+          "profile": [
+            "tech-news",
+            "finance-news"
+          ]
         }
       ]
     },
@@ -259,5 +277,11 @@
       }
     },
     "headers": ""
+  },
+  "wechat": {
+    "enabled": false,
+    "style": "summary",
+    "languages": null,
+    "chunk_size": 4000
   }
 }

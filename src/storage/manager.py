@@ -129,6 +129,19 @@ class StorageManager:
 
         return filepath
 
+    def latest_daily_summary(self, language: str = "en") -> tuple[str, str] | None:
+        """Return ``(date, markdown)`` of the newest saved summary for *language*."""
+        pattern = re.compile(rf"^horizon-(\d{{4}}-\d{{2}}-\d{{2}})-{re.escape(language)}\.md$")
+        candidates = [
+            (match.group(1), path)
+            for path in self.summaries_dir.glob("horizon-*.md")
+            if (match := pattern.match(path.name))
+        ]
+        if not candidates:
+            return None
+        date, path = max(candidates)
+        return date, path.read_text(encoding="utf-8")
+
     def load_subscribers(self) -> list:
         """Loads the list of email subscribers."""
         subscribers_path = self.data_dir / "subscribers.json"

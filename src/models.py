@@ -521,6 +521,23 @@ class WebhookConfig(BaseModel):
         return v
 
 
+class WeChatConfig(BaseModel):
+    """WeChat (iLink Bot) notification configuration.
+
+    Credentials are not stored in config.json. ``horizon-wechat login`` scans a
+    QR code and writes ``wechat_session.json`` under the data directory.
+    ``style`` is the default message style; the reader can switch from the
+    chat by replying ``1`` or ``2``, which is remembered in the session file.
+    """
+
+    style: Literal["summary", "overview"] = "summary"
+    languages: Optional[List[str]] = (
+        None  # Optional language filter for WeChat delivery; defaults to all AI languages
+    )
+    chunk_size: int = Field(default=4000, gt=0, le=4000)  # Max characters per message
+    enabled: bool = False
+
+
 class EmailConfig(BaseModel):
     """Email configuration for updates/subscriptions."""
 
@@ -616,3 +633,4 @@ class Config(BaseModel):
     extractors: Dict[str, ExtractorConfig] = Field(default_factory=dict)
     email: Optional[EmailConfig] = None
     webhook: Optional[WebhookConfig] = None
+    wechat: Optional[WeChatConfig] = None

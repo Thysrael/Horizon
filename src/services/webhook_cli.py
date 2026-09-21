@@ -4,103 +4,19 @@ import argparse
 import asyncio
 import json
 import sys
-from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 
 from .._cli import add_data_dir_arguments, add_log_level_argument
-from ..logging_config import configure_logging
-
-from ..ai.summarizer import DailySummarizer
 from ..console_icons import IconStyle, get_icons
-from ..models import (
-    ClassificationResult,
-    ContentAnalysis,
-    ContentArtifact,
-    ContentBlock,
-    ContentItem,
-    ProcessingResult,
-    SourceType,
-)
+from ..logging_config import configure_logging
 from ..storage.manager import ConfigError, StorageManager
+from .delivery import sample_briefing
 from .webhook import WebhookNotifier
 
 console = Console(stderr=True)
-
-
-def _make_test_items() -> list[ContentItem]:
-    """Create sample ContentItems for the test notification."""
-    return [
-        ContentItem(
-            id="github:test:1",
-            source_type=SourceType.GITHUB,
-            title="GPT-5 Released with Multimodal Capabilities",
-            url="https://example.com/gpt5",
-            content="OpenAI announced GPT-5 with major improvements.",
-            author="openai",
-            published_at=datetime(2026, 4, 24, 10, 0, tzinfo=timezone.utc),
-            fetched_at=datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc),
-            profile="tech-news",
-            processing=_sample_processing(
-                score=9.0,
-                summary="OpenAI released GPT-5 featuring multimodal capabilities and improved reasoning.",
-                tags=["ai", "llm", "openai"],
-                title_zh="GPT-5 发布：多模态能力大幅提升",
-                summary_zh="OpenAI 发布了 GPT-5，具备多模态能力和更强的推理能力。",
-            ),
-        ),
-        ContentItem(
-            id="hackernews:test:2",
-            source_type=SourceType.HACKERNEWS,
-            title="New Linux Kernel 7.0 Released",
-            url="https://example.com/linux7",
-            content="Linux kernel 7.0 brings significant performance improvements.",
-            author="torvalds",
-            published_at=datetime(2026, 4, 24, 8, 0, tzinfo=timezone.utc),
-            fetched_at=datetime(2026, 4, 24, 12, 0, tzinfo=timezone.utc),
-            profile="tech-news",
-            processing=_sample_processing(
-                score=7.5,
-                summary="Linux kernel 7.0 released with performance gains and new hardware support.",
-                tags=["linux", "kernel", "performance"],
-                title_zh="Linux 内核 7.0 发布",
-                summary_zh="Linux 内核 7.0 发布，带来显著性能提升和新硬件支持。",
-            ),
-        ),
-    ]
-
-
-def _sample_processing(
-    score: float,
-    summary: str,
-    tags: list[str],
-    title_zh: str,
-    summary_zh: str,
-) -> ProcessingResult:
-    return ProcessingResult(
-        classification=ClassificationResult(
-            profile="tech-news", method="source_override"
-        ),
-        analysis=ContentAnalysis(
-            score=score, reason="Sample item", summary=summary, tags=tags
-        ),
-        artifacts={
-            "zh": ContentArtifact(
-                language="zh",
-                title=title_zh,
-                blocks=[
-                    ContentBlock(
-                        id="summary",
-                        title="摘要",
-                        content=summary_zh,
-                        primary=True,
-                    )
-                ],
-            )
-        },
-    )
 
 
 def _preview_message(
@@ -136,10 +52,7 @@ async def _run_test(
     icon_style: IconStyle = "emoji",
 ) -> None:
     """Execute the webhook test."""
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    items = _make_test_items()
-    summarizer = DailySummarizer()
-    summary = await summarizer.generate_summary(items, today, len(items), language=lang)
+    today, items, summarizer, summary = await sample_briefing(lang)
 
     effective_config = webhook_config
     if delivery_override:

@@ -15,6 +15,7 @@ from .models import Config, ContentItem
 from .storage.manager import StorageManager, safe_output_path
 from .services.email import EmailManager
 from .services.webhook import WebhookNotifier
+from .services.wechat import WeChatNotifier
 from .scrapers.github import GitHubScraper
 from .scrapers.hackernews import HackerNewsScraper
 from .scrapers.rss import RSSScraper
@@ -216,6 +217,13 @@ class HorizonOrchestrator:
             if config.webhook and config.webhook.enabled
             else None
         )
+        self.wechat_notifier = (
+            WeChatNotifier(config.wechat, self.storage, console=self.console, icons=self.icons)
+            if config.wechat and config.wechat.enabled
+            else None
+        )
+        # Push channels sharing the send_daily_summary / send_failure interface.
+        self.notifiers = [n for n in (self.webhook_notifier, self.wechat_notifier) if n]
         self.last_fetch_report: Optional[FetchReport] = None
 
     async def run(self, force_hours: int = None) -> None:
@@ -357,9 +365,9 @@ class HorizonOrchestrator:
                     subject = f"Horizon Summary ({lang.upper()}) - {today}"
                     self.email_manager.send_daily_summary(summary, subject, subscribers)
 
-                # Send webhook notification if configured
-                if self.webhook_notifier:
-                    await self.webhook_notifier.send_daily_summary(
+                # Push to webhook / WeChat if configured
+                for notifier in self.notifiers:
+                    await notifier.send_daily_summary(
                         summary=summary,
                         important_items=important_items,
                         all_items_count=len(all_items),
@@ -392,9 +400,9 @@ class HorizonOrchestrator:
                 f"[bold red]{self.icons['error']} Error: {e}[/bold red]"
             )
 
-            # Send webhook failure notification if configured
-            if self.webhook_notifier:
-                await self.webhook_notifier.send_failure(
+            # Push failure notifications if configured
+            for notifier in self.notifiers:
+                await notifier.send_failure(
                     date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                     error_message=str(e),
                 )

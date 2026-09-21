@@ -298,6 +298,7 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 | **GitHub Pages 日报站点** | 将生成的 Markdown 复制到 `docs/`，通过 GitHub Pages 发布为每日更新的静态日报站点 |
 | **邮件订阅** | 通过 SMTP/IMAP 向订阅者发送日报，并自动处理订阅/退订请求 |
 | **Webhook 通知** | 在成功或失败时将结果推送到飞书、钉钉、Slack、Discord 或任意 Webhook 端点 |
+| **微信通知** | 通过微信官方 iLink Bot API 把日报直接推送到你的微信，用 `horizon-wechat login` 扫一次码即可 |
 
 投递配置见[配置指南](docs/configuration.md)。希望让 AI 助手调用流水线各阶段，可接入 **MCP Server**：[工具说明](src/mcp/README.md) · [客户端接入](src/mcp/integration.md)。
 
@@ -305,7 +306,8 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 
 | 文档 | 内容 |
 |------|------|
-| [配置指南](docs/configuration.md) | AI 模型、信息源、Profile、筛选、邮件、Webhook、GitHub Pages 和 MCP 配置 |
+| [配置指南](docs/configuration.md) | AI 模型、信息源、Profile、筛选、邮件、Webhook、微信、GitHub Pages 和 MCP 配置 |
+| [微信推送](docs/wechat_zh.md) | 通过 iLink Bot API 推送到微信：扫码登录、聊天指令、样式、回复额度 |
 | [Profile 指南](docs/profiles.md) | 内置读法、自定义评分与内容区块、路由和工具权限 |
 | [评分机制](docs/scoring.md) | Horizon 如何评估和排序新闻 |
 | [抓取器](docs/scrapers.md) | 信息源抓取器说明和扩展细节 |
@@ -314,7 +316,7 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 
 ## 项目状态
 
-Horizon 已经支持完整的日报流程：多源抓取、Profile 驱动的分析与内容生成、去重、评论摘要、双语生成、GitHub Pages 发布、邮件分发、Webhook 推送、Docker 部署、MCP 集成和配置向导。
+Horizon 已经支持完整的日报流程：多源抓取、Profile 驱动的分析与内容生成、去重、评论摘要、双语生成、GitHub Pages 发布、邮件分发、Webhook 推送、微信推送、Docker 部署、MCP 集成和配置向导。
 
 计划中的改进：
 

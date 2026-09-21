@@ -17,6 +17,7 @@ from ..console_icons import get_icons
 from ..models import ContentItem, WebhookConfig
 from ..ai.summarizer import DailySummarizer
 from ..url_security import UnsafeURLError, safe_request, validate_http_url
+from .delivery import build_base_variables, build_delivery_messages
 
 logger = logging.getLogger(__name__)
 
@@ -469,14 +470,12 @@ class WebhookNotifier:
         if webhook_languages and lang not in webhook_languages:
             return []
 
-        base_vars = {
-            "date": date,
-            "language": lang,
-            "important_items": len(important_items),
-            "all_items": all_items_count,
-            "result": "success",
-            "timestamp": str(int(datetime.now(timezone.utc).timestamp())),
-        }
+        base_vars = build_base_variables(
+            date=date,
+            lang=lang,
+            important_count=len(important_items),
+            all_items_count=all_items_count,
+        )
 
         if self._can_use_feishu_collapsible():
             return [
@@ -504,74 +503,17 @@ class WebhookNotifier:
                 }
             ]
 
-        delivery = getattr(self.config, "delivery", "summary")
-        if delivery == "summary_and_items":
-            item_messages: List[dict[str, Any]] = []
-            overview = summarizer.generate_webhook_overview(
-                important_items,
-                date,
-                all_items_count,
-                language=lang,
-            )
-            overview_message = {
-                **base_vars,
-                "message_title": (
-                    f"Horizon {date} 总览"
-                    if lang == "zh"
-                    else f"Horizon {date} Overview"
-                ),
-                "message_kind": "overview",
-                "summary": overview,
-            }
-            view = summarizer.build_view(important_items, lang)
-            for group in view.groups:
-                for view_item in group.items:
-                    item_summary = summarizer.generate_webhook_item(
-                        view_item.item,
-                        language=lang,
-                        index=view_item.index,
-                        total=view_item.group_count,
-                        title=view_item.title,
-                        score=view_item.score,
-                    )
-                    item_messages.append(
-                        {
-                            **base_vars,
-                            "message_title": (
-                                f"{group.name} {view_item.index}/"
-                                f"{view_item.group_count} {view_item.title}"
-                            ),
-                            "message_kind": "item",
-                            "item_index": view_item.global_index,
-                            "item_count": view.item_count,
-                            "profile_item_index": view_item.index,
-                            "profile_item_count": view_item.group_count,
-                            "item_profile": group.profile_id,
-                            "item_profile_name": group.name,
-                            "item_title": view_item.title,
-                            "item_url": str(view_item.item.url),
-                            "item_score": (
-                                view_item.score if view_item.score != "?" else ""
-                            ),
-                            "summary": item_summary,
-                        }
-                    )
-
-            if getattr(self.config, "overview_position", "first") == "last":
-                return list(reversed(item_messages)) + [overview_message]
-
-            return [overview_message] + item_messages
-
-        return [
-            {
-                **base_vars,
-                "message_title": (
-                    f"Horizon {date} 日报" if lang == "zh" else f"Horizon {date} Daily"
-                ),
-                "message_kind": "summary",
-                "summary": summary,
-            }
-        ]
+        return build_delivery_messages(
+            delivery=getattr(self.config, "delivery", "summary"),
+            overview_position=getattr(self.config, "overview_position", "first"),
+            base_vars=base_vars,
+            summary=summary,
+            important_items=important_items,
+            all_items_count=all_items_count,
+            date=date,
+            lang=lang,
+            summarizer=summarizer,
+        )
 
     async def notify(self, variables: dict) -> WebhookDeliveryResult:
         """Send a webhook notification with template variable substitution.
