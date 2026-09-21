@@ -931,31 +931,56 @@ uv run horizon-webhook --dry-run
 
 ## WeChat Notification
 
-WeChat delivery is optional and disabled unless `wechat.enabled` is `true`. Horizon pushes the daily briefing to your personal WeChat through the official **iLink Bot API**, the same protocol Tencent's `openclaw-weixin` channel uses. No webhook URL or app registration is needed: you log in once by scanning a QR code with `horizon-wechat login`. The full setup, chat commands, deployment and troubleshooting guide is [WeChat Delivery](wechat.md) ([中文](wechat_zh.md)).
+Horizon sends briefings to your WeChat through the iLink Bot API, following
+Tencent's `openclaw-weixin` client protocol. Enable it in your configuration:
 
 ```json
 {
   "wechat": {
     "enabled": true,
-    "style": "summary",
     "languages": ["zh"],
     "chunk_size": 4000
   }
 }
 ```
 
-- `enabled`: Turns WeChat delivery on or off. The default is `false`.
-- `style`: Default message style, switchable from the chat by replying `1` or `2`. `summary` (default) sends the whole briefing as one message, split at `chunk_size` if needed; `overview` sends one overview message followed by one full message per item.
-- `languages`: Optional WeChat-only language filter, for example `["zh"]`. Omit it or use `null` to send every configured `ai.languages` entry.
-- `chunk_size`: Maximum characters per WeChat text message (at most 4000). Longer bodies are split on paragraph boundaries.
-
-Two WeChat rules shape delivery, both handled by Horizon and explained in the guide: the bot can only message you after you have messaged it once, and it may send at most 10 messages per message you send. Note also that Horizon is offline between scheduled runs, so chat commands (`日报`, `1`/`2`, `帮助`) are answered at the next run unless you keep `horizon-wechat listen` running.
+- `enabled`: Defaults to `false`.
+- `languages`: Optional filter; omit it or use `null` to send all `ai.languages`.
+- `chunk_size`: Maximum characters per message, from 1 to 4000 (default: 4000).
+  Long briefings are split at paragraph or line boundaries where possible.
 
 ```bash
-uv run horizon-wechat login                  # scan a QR code, then send the bot one message
-uv run horizon-wechat status                 # session, current style, replies left
-uv run horizon-wechat test --dry-run         # preview what would be sent
-uv run horizon-wechat listen                 # answer chat commands (日报 / 1 / 2 / 帮助) instantly
+uv run horizon-wechat login                     # scan with WeChat, then message the bot
+uv run horizon-wechat status                    # connection and estimated replies left
+uv run horizon-wechat test --lang zh --dry-run  # preview without connecting or sending
+uv run horizon-wechat test --lang zh             # send a test message
+```
+
+The normal `horizon` run then delivers its generated briefings and failure
+notifications. Login credentials and the
+latest conversation context are saved in `<data-dir>/wechat_session.json`.
+Keep this file between scheduled runs; on POSIX it is written with mode `0600`.
+
+**WeChat limits:** a user message provides the context required for replies.
+Live testing of this integration observed a limit of 10 replies per context;
+Horizon tracks an estimate, reminds you when it runs low, and stops on a server
+rejection. Send the bot another message to refresh the context. Long or
+multilingual briefings may exhaust the budget partway through. A daily budget
+reset has not been confirmed; the API response remains authoritative.
+
+If setup timed out waiting for your first message, send one and run
+`uv run horizon-wechat status --refresh`. A receive-session timeout (`-14`) does
+not necessarily prevent delivery; if it persists, use `login --force`.
+Markdown is adapted for WeChat by flattening HTML and removing images and
+in-page links.
+
+For custom paths, put `-d` / `-c` before the subcommand, for example
+`uv run horizon-wechat -d ./my-data login`. With Docker, reuse the existing data
+mount and override the entrypoint:
+
+```bash
+docker compose run --rm --entrypoint uv horizon run horizon-wechat login
+docker compose run --rm --entrypoint uv horizon run horizon-wechat test --lang zh
 ```
 
 ## Static Site
