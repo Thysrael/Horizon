@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xl="http://www.w3.org/1999/xlink" version="1.1" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="0 0 1200 836" width="1200" height="836" role="img" aria-labelledby="architecture-title architecture-desc" xml:lang="en">
+<svg xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:xl="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1200 836" width="1200" height="836" role="img" aria-labelledby="architecture-title architecture-desc" xml:lang="en">
   <title id="architecture-title">Horizon architecture</title>
-  <desc id="architecture-desc">Ten source types feed a shared pipeline: collect and merge, route to one profile, analyze and select, enrich selected items, and render a briefing. Profiles define matching, scoring, and content blocks. Thick blue arrows show content flow; dashed orange arrows show profile rules. Runtime configuration controls sources, models, filtering, languages, and delivery. Outputs include Markdown files, GitHub Pages, email, and webhooks for Feishu, Lark, DingTalk, Slack, Discord, or custom endpoints. CLI and MCP tools invoke the pipeline.</desc>
+  <desc id="architecture-desc">Ten source types feed a shared pipeline: collect and merge, route to one profile, analyze and select, enrich selected items, and render a briefing. Profiles define matching, scoring, content blocks, and per-block permissions for history_search and web_search. Thick blue arrows show content flow; dashed orange arrows show profile rules. Runtime configuration controls sources, models, filtering, languages, and delivery. Outputs include Markdown files, GitHub Pages, email, WeChat through iLink Bot, and webhooks for Feishu, Lark, DingTalk, Slack, Discord, or custom endpoints. CLI and MCP tools invoke the pipeline.</desc>
   <defs>
     <marker orient="auto" overflow="visible" markerUnits="strokeWidth" id="FilledArrow_Marker" stroke-linejoin="miter" stroke-miterlimit="10" viewBox="-1 -3 7 6" markerWidth="7" markerHeight="6" color="#676a70">
       <g>
@@ -25,7 +25,7 @@
       </g>
     </marker>
   </defs>
-  <g id="Horizon_Architecture" fill-opacity="1" stroke-dasharray="none" fill="none" stroke="none" stroke-opacity="1">
+  <g id="Horizon_Architecture" fill-opacity="1" stroke="none" fill="none" stroke-dasharray="none" stroke-opacity="1">
     <title>Horizon Architecture</title>
     <g id="Horizon_Architecture_Layer_1">
       <title>Layer 1</title>
@@ -675,116 +675,6 @@
           <tspan font-family="Helvetica Neue" font-size="12" fill="#676a70" x="0" y="11" xml:space="preserve">selected items</tspan>
         </text>
       </g>
-      <g id="Group_149">
-        <title>profiles</title>
-        <g id="Graphic_132">
-          <title>profiles/box</title>
-          <path d="M 792 40 L 1160 40 C 1164.4183 40 1168 43.58172 1168 48 L 1168 264 C 1168 268.41828 1164.4183 272 1160 272 L 792 272 C 787.5817 272 784 268.41828 784 264 L 784 48 C 784 43.58172 787.5817 40 792 40 Z" fill="#20242b"/>
-        </g>
-        <g id="Group_136">
-          <title>profiles/icon</title>
-          <g id="Line_133">
-            <title>profiles/icon/stroke</title>
-            <path d="M 807.1667 72.33333 L 818.0846 66.3781 C 819.2785 65.72688 820.7215 65.72688 821.9154 66.3781 L 826.4167 68.83333 C 828.3497 69.887695 829.0619 72.30943 828.0076 74.24242 C 827.641 74.91447 827.0887 75.466765 826.4167 75.83333 L 821.9154 78.288565 C 820.7215 78.93979 819.2785 78.93979 818.0846 78.288565 L 807.1667 72.33333" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
-          </g>
-          <g id="Line_134">
-            <title>profiles/icon/stroke</title>
-            <path d="M 807.1667 78.16667 L 818.0846 84.1219 C 819.2785 84.77312 820.7215 84.77312 821.9154 84.1219 L 832.8333 78.16667" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
-          </g>
-          <g id="Line_135">
-            <title>profiles/icon/stroke</title>
-            <path d="M 807.1667 84 L 818.0846 89.95523 C 819.2785 90.60646 820.7215 90.60646 821.9154 89.95523 L 832.8333 84" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
-          </g>
-        </g>
-        <g id="Graphic_137">
-          <title>profiles/title</title>
-          <clipPath id="clip_path_31">
-            <rect x="0" y="0" width="291" height="38"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_31)" transform="translate(851 57.0939)" fill="white">
-            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="28" fill="white" x="0" y="27" xml:space="preserve">Profiles</tspan>
-          </text>
-        </g>
-        <g id="Graphic_138">
-          <title>profiles/subtitle</title>
-          <clipPath id="clip_path_32">
-            <rect x="0" y="0" width="336" height="26"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_32)" transform="translate(807 103.776)" fill="#c5cbd4">
-            <tspan font-family="Helvetica Neue" font-size="16" fill="#c5cbd4" x="0" y="15" xml:space="preserve">Your rules, in Markdown + JSON</tspan>
-          </text>
-        </g>
-        <g id="Line_139">
-          <title>profiles/divider</title>
-          <line x1="807" y1="136" x2="1145" y2="136" stroke="#484c52" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-        </g>
-        <g id="Graphic_140">
-          <title>profiles/bullet</title>
-          <circle cx="812" cy="158" r="3.00000479370576" fill="#eb542b"/>
-        </g>
-        <g id="Graphic_141">
-          <title>profiles/rule</title>
-          <clipPath id="clip_path_33">
-            <rect x="0" y="0" width="180" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_33)" transform="translate(829 149.276)" fill="white">
-            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Match content</tspan>
-          </text>
-        </g>
-        <g id="Graphic_142">
-          <title>profiles/file</title>
-          <clipPath id="clip_path_34">
-            <rect x="0" y="0" width="148" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_34)" transform="translate(1002 150.818)" fill="#c5cbd4">
-            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">match.md</tspan>
-          </text>
-        </g>
-        <g id="Graphic_143">
-          <title>profiles/bullet</title>
-          <circle cx="812" cy="187" r="3.00000479370575" fill="#eb542b"/>
-        </g>
-        <g id="Graphic_144">
-          <title>profiles/rule</title>
-          <clipPath id="clip_path_35">
-            <rect x="0" y="0" width="180" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_35)" transform="translate(829 178.276)" fill="white">
-            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Judge value</tspan>
-          </text>
-        </g>
-        <g id="Graphic_145">
-          <title>profiles/file</title>
-          <clipPath id="clip_path_36">
-            <rect x="0" y="0" width="148" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_36)" transform="translate(1002 179.818)" fill="#c5cbd4">
-            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">analysis.md</tspan>
-          </text>
-        </g>
-        <g id="Graphic_146">
-          <title>profiles/bullet</title>
-          <circle cx="812" cy="216" r="3.00000479370575" fill="#eb542b"/>
-        </g>
-        <g id="Graphic_147">
-          <title>profiles/rule</title>
-          <clipPath id="clip_path_37">
-            <rect x="0" y="0" width="180" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_37)" transform="translate(829 207.276)" fill="white">
-            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Shape the output</tspan>
-          </text>
-        </g>
-        <g id="Graphic_148">
-          <title>profiles/file</title>
-          <clipPath id="clip_path_38">
-            <rect x="0" y="0" width="148" height="25"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_38)" transform="translate(1002 208.818)" fill="#c5cbd4">
-            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">blocks + prompt</tspan>
-          </text>
-        </g>
-      </g>
       <g id="Line_150">
         <title>profile-bus</title>
         <path d="M 784 190 L 766 190 C 763.7909 190 762 191.79086 762 194 L 762 566" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="19.2,12.0" stroke-width="2.4"/>
@@ -803,226 +693,12 @@
       </g>
       <g id="Graphic_154">
         <title>delivery-heading</title>
-        <clipPath id="clip_path_39">
+        <clipPath id="clip_path_31">
           <rect x="0" y="0" width="292" height="34"/>
         </clipPath>
-        <text clip-path="url(#clip_path_39)" transform="translate(872 335.6519)" fill="#20242b">
+        <text clip-path="url(#clip_path_31)" transform="translate(872 356.6519)" fill="#20242b">
           <tspan font-family="Helvetica Neue" font-weight="bold" font-size="24" fill="#20242b" x="0" y="23" xml:space="preserve">Delivery</tspan>
         </text>
-      </g>
-      <g id="Group_201">
-        <title>delivery</title>
-        <g id="Graphic_155">
-          <title>delivery/box</title>
-          <path d="M 880 381 L 1160 381 C 1164.4183 381 1168 384.5817 1168 389 L 1168 758 C 1168 762.4183 1164.4183 766 1160 766 L 880 766 C 875.5817 766 872 762.4183 872 758 L 872 389 C 872 384.5817 875.5817 381 880 381 Z" fill="white"/>
-          <path d="M 880 381 L 1160 381 C 1164.4183 381 1168 384.5817 1168 389 L 1168 758 C 1168 762.4183 1164.4183 766 1160 766 L 880 766 C 875.5817 766 872 762.4183 872 758 L 872 389 C 872 384.5817 875.5817 381 880 381 Z" stroke="#d7d4cc" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/>
-        </g>
-        <g id="Group_162">
-          <title>output/Markdown files</title>
-          <g id="Group_160">
-            <title>output/Markdown files/icon</title>
-            <g id="Line_156">
-              <title>output/Markdown files/icon/stroke</title>
-              <path d="M 897.6667 399.91667 L 906.0931 399.91667 C 907.154 399.91667 908.1714 400.3381 908.9216 401.08824 L 912.0784 404.2451 C 912.8286 404.99524 913.25 406.01265 913.25 407.0735 L 913.25 416.08333 C 913.25 418.29247 911.4591 420.08333 909.25 420.08333 L 901.6667 420.08333 C 899.4575 420.08333 897.6667 418.29247 897.6667 416.08333 L 897.6667 399.91667" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_157">
-              <title>output/Markdown files/icon/stroke</title>
-              <path d="M 907.75 399.91667 L 907.75 401.41667 C 907.75 403.6258 909.5409 405.41667 911.75 405.41667 L 913.25 405.41667" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_158">
-              <title>output/Markdown files/icon/stroke</title>
-              <line x1="901.3333" y1="410" x2="909.5833" y2="410" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_159">
-              <title>output/Markdown files/icon/stroke</title>
-              <line x1="901.3333" y1="414.58333" x2="909.5833" y2="414.58333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-          </g>
-          <g id="Graphic_161">
-            <title>output/Markdown files/title</title>
-            <clipPath id="clip_path_40">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_40)" transform="translate(933 399.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Markdown files</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_168">
-          <title>output/GitHub Pages</title>
-          <g id="Group_166">
-            <title>output/GitHub Pages/icon</title>
-            <g id="Graphic_163">
-              <title>output/GitHub Pages/icon/circle</title>
-              <circle cx="905" cy="462" r="9.16668131410072" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_164">
-              <title>output/GitHub Pages/icon/stroke</title>
-              <line x1="895.8333" y1="462" x2="914.1667" y2="462" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_165">
-              <title>output/GitHub Pages/icon/stroke</title>
-              <path d="M 905 452.83333 L 902.2099 456.321 C 901.6425 457.03026 901.3333 457.9115 901.3333 458.8198 L 901.3333 465.1802 C 901.3333 466.0885 901.6425 466.96974 902.2099 467.679 L 903.1667 468.875 C 903.9767 469.8875 905.4541 470.0517 906.4667 469.24167 C 906.602 469.13336 906.725 469.0104 906.8333 468.875 L 907.7901 467.679 C 908.3575 466.96974 908.6667 466.0885 908.6667 465.1802 L 908.6667 458.8198 C 908.6667 457.9115 908.3575 457.03026 907.7901 456.321 L 905 452.83333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-          </g>
-          <g id="Graphic_167">
-            <title>output/GitHub Pages/title</title>
-            <clipPath id="clip_path_41">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_41)" transform="translate(933 451.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">GitHub Pages</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_173">
-          <title>output/Email · SMTP / IMAP</title>
-          <g id="Group_171">
-            <title>output/Email · SMTP / IMAP/icon</title>
-            <g id="Graphic_169">
-              <title>output/Email · SMTP / IMAP/icon/shape</title>
-              <path d="M 895.9167 506.66667 L 914.0833 506.66667 C 914.6356 506.66667 915.0833 507.1144 915.0833 507.66667 L 915.0833 520.33333 C 915.0833 520.8856 914.6356 521.33333 914.0833 521.33333 L 895.9167 521.33333 C 895.3644 521.33333 894.9167 520.8856 894.9167 520.33333 L 894.9167 507.66667 C 894.9167 507.1144 895.3644 506.66667 895.9167 506.66667 Z" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_170">
-              <title>output/Email · SMTP / IMAP/icon/stroke</title>
-              <path d="M 894.9167 507.58333 L 902.6473 513.2056 C 904.0499 514.2257 905.9501 514.2257 907.3527 513.2056 L 915.0833 507.58333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-          </g>
-          <g id="Graphic_172">
-            <title>output/Email · SMTP / IMAP/title</title>
-            <clipPath id="clip_path_42">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_42)" transform="translate(933 503.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Email · SMTP / IMAP</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_180">
-          <title>output/Feishu / Lark</title>
-          <g id="Group_178">
-            <title>output/Feishu / Lark/icon</title>
-            <g id="Line_174">
-              <title>output/Feishu / Lark/icon/stroke</title>
-              <path d="M 896.75 587.75 L 910.1667 587.75 C 912.3758 587.75 914.1667 589.54086 914.1667 591.75 L 914.1667 596.5833 C 914.1667 598.7925 912.3758 600.5833 910.1667 600.5833 L 904.6149 600.5833 C 903.6791 600.5833 902.773 600.9114 902.0541 601.51045 L 899.4272 603.6996 C 898.9718 604.0791 898.295 604.01755 897.9154 603.56215 C 897.7547 603.36925 897.6667 603.1261 897.6667 602.875 L 897.6667 601.9583 C 897.6667 601.19894 897.0511 600.5833 896.2917 600.5833 L 896.2917 600.5833 C 895.5323 600.5833 894.9167 599.9677 894.9167 599.2083 L 894.9167 589.5833 C 894.9167 588.5708 895.7375 587.75 896.75 587.75 L 896.75 587.75" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Graphic_175">
-              <title>output/Feishu / Lark/icon/dot</title>
-              <circle cx="900.4167" cy="594.1667" r="1.10000175769198" fill="#20242b"/>
-            </g>
-            <g id="Graphic_176">
-              <title>output/Feishu / Lark/icon/dot</title>
-              <circle cx="905" cy="594.1667" r="1.10000175769198" fill="#20242b"/>
-            </g>
-            <g id="Graphic_177">
-              <title>output/Feishu / Lark/icon/dot</title>
-              <circle cx="909.5833" cy="594.1667" r="1.10000175769198" fill="#20242b"/>
-            </g>
-          </g>
-          <g id="Graphic_179">
-            <title>output/Feishu / Lark/title</title>
-            <clipPath id="clip_path_43">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_43)" transform="translate(933 585.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Feishu / Lark</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_185">
-          <title>output/DingTalk</title>
-          <g id="Group_183">
-            <title>output/DingTalk/icon</title>
-            <g id="Line_181">
-              <title>output/DingTalk/icon/stroke</title>
-              <path d="M 894.9167 637.25 L 907.4381 632.69676 C 909.5142 631.9418 911.8093 633.0128 912.5642 635.08896 C 912.8662 635.9195 912.8847 636.8266 912.6168 637.66874 L 910.2204 645.2002 C 909.8718 646.2957 908.7012 646.90124 907.6057 646.5527 C 907.0702 646.3823 906.6263 646.0026 906.375 645.5 L 904.7635 642.2769 C 904.3253 641.4007 903.5809 640.7157 902.6713 640.35186 L 894.9167 637.25" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_182">
-              <title>output/DingTalk/icon/stroke</title>
-              <line x1="904.0833" y1="640.9167" x2="915.0833" y2="629.9167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-          </g>
-          <g id="Graphic_184">
-            <title>output/DingTalk/title</title>
-            <clipPath id="clip_path_44">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_44)" transform="translate(933 629.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">DingTalk</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_192">
-          <title>output/Slack / Discord</title>
-          <g id="Group_190">
-            <title>output/Slack / Discord/icon</title>
-            <g id="Line_186">
-              <title>output/Slack / Discord/icon/stroke</title>
-              <path d="M 896.75 675.75 L 910.1667 675.75 C 912.3758 675.75 914.1667 677.5409 914.1667 679.75 L 914.1667 684.5833 C 914.1667 686.7925 912.3758 688.5833 910.1667 688.5833 L 904.6149 688.5833 C 903.6791 688.5833 902.773 688.9114 902.0541 689.51045 L 899.4272 691.6996 C 898.9718 692.0791 898.295 692.01755 897.9154 691.56215 C 897.7547 691.36925 897.6667 691.1261 897.6667 690.875 L 897.6667 689.9583 C 897.6667 689.19894 897.0511 688.5833 896.2917 688.5833 L 896.2917 688.5833 C 895.5323 688.5833 894.9167 687.9677 894.9167 687.2083 L 894.9167 677.5833 C 894.9167 676.5708 895.7375 675.75 896.75 675.75 L 896.75 675.75" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Graphic_187">
-              <title>output/Slack / Discord/icon/dot</title>
-              <circle cx="900.4167" cy="682.1667" r="1.100001757692" fill="#20242b"/>
-            </g>
-            <g id="Graphic_188">
-              <title>output/Slack / Discord/icon/dot</title>
-              <circle cx="905" cy="682.1667" r="1.100001757692" fill="#20242b"/>
-            </g>
-            <g id="Graphic_189">
-              <title>output/Slack / Discord/icon/dot</title>
-              <circle cx="909.5833" cy="682.1667" r="1.100001757692" fill="#20242b"/>
-            </g>
-          </g>
-          <g id="Graphic_191">
-            <title>output/Slack / Discord/title</title>
-            <clipPath id="clip_path_45">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_45)" transform="translate(933 673.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Slack / Discord</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Group_198">
-          <title>output/Custom endpoints</title>
-          <g id="Group_196">
-            <title>output/Custom endpoints/icon</title>
-            <g id="Line_193">
-              <title>output/Custom endpoints/icon/stroke</title>
-              <path d="M 900.4167 721.5833 L 897.148 725.3968 C 895.864 726.8948 895.864 729.1052 897.148 730.6032 L 900.4167 734.4167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_194">
-              <title>output/Custom endpoints/icon/stroke</title>
-              <path d="M 909.5833 721.5833 L 912.852 725.3968 C 914.136 726.8948 914.136 729.1052 912.852 730.6032 L 909.5833 734.4167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-            <g id="Line_195">
-              <title>output/Custom endpoints/icon/stroke</title>
-              <line x1="906.8333" y1="719.75" x2="903.1667" y2="736.25" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
-            </g>
-          </g>
-          <g id="Graphic_197">
-            <title>output/Custom endpoints/title</title>
-            <clipPath id="clip_path_46">
-              <rect x="0" y="0" width="219" height="34"/>
-            </clipPath>
-            <text clip-path="url(#clip_path_46)" transform="translate(933 717.762)" fill="#20242b">
-              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Custom endpoints</tspan>
-            </text>
-          </g>
-        </g>
-        <g id="Line_199">
-          <title>webhooks/divider</title>
-          <line x1="892" y1="550" x2="1148" y2="550" stroke="#d7d4cc" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
-        </g>
-        <g id="Graphic_200">
-          <title>webhooks-heading</title>
-          <clipPath id="clip_path_47">
-            <rect x="0" y="0" width="245" height="22"/>
-          </clipPath>
-          <text clip-path="url(#clip_path_47)" transform="translate(894 558.34046)" fill="#676a70">
-            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="11" fill="#676a70" x="0" y="11" xml:space="preserve">WEBHOOKS</tspan>
-          </text>
-        </g>
       </g>
       <g id="Line_202">
         <title>render-to-delivery</title>
@@ -1030,63 +706,63 @@
       </g>
       <g id="Line_203">
         <title>delivery-bus</title>
-        <line x1="832" y1="410" x2="832" y2="728" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="431" x2="832" y2="762" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Line_204">
         <title>output-edge/Markdown files</title>
-        <line x1="832" y1="410" x2="851.412" y2="410" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="431" x2="851.412" y2="431" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_205">
         <title>junction</title>
-        <circle cx="832" cy="410" r="3.00000479370571" fill="#2852e6"/>
+        <circle cx="832" cy="431" r="3.00000479370571" fill="#2852e6"/>
       </g>
       <g id="Line_206">
         <title>output-edge/GitHub Pages</title>
-        <line x1="832" y1="462" x2="851.412" y2="462" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="471" x2="851.412" y2="471" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_207">
         <title>junction</title>
-        <circle cx="832" cy="462" r="3.00000479370572" fill="#2852e6"/>
+        <circle cx="832" cy="471" r="3.00000479370571" fill="#2852e6"/>
       </g>
       <g id="Line_208">
         <title>output-edge/Email · SMTP / IMAP</title>
-        <line x1="832" y1="514" x2="851.412" y2="514" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="511" x2="851.412" y2="511" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_209">
         <title>junction</title>
-        <circle cx="832" cy="514" r="3.00000479370573" fill="#2852e6"/>
+        <circle cx="832" cy="511" r="3.00000479370572" fill="#2852e6"/>
       </g>
       <g id="Line_210">
         <title>output-edge/Feishu / Lark</title>
-        <line x1="832" y1="596" x2="851.412" y2="596" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="642" x2="851.412" y2="642" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_211">
         <title>junction</title>
-        <circle cx="832" cy="596" r="3.00000479370576" fill="#2852e6"/>
+        <circle cx="832" cy="642" r="3.00000479370575" fill="#2852e6"/>
       </g>
       <g id="Line_212">
         <title>output-edge/DingTalk</title>
-        <line x1="832" y1="640" x2="851.412" y2="640" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="682" x2="851.412" y2="682" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_213">
         <title>junction</title>
-        <circle cx="832" cy="640" r="3.00000479370576" fill="#2852e6"/>
+        <circle cx="832" cy="682" r="3.00000479370576" fill="#2852e6"/>
       </g>
       <g id="Line_214">
         <title>output-edge/Slack / Discord</title>
-        <line x1="832" y1="684" x2="851.412" y2="684" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="722" x2="851.412" y2="722" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_215">
         <title>junction</title>
-        <circle cx="832" cy="684" r="3.00000479370574" fill="#2852e6"/>
+        <circle cx="832" cy="722" r="3.00000479370574" fill="#2852e6"/>
       </g>
       <g id="Line_216">
         <title>output-edge/Custom endpoints</title>
-        <line x1="832" y1="728" x2="851.412" y2="728" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+        <line x1="832" y1="762" x2="851.412" y2="762" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
       </g>
       <g id="Graphic_217">
         <title>junction</title>
-        <circle cx="832" cy="728" r="3.00000479370574" fill="#2852e6"/>
+        <circle cx="832" cy="762" r="3.00000479370576" fill="#2852e6"/>
       </g>
       <g id="Graphic_218">
         <title>junction</title>
@@ -1100,19 +776,19 @@
         </g>
         <g id="Graphic_220">
           <title>settings/title</title>
-          <clipPath id="clip_path_48">
+          <clipPath id="clip_path_32">
             <rect x="0" y="0" width="226" height="26"/>
           </clipPath>
-          <text clip-path="url(#clip_path_48)" transform="translate(48 715.26794)" fill="#20242b">
+          <text clip-path="url(#clip_path_32)" transform="translate(48 715.26794)" fill="#20242b">
             <tspan font-family="Helvetica Neue" font-weight="bold" font-size="16" fill="#20242b" x="0" y="16" xml:space="preserve">Runtime configuration</tspan>
           </text>
         </g>
         <g id="Graphic_221">
           <title>settings/detail</title>
-          <clipPath id="clip_path_49">
+          <clipPath id="clip_path_33">
             <rect x="0" y="0" width="226" height="47"/>
           </clipPath>
-          <text clip-path="url(#clip_path_49)" transform="translate(48 742.996)" fill="#676a70">
+          <text clip-path="url(#clip_path_33)" transform="translate(48 742.996)" fill="#676a70">
             <tspan font-family="Helvetica Neue" font-size="12" fill="#676a70" x="0" y="11" xml:space="preserve">Sources · model · time window</tspan>
             <tspan font-family="Helvetica Neue" font-size="12" fill="#676a70" x="0" y="25.336" xml:space="preserve">Thresholds · limits · language</tspan>
             <tspan font-family="Helvetica Neue" font-size="12" fill="#676a70" x="0" y="39.671997" xml:space="preserve">Delivery settings</tspan>
@@ -1129,10 +805,10 @@
       </g>
       <g id="Graphic_225">
         <title>legend-data-label</title>
-        <clipPath id="clip_path_50">
+        <clipPath id="clip_path_34">
           <rect x="0" y="0" width="104" height="24"/>
         </clipPath>
-        <text clip-path="url(#clip_path_50)" transform="translate(430 785.318)" fill="#676a70">
+        <text clip-path="url(#clip_path_34)" transform="translate(430 785.318)" fill="#676a70">
           <tspan font-family="Helvetica Neue" font-size="13" fill="#676a70" x="0" y="12" xml:space="preserve">Content</tspan>
         </text>
       </g>
@@ -1142,12 +818,406 @@
       </g>
       <g id="Graphic_227">
         <title>legend-rules-label</title>
-        <clipPath id="clip_path_51">
+        <clipPath id="clip_path_35">
           <rect x="0" y="0" width="139" height="24"/>
         </clipPath>
-        <text clip-path="url(#clip_path_51)" transform="translate(601 785.318)" fill="#676a70">
+        <text clip-path="url(#clip_path_35)" transform="translate(601 785.318)" fill="#676a70">
           <tspan font-family="Helvetica Neue" font-size="13" fill="#676a70" x="0" y="12" xml:space="preserve">Profile rules</tspan>
         </text>
+      </g>
+      <g id="Group_237">
+        <title>delivery</title>
+        <g id="Graphic_155">
+          <title>delivery/box</title>
+          <path d="M 880 402 L 1160 402 C 1164.4183 402 1168 405.5817 1168 410 L 1168 779 C 1168 783.4183 1164.4183 787 1160 787 L 880 787 C 875.5817 787 872 783.4183 872 779 L 872 410 C 872 405.5817 875.5817 402 880 402 Z" fill="white"/>
+          <path d="M 880 402 L 1160 402 C 1164.4183 402 1168 405.5817 1168 410 L 1168 779 C 1168 783.4183 1164.4183 787 1160 787 L 880 787 C 875.5817 787 872 783.4183 872 779 L 872 410 C 872 405.5817 875.5817 402 880 402 Z" stroke="#d7d4cc" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"/>
+        </g>
+        <g id="Group_162">
+          <title>output/Markdown files</title>
+          <g id="Group_160">
+            <title>output/Markdown files/icon</title>
+            <g id="Line_156">
+              <title>output/Markdown files/icon/stroke</title>
+              <path d="M 897.6667 420.91667 L 906.0931 420.91667 C 907.154 420.91667 908.1714 421.3381 908.9216 422.08824 L 912.0784 425.2451 C 912.8286 425.99524 913.25 427.01265 913.25 428.0735 L 913.25 437.08333 C 913.25 439.29247 911.4591 441.08333 909.25 441.08333 L 901.6667 441.08333 C 899.4575 441.08333 897.6667 439.29247 897.6667 437.08333 L 897.6667 420.91667" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_157">
+              <title>output/Markdown files/icon/stroke</title>
+              <path d="M 907.75 420.91667 L 907.75 422.41667 C 907.75 424.6258 909.5409 426.41667 911.75 426.41667 L 913.25 426.41667" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_158">
+              <title>output/Markdown files/icon/stroke</title>
+              <line x1="901.3333" y1="431" x2="909.5833" y2="431" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_159">
+              <title>output/Markdown files/icon/stroke</title>
+              <line x1="901.3333" y1="435.58333" x2="909.5833" y2="435.58333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+          </g>
+          <g id="Graphic_161">
+            <title>output/Markdown files/title</title>
+            <clipPath id="clip_path_36">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_36)" transform="translate(933 420.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Markdown files</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_168">
+          <title>output/GitHub Pages</title>
+          <g id="Group_166">
+            <title>output/GitHub Pages/icon</title>
+            <g id="Graphic_163">
+              <title>output/GitHub Pages/icon/circle</title>
+              <circle cx="905" cy="471" r="9.16668131410073" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_164">
+              <title>output/GitHub Pages/icon/stroke</title>
+              <line x1="895.8333" y1="471" x2="914.1667" y2="471" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_165">
+              <title>output/GitHub Pages/icon/stroke</title>
+              <path d="M 905 461.83333 L 902.2099 465.321 C 901.6425 466.03026 901.3333 466.9115 901.3333 467.8198 L 901.3333 474.1802 C 901.3333 475.0885 901.6425 475.96974 902.2099 476.679 L 903.1667 477.875 C 903.9767 478.8875 905.4541 479.0517 906.4667 478.24167 C 906.602 478.13336 906.725 478.0104 906.8333 477.875 L 907.7901 476.679 C 908.3575 475.96974 908.6667 475.0885 908.6667 474.1802 L 908.6667 467.8198 C 908.6667 466.9115 908.3575 466.03026 907.7901 465.321 L 905 461.83333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+          </g>
+          <g id="Graphic_167">
+            <title>output/GitHub Pages/title</title>
+            <clipPath id="clip_path_37">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_37)" transform="translate(933 460.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">GitHub Pages</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_173">
+          <title>output/Email · SMTP / IMAP</title>
+          <g id="Group_171">
+            <title>output/Email · SMTP / IMAP/icon</title>
+            <g id="Graphic_169">
+              <title>output/Email · SMTP / IMAP/icon/shape</title>
+              <path d="M 895.9167 503.66667 L 914.0833 503.66667 C 914.6356 503.66667 915.0833 504.1144 915.0833 504.66667 L 915.0833 517.33333 C 915.0833 517.8856 914.6356 518.33333 914.0833 518.33333 L 895.9167 518.33333 C 895.3644 518.33333 894.9167 517.8856 894.9167 517.33333 L 894.9167 504.66667 C 894.9167 504.1144 895.3644 503.66667 895.9167 503.66667 Z" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_170">
+              <title>output/Email · SMTP / IMAP/icon/stroke</title>
+              <path d="M 894.9167 504.58333 L 902.6473 510.2056 C 904.0499 511.2257 905.9501 511.2257 907.3527 510.2056 L 915.0833 504.58333" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+          </g>
+          <g id="Graphic_172">
+            <title>output/Email · SMTP / IMAP/title</title>
+            <clipPath id="clip_path_38">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_38)" transform="translate(933 500.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Email · SMTP / IMAP</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_180">
+          <title>output/Feishu / Lark</title>
+          <g id="Group_178">
+            <title>output/Feishu / Lark/icon</title>
+            <g id="Line_174">
+              <title>output/Feishu / Lark/icon/stroke</title>
+              <path d="M 896.75 633.75 L 910.1667 633.75 C 912.3758 633.75 914.1667 635.54086 914.1667 637.75 L 914.1667 642.5833 C 914.1667 644.7925 912.3758 646.5833 910.1667 646.5833 L 904.6149 646.5833 C 903.6791 646.5833 902.773 646.9114 902.0541 647.51045 L 899.4272 649.6996 C 898.9718 650.0791 898.295 650.01755 897.9154 649.56215 C 897.7547 649.36925 897.6667 649.1261 897.6667 648.875 L 897.6667 647.9583 C 897.6667 647.19894 897.0511 646.5833 896.2917 646.5833 L 896.2917 646.5833 C 895.5323 646.5833 894.9167 645.9677 894.9167 645.2083 L 894.9167 635.5833 C 894.9167 634.5708 895.7375 633.75 896.75 633.75 L 896.75 633.75" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Graphic_175">
+              <title>output/Feishu / Lark/icon/dot</title>
+              <circle cx="900.4167" cy="640.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+            <g id="Graphic_176">
+              <title>output/Feishu / Lark/icon/dot</title>
+              <circle cx="905" cy="640.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+            <g id="Graphic_177">
+              <title>output/Feishu / Lark/icon/dot</title>
+              <circle cx="909.5833" cy="640.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+          </g>
+          <g id="Graphic_179">
+            <title>output/Feishu / Lark/title</title>
+            <clipPath id="clip_path_39">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_39)" transform="translate(933 631.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Feishu / Lark</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_185">
+          <title>output/DingTalk</title>
+          <g id="Group_183">
+            <title>output/DingTalk/icon</title>
+            <g id="Line_181">
+              <title>output/DingTalk/icon/stroke</title>
+              <path d="M 894.9167 679.25 L 907.4381 674.69676 C 909.5142 673.9418 911.8093 675.0128 912.5642 677.08896 C 912.8662 677.9195 912.8847 678.8266 912.6168 679.66874 L 910.2204 687.2002 C 909.8718 688.2957 908.7012 688.9012 907.6057 688.5527 C 907.0702 688.3823 906.6263 688.0026 906.375 687.5 L 904.7635 684.2769 C 904.3253 683.4007 903.5809 682.7157 902.6713 682.35186 L 894.9167 679.25" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_182">
+              <title>output/DingTalk/icon/stroke</title>
+              <line x1="904.0833" y1="682.9167" x2="915.0833" y2="671.9167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+          </g>
+          <g id="Graphic_184">
+            <title>output/DingTalk/title</title>
+            <clipPath id="clip_path_40">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_40)" transform="translate(933 671.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">DingTalk</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_192">
+          <title>output/Slack / Discord</title>
+          <g id="Group_190">
+            <title>output/Slack / Discord/icon</title>
+            <g id="Line_186">
+              <title>output/Slack / Discord/icon/stroke</title>
+              <path d="M 896.75 713.75 L 910.1667 713.75 C 912.3758 713.75 914.1667 715.5409 914.1667 717.75 L 914.1667 722.5833 C 914.1667 724.7925 912.3758 726.5833 910.1667 726.5833 L 904.6149 726.5833 C 903.6791 726.5833 902.773 726.9114 902.0541 727.51045 L 899.4272 729.6996 C 898.9718 730.0791 898.295 730.01755 897.9154 729.56215 C 897.7547 729.36925 897.6667 729.1261 897.6667 728.875 L 897.6667 727.9583 C 897.6667 727.1989 897.0511 726.5833 896.2917 726.5833 L 896.2917 726.5833 C 895.5323 726.5833 894.9167 725.9677 894.9167 725.2083 L 894.9167 715.5833 C 894.9167 714.5708 895.7375 713.75 896.75 713.75 L 896.75 713.75" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Graphic_187">
+              <title>output/Slack / Discord/icon/dot</title>
+              <circle cx="900.4167" cy="720.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+            <g id="Graphic_188">
+              <title>output/Slack / Discord/icon/dot</title>
+              <circle cx="905" cy="720.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+            <g id="Graphic_189">
+              <title>output/Slack / Discord/icon/dot</title>
+              <circle cx="909.5833" cy="720.1667" r="1.100001757692" fill="#20242b"/>
+            </g>
+          </g>
+          <g id="Graphic_191">
+            <title>output/Slack / Discord/title</title>
+            <clipPath id="clip_path_41">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_41)" transform="translate(933 711.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Slack / Discord</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Group_198">
+          <title>output/Custom endpoints</title>
+          <g id="Group_196">
+            <title>output/Custom endpoints/icon</title>
+            <g id="Line_193">
+              <title>output/Custom endpoints/icon/stroke</title>
+              <path d="M 900.4167 755.5833 L 897.148 759.3968 C 895.864 760.8948 895.864 763.1052 897.148 764.6032 L 900.4167 768.4167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_194">
+              <title>output/Custom endpoints/icon/stroke</title>
+              <path d="M 909.5833 755.5833 L 912.852 759.3968 C 914.136 760.8948 914.136 763.1052 912.852 764.6032 L 909.5833 768.4167" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Line_195">
+              <title>output/Custom endpoints/icon/stroke</title>
+              <line x1="906.8333" y1="753.75" x2="903.1667" y2="770.25" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+          </g>
+          <g id="Graphic_197">
+            <title>output/Custom endpoints/title</title>
+            <clipPath id="clip_path_42">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_42)" transform="translate(933 751.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">Custom endpoints</tspan>
+            </text>
+          </g>
+        </g>
+        <g id="Line_199">
+          <title>webhooks/divider</title>
+          <line x1="892" y1="581" x2="1148" y2="581" stroke="#d7d4cc" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_200">
+          <title>webhooks-heading</title>
+          <clipPath id="clip_path_43">
+            <rect x="0" y="0" width="245" height="22"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_43)" transform="translate(894 589.34046)" fill="#676a70">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="11" fill="#676a70" x="0" y="11" xml:space="preserve">WEBHOOKS</tspan>
+          </text>
+        </g>
+        <g id="Group_228">
+          <title>output/WeChat · iLink Bot</title>
+          <g id="Group_230">
+            <title>output/WeChat · iLink Bot/icon</title>
+            <g id="Line_234">
+              <title>output/WeChat · iLink Bot/icon/stroke</title>
+              <path d="M 896.75 542.75 L 910.1667 542.75 C 912.3758 542.75 914.1667 544.54086 914.1667 546.75 L 914.1667 551.58333 C 914.1667 553.7925 912.3758 555.58333 910.1667 555.58333 L 904.6149 555.58333 C 903.6791 555.58333 902.773 555.9114 902.0541 556.51045 L 899.4272 558.6996 C 898.9718 559.0791 898.295 559.01755 897.9154 558.56215 C 897.7547 558.36925 897.6667 558.1261 897.6667 557.875 L 897.6667 556.95833 C 897.6667 556.19894 897.0511 555.58333 896.2917 555.58333 L 896.2917 555.58333 C 895.5323 555.58333 894.9167 554.9677 894.9167 554.20833 L 894.9167 544.58333 C 894.9167 543.5708 895.7375 542.75 896.75 542.75 L 896.75 542.75" stroke="#20242b" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8333333"/>
+            </g>
+            <g id="Graphic_233">
+              <title>output/WeChat · iLink Bot/icon/dot</title>
+              <circle cx="900.4167" cy="549.16667" r="1.10000175769197" fill="#20242b"/>
+            </g>
+            <g id="Graphic_232">
+              <title>output/WeChat · iLink Bot/icon/dot</title>
+              <circle cx="905" cy="549.16667" r="1.10000175769197" fill="#20242b"/>
+            </g>
+            <g id="Graphic_231">
+              <title>output/WeChat · iLink Bot/icon/dot</title>
+              <circle cx="909.5833" cy="549.16667" r="1.10000175769197" fill="#20242b"/>
+            </g>
+          </g>
+          <g id="Graphic_229">
+            <title>output/WeChat · iLink Bot/title</title>
+            <clipPath id="clip_path_44">
+              <rect x="0" y="0" width="219" height="34"/>
+            </clipPath>
+            <text clip-path="url(#clip_path_44)" transform="translate(933 540.762)" fill="#20242b">
+              <tspan font-family="Helvetica Neue" font-size="17" fill="#20242b" x="0" y="16" xml:space="preserve">WeChat · iLink Bot</tspan>
+            </text>
+          </g>
+        </g>
+      </g>
+      <g id="Line_235">
+        <title>output-edge/WeChat · iLink Bot</title>
+        <line x1="832" y1="551" x2="851.412" y2="551" marker-end="url(#FilledArrow_Marker_4)" stroke="#2852e6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6"/>
+      </g>
+      <g id="Graphic_236">
+        <title>junction</title>
+        <circle cx="832" cy="551" r="3.00000479370574" fill="#2852e6"/>
+      </g>
+      <g id="Group_242">
+        <title>profiles</title>
+        <g id="Graphic_132">
+          <title>profiles/box</title>
+          <path d="M 792 40 L 1160 40 C 1164.4183 40 1168 43.58172 1168 48 L 1168 316 C 1168 320.41828 1164.4183 324 1160 324 L 792 324 C 787.5817 324 784 320.41828 784 316 L 784 48 C 784 43.58172 787.5817 40 792 40 Z" fill="#20242b"/>
+        </g>
+        <g id="Group_136">
+          <title>profiles/icon</title>
+          <g id="Line_133">
+            <title>profiles/icon/stroke</title>
+            <path d="M 807.1667 72.33333 L 818.0846 66.3781 C 819.2785 65.72688 820.7215 65.72688 821.9154 66.3781 L 826.4167 68.83333 C 828.3497 69.887695 829.0619 72.30943 828.0076 74.24242 C 827.641 74.91447 827.0887 75.466765 826.4167 75.83333 L 821.9154 78.288565 C 820.7215 78.93979 819.2785 78.93979 818.0846 78.288565 L 807.1667 72.33333" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
+          </g>
+          <g id="Line_134">
+            <title>profiles/icon/stroke</title>
+            <path d="M 807.1667 78.16667 L 818.0846 84.1219 C 819.2785 84.77312 820.7215 84.77312 821.9154 84.1219 L 832.8333 78.16667" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
+          </g>
+          <g id="Line_135">
+            <title>profiles/icon/stroke</title>
+            <path d="M 807.1667 84 L 818.0846 89.95523 C 819.2785 90.60646 820.7215 90.60646 821.9154 89.95523 L 832.8333 84" stroke="#eb542b" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.3333333"/>
+          </g>
+        </g>
+        <g id="Graphic_137">
+          <title>profiles/title</title>
+          <clipPath id="clip_path_45">
+            <rect x="0" y="0" width="291" height="38"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_45)" transform="translate(851 57.0939)" fill="white">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="28" fill="white" x="0" y="27" xml:space="preserve">Profiles</tspan>
+          </text>
+        </g>
+        <g id="Graphic_138">
+          <title>profiles/subtitle</title>
+          <clipPath id="clip_path_46">
+            <rect x="0" y="0" width="336" height="26"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_46)" transform="translate(807 103.776)" fill="#c5cbd4">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="#c5cbd4" x="0" y="15" xml:space="preserve">Your rules, in Markdown + JSON</tspan>
+          </text>
+        </g>
+        <g id="Line_139">
+          <title>profiles/divider</title>
+          <line x1="807" y1="136" x2="1145" y2="136" stroke="#484c52" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_140">
+          <title>profiles/bullet</title>
+          <circle cx="812" cy="158" r="3.00000479370576" fill="#eb542b"/>
+        </g>
+        <g id="Graphic_141">
+          <title>profiles/rule</title>
+          <clipPath id="clip_path_47">
+            <rect x="0" y="0" width="180" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_47)" transform="translate(829 149.276)" fill="white">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Match content</tspan>
+          </text>
+        </g>
+        <g id="Graphic_142">
+          <title>profiles/file</title>
+          <clipPath id="clip_path_48">
+            <rect x="0" y="0" width="148" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_48)" transform="translate(1002 150.818)" fill="#c5cbd4">
+            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">match.md</tspan>
+          </text>
+        </g>
+        <g id="Graphic_143">
+          <title>profiles/bullet</title>
+          <circle cx="812" cy="187" r="3.00000479370575" fill="#eb542b"/>
+        </g>
+        <g id="Graphic_144">
+          <title>profiles/rule</title>
+          <clipPath id="clip_path_49">
+            <rect x="0" y="0" width="180" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_49)" transform="translate(829 178.276)" fill="white">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Judge value</tspan>
+          </text>
+        </g>
+        <g id="Graphic_145">
+          <title>profiles/file</title>
+          <clipPath id="clip_path_50">
+            <rect x="0" y="0" width="148" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_50)" transform="translate(1002 179.818)" fill="#c5cbd4">
+            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">analysis.md</tspan>
+          </text>
+        </g>
+        <g id="Graphic_146">
+          <title>profiles/bullet</title>
+          <circle cx="812" cy="216" r="3.00000479370575" fill="#eb542b"/>
+        </g>
+        <g id="Graphic_147">
+          <title>profiles/rule</title>
+          <clipPath id="clip_path_51">
+            <rect x="0" y="0" width="180" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_51)" transform="translate(829 207.276)" fill="white">
+            <tspan font-family="Helvetica Neue" font-size="16" fill="white" x="0" y="15" xml:space="preserve">Shape the output</tspan>
+          </text>
+        </g>
+        <g id="Graphic_148">
+          <title>profiles/file</title>
+          <clipPath id="clip_path_52">
+            <rect x="0" y="0" width="148" height="25"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_52)" transform="translate(1002 208.818)" fill="#c5cbd4">
+            <tspan font-family="Helvetica Neue" font-size="13" fill="#c5cbd4" x="0" y="12" xml:space="preserve">blocks + prompt</tspan>
+          </text>
+        </g>
+        <g id="Line_238">
+          <title>profiles/tools-divider</title>
+          <line x1="807" y1="240" x2="1145" y2="240" stroke="#484c52" stroke-linecap="round" stroke-linejoin="round" stroke-width="1"/>
+        </g>
+        <g id="Graphic_239">
+          <title>profiles/tools-heading</title>
+          <clipPath id="clip_path_53">
+            <rect x="0" y="0" width="338" height="24"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_53)" transform="translate(807 254.34046)" fill="#c5cbd4">
+            <tspan font-family="Helvetica Neue" font-weight="bold" font-size="11" fill="#c5cbd4" x="0" y="11" xml:space="preserve">TOOLS · ENABLED PER BLOCK</tspan>
+          </text>
+        </g>
+        <g id="Graphic_240">
+          <title>tool/history_search</title>
+          <clipPath id="clip_path_54">
+            <rect x="0" y="0" width="174" height="24"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_54)" transform="translate(807 281)" fill="white">
+            <tspan font-family="Menlo" font-size="15" fill="white" x="0" y="14" xml:space="preserve">history_search</tspan>
+          </text>
+        </g>
+        <g id="Graphic_241">
+          <title>tool/web_search</title>
+          <clipPath id="clip_path_55">
+            <rect x="0" y="0" width="143" height="24"/>
+          </clipPath>
+          <text clip-path="url(#clip_path_55)" transform="translate(1002 281)" fill="white">
+            <tspan font-family="Menlo" font-size="15" fill="white" x="0" y="14" xml:space="preserve">web_search</tspan>
+          </text>
+        </g>
       </g>
     </g>
   </g>
