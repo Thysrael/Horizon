@@ -9,7 +9,7 @@ Horizon is configured through a `.env` file for secrets, a JSON file for runtime
 
 ## Configuration Paths
 
-`horizon`, `horizon-wizard`, and `horizon-webhook` all resolve configuration and state paths the same way:
+`horizon`, `horizon-wizard`, `horizon-webhook`, and `horizon-wechat` all resolve configuration and state paths the same way:
 
 | Option | Effect |
 | --- | --- |
@@ -928,6 +928,35 @@ uv run horizon-webhook --dry-run
 | `-c`, `--config PATH` | `<data-dir>/config.json` | Path to config file |
 | `-l`, `--log-level LEVEL` | `WARNING` | Logging level (DEBUG/INFO/WARNING/ERROR/CRITICAL) |
 
+
+## WeChat Notification
+
+WeChat delivery is optional and disabled unless `wechat.enabled` is `true`. Horizon pushes the daily briefing to your personal WeChat through the official **iLink Bot API**, the same protocol Tencent's `openclaw-weixin` channel uses. No webhook URL or app registration is needed: you log in once by scanning a QR code with `horizon-wechat login`. The full setup, chat commands, deployment and troubleshooting guide is [WeChat Delivery](wechat.md) ([中文](wechat_zh.md)).
+
+```json
+{
+  "wechat": {
+    "enabled": true,
+    "style": "summary",
+    "languages": ["zh"],
+    "chunk_size": 4000
+  }
+}
+```
+
+- `enabled`: Turns WeChat delivery on or off. The default is `false`.
+- `style`: Default message style, switchable from the chat by replying `1` or `2`. `summary` (default) sends the whole briefing as one message, split at `chunk_size` if needed; `overview` sends one overview message followed by one full message per item.
+- `languages`: Optional WeChat-only language filter, for example `["zh"]`. Omit it or use `null` to send every configured `ai.languages` entry.
+- `chunk_size`: Maximum characters per WeChat text message (at most 4000). Longer bodies are split on paragraph boundaries.
+
+Two WeChat rules shape delivery, both handled by Horizon and explained in the guide: the bot can only message you after you have messaged it once, and it may send at most 10 messages per message you send. Note also that Horizon is offline between scheduled runs, so chat commands (`日报`, `1`/`2`, `帮助`) are answered at the next run unless you keep `horizon-wechat listen` running.
+
+```bash
+uv run horizon-wechat login                  # scan a QR code, then send the bot one message
+uv run horizon-wechat status                 # session, current style, replies left
+uv run horizon-wechat test --dry-run         # preview what would be sent
+uv run horizon-wechat listen                 # answer chat commands (日报 / 1 / 2 / 帮助) instantly
+```
 
 ## Static Site
 
