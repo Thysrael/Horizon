@@ -269,6 +269,7 @@ class HackerNewsConfig(BaseModel):
 
 class ExtractorType(str, Enum):
     TRAFILATURA = "trafilatura"
+    FIRECRAWL = "firecrawl"
 
 
 class TrafilaturaExtractorConfig(BaseModel):
@@ -277,8 +278,14 @@ class TrafilaturaExtractorConfig(BaseModel):
     favor_recall: bool = False
 
 
+class FirecrawlExtractorConfig(BaseModel):
+    type: Literal[ExtractorType.FIRECRAWL] = ExtractorType.FIRECRAWL
+    api_key_env: str = "FIRECRAWL_API_KEY"
+    only_main_content: bool = True
+
+
 ExtractorConfig = Annotated[
-    Union[TrafilaturaExtractorConfig],
+    Union[TrafilaturaExtractorConfig, FirecrawlExtractorConfig],
     Field(discriminator="type"),
 ]
 

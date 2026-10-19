@@ -61,6 +61,35 @@ Uses the [trafilatura](https://trafilatura.readthedocs.io/) library to extract m
 
 **Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and inherits whatever timeout and connection settings are configured on it.
 
+### `firecrawl`
+
+**File**: `src/extractors/firecrawl.py`
+
+Uses the [Firecrawl](https://www.firecrawl.dev) scrape API (`POST https://api.firecrawl.dev/v2/scrape`) to fetch the page and return its main content as Markdown. Firecrawl renders JavaScript and handles pages that block plain HTTP clients, so it helps on sources where `trafilatura` gets an empty or blocked page. It needs a Firecrawl API key in the environment variable named by `api_key_env` (default `FIRECRAWL_API_KEY`); without one the extractor logs a warning and the feed content is used.
+
+```json
+{
+  "extractors": {
+    "firecrawl": {
+      "type": "firecrawl",
+      "api_key_env": "FIRECRAWL_API_KEY"
+    }
+  }
+}
+```
+
+**Config fields**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `"firecrawl"` | Extractor type identifier |
+| `api_key_env` | string | `"FIRECRAWL_API_KEY"` | Environment variable holding the Firecrawl API key |
+| `only_main_content` | bool | `true` | Strip navigation, headers and footers, keeping the article body |
+
+Each extracted entry is one scrape request and uses Firecrawl credits. Requests carry `"integration": "_horizon"` so Firecrawl can attribute them to Horizon.
+
+**Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and inherits whatever timeout and connection settings are configured on it. Any HTTP error, timeout or unexpected response falls back to the feed content.
+
 ## Adding a new extractor type
 
 1. Add an entry to `ExtractorType` in `src/models.py`.
