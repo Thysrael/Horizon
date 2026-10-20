@@ -196,14 +196,14 @@ Set `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_ENDPOINT` in your `.env`. The `mode
 
 **MiniMax**:
 
-The built-in provider defaults to `MiniMax-M3` and the global
+The built-in provider defaults to `MiniMax-M3.1-Flash` and the global
 OpenAI-compatible endpoint:
 
 ```json
 {
   "ai": {
     "provider": "minimax",
-    "model": "MiniMax-M3",
+    "model": "MiniMax-M3.1-Flash",
     "api_key_env": "MINIMAX_API_KEY",
     "base_url": "https://api.minimax.io/v1",
     "throttle_sec": 0
@@ -211,14 +211,24 @@ OpenAI-compatible endpoint:
 }
 ```
 
-Available models: `MiniMax-M3`, `MiniMax-M2.7`, `MiniMax-M2.7-highspeed`.
+Recommended models: `MiniMax-M3.1-Flash` (default), `MiniMax-M3`.
+Existing configurations and explicitly entered model IDs are left unchanged,
+including when MiniMax is the configured provider in a fallback chain. Model
+availability still depends on the configured endpoint and account.
+Horizon leaves thinking and reasoning effort unset, using the API defaults;
+Flash uses adaptive thinking with maximum effort. The completion interface is
+single-turn and does not expose effort settings or tool conversations.
 
 Use the endpoint for your account region and preferred compatible API:
 
 | Region | OpenAI-compatible base URL | Anthropic-compatible base URL |
 | --- | --- | --- |
 | Global | `https://api.minimax.io/v1` | `https://api.minimax.io/anthropic` |
-| China | `https://api.minimaxi.com/v1` | `https://api.minimaxi.com/anthropic` |
+| China | `https://api.minimax.cn/v1` | `https://api.minimax.cn/anthropic` |
+
+These are the current [China SDK endpoints](https://platform.minimaxi.com/docs/api-reference/text-openai-api).
+Existing custom base URLs, including previously configured regional URLs, are
+passed through unchanged.
 
 For the Anthropic-compatible API, keep `provider` set to `minimax` and pass
 the base URL directly without adding `/v1`. Horizon selects its Anthropic
@@ -229,7 +239,7 @@ request:
 {
   "ai": {
     "provider": "minimax",
-    "model": "MiniMax-M3",
+    "model": "MiniMax-M3.1-Flash",
     "api_key_env": "MINIMAX_API_KEY",
     "base_url": "https://api.minimax.io/anthropic",
     "throttle_sec": 0

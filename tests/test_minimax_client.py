@@ -324,7 +324,7 @@ class TestTemperatureFallback:
 class TestFactoryFunction:
     def test_minimax_provider_defaults(self):
         defaults = AI_PROVIDER_DEFAULTS[AIProvider.MINIMAX]
-        assert defaults["model"] == "MiniMax-M3"
+        assert defaults["model"] == "MiniMax-M3.1-Flash"
         assert defaults["base_url"] == "https://api.minimax.io/v1"
 
     def test_creates_openai_client_for_minimax(self, monkeypatch):

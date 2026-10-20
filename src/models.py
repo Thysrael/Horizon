@@ -167,7 +167,7 @@ AI_PROVIDER_DEFAULTS = {
         "base_url": "https://ark.cn-beijing.volces.com/api/v3",
     },
     AIProvider.MINIMAX: {
-        "model": "MiniMax-M3",
+        "model": "MiniMax-M3.1-Flash",
         "api_key_env": "MINIMAX_API_KEY",
         "base_url": "https://api.minimax.io/v1",
     },

@@ -171,6 +171,8 @@ class AnthropicClient(AIClient):
                 input_tokens=getattr(usage, "input_tokens", 0),
                 output_tokens=getattr(usage, "output_tokens", 0),
             )
+        if self.config.provider == AIProvider.MINIMAX:
+            return "".join(block.text for block in message.content if block.type == "text")
         return message.content[0].text
 
 
@@ -652,7 +654,11 @@ def _create_chained_client(config: AIConfig) -> ChainedAIClient:
         base_url = config.base_url if provider == config.provider else defaults.get("base_url")
         cfg = AIConfig(
             provider=provider,
-            model=defaults.get("model", config.model),
+            model=(
+                config.model
+                if provider == config.provider == AIProvider.MINIMAX
+                else defaults.get("model", config.model)
+            ),
             api_key_env=defaults.get("api_key_env", config.api_key_env),
             base_url=base_url,
             temperature=config.temperature,
