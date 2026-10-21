@@ -25,7 +25,13 @@ from src.orchestrator import HorizonOrchestrator
 from src.processing import ProfileRegistry
 
 
-def make_item(item_id: str, score: float, category: str | None) -> ContentItem:
+def make_item(
+    item_id: str,
+    score: float,
+    category: str | None,
+    profile: str = "tech-news",
+    resolved_profile: str | None = None,
+) -> ContentItem:
     metadata = {"category": category} if category is not None else {}
     return ContentItem(
         id=item_id,
@@ -34,10 +40,10 @@ def make_item(item_id: str, score: float, category: str | None) -> ContentItem:
         url=f"https://example.com/{item_id}",
         published_at=datetime.now(timezone.utc),
         metadata=metadata,
-        profile="tech-news",
+        profile=profile,
         processing=ProcessingResult(
             classification=ClassificationResult(
-                profile="tech-news", method="source_override"
+                profile=resolved_profile or profile, method="source_override"
             ),
             analysis=ContentAnalysis(
                 score=score, reason="test", summary=item_id
@@ -119,6 +125,58 @@ def test_max_items_applies_after_group_limits() -> None:
 
     assert [item.id for item in result.items] == ["ai-top", "ai-second"]
     assert result.group_counts == {"ai": 2}
+
+
+def test_group_by_profile_limits_by_resolved_profile_with_shared_quota() -> None:
+    filtering = DigestConfig(
+        max_items=4,
+        group_by="profile",
+        category_groups={
+            "tech": CategoryGroupConfig(limit=2, categories=["tech-news", "tech-blog"]),
+            "finance": CategoryGroupConfig(limit=1, categories=["finance-news"]),
+        },
+        default_group_limit=1,
+    )
+    items = [
+        make_item("news-top", 9.8, "finance", profile="tech-news"),
+        make_item("blog-top", 9.6, None, profile="tech-blog"),
+        make_item("news-second", 9.4, "tech-news", profile="tech-news"),
+        make_item(
+            "finance-top", 9.0, "tech-news", profile="tech-news", resolved_profile="finance-news"
+        ),
+        make_item("finance-second", 8.8, "finance-news", profile="finance-news"),
+        make_item("creator-top", 8.6, "tech-news", profile="ai-creator"),
+        make_item("creator-second", 8.4, "tech-news", profile="ai-creator"),
+    ]
+
+    result = make_orchestrator(filtering).apply_balanced_digest(items)
+
+    assert [item.id for item in result.items] == [
+        "news-top",
+        "blog-top",
+        "finance-top",
+        "creator-top",
+    ]
+    assert result.group_counts == {"tech": 2, "finance": 1, "other": 1}
+
+
+def test_group_by_profile_leaves_unmatched_profiles_uncapped_by_default() -> None:
+    filtering = DigestConfig(
+        group_by="profile",
+        category_groups={
+            "finance": CategoryGroupConfig(limit=1, categories=["finance-news"]),
+        },
+    )
+    items = [
+        make_item("news-1", 9.0, "finance-news", profile="tech-news"),
+        make_item("news-2", 8.0, "finance-news", profile="tech-news"),
+        make_item("news-3", 7.0, "finance-news", profile="tech-news"),
+    ]
+
+    result = make_orchestrator(filtering).apply_balanced_digest(items)
+
+    assert [item.id for item in result.items] == ["news-1", "news-2", "news-3"]
+    assert result.group_counts == {"other": 3}
 
 
 def test_max_items_works_without_category_groups() -> None:
@@ -233,6 +291,34 @@ def test_rejects_unknown_profile_order() -> None:
         HorizonOrchestrator(config, SimpleNamespace())
 
 
+def make_grouped_config(group_by: str) -> Config:
+    return Config(
+        ai=AIConfig(
+            provider="openai",
+            model="test",
+            api_key_env="TEST_API_KEY",
+        ),
+        sources=SourcesConfig(),
+        digest=DigestConfig(
+            group_by=group_by,
+            category_groups={
+                "tech": CategoryGroupConfig(
+                    limit=1, categories=["tech-news", "missing-profile"]
+                )
+            },
+        ),
+    )
+
+
+def test_group_by_profile_rejects_unknown_profiles() -> None:
+    with pytest.raises(ValueError, match="unknown profiles.*missing-profile"):
+        HorizonOrchestrator(make_grouped_config("profile"), SimpleNamespace())
+
+
+def test_group_by_category_does_not_check_profile_ids() -> None:
+    HorizonOrchestrator(make_grouped_config("category"), SimpleNamespace())
+
+
 def test_duplicate_category_warns_and_first_group_wins() -> None:
     filtering = DigestConfig(
         category_groups={
@@ -258,6 +344,7 @@ def test_duplicate_category_warns_and_first_group_wins() -> None:
         {"default_group_limit": 0},
         {"category_groups": {"ai": {"limit": 0, "categories": ["ai"]}}},
         {"category_groups": {"ai": {"limit": 1, "categories": []}}},
+        {"group_by": "source"},
         {"profile_order": ["tech-news", "tech-news"]},
         {"profile_order": ["tech-news", ""]},
     ],

@@ -217,6 +217,7 @@ class HorizonOrchestrator:
                 for profile in self.profiles.profiles
                 if profile.id not in configured_profiles
             )
+        self.profiles.validate_digest_references(config.digest)
         self.email_manager = EmailManager(config.email, console=self.console) if config.email else None
         self.webhook_notifier = (
             WebhookNotifier(config.webhook, console=self.console, icons=self.icons)
@@ -908,9 +909,10 @@ class HorizonOrchestrator:
     ) -> BalancedDigestResult:
         """Apply configured category quotas and the final item cap.
 
-        Categories are read from ``item.metadata["category"]``. If a category
-        appears in more than one configured group, the first group in config
-        order wins.
+        Categories are read from ``item.metadata["category"]``, or from the
+        resolved ``item.processing.classification.profile`` when
+        ``digest.group_by`` is ``"profile"``. If a category appears in more than
+        one configured group, the first group in config order wins.
         """
         digest = self.config.digest
         groups = digest.category_groups
@@ -952,7 +954,12 @@ class HorizonOrchestrator:
         default_group = digest.default_group
 
         for item in sorted_items:
-            category = item.metadata.get("category")
+            if digest.group_by == "profile":
+                category = (
+                    item.processing.classification.profile if item.processing else None
+                )
+            else:
+                category = item.metadata.get("category")
             group_key = (
                 category_to_group.get(category, default_group)
                 if isinstance(category, str)

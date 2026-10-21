@@ -21,6 +21,7 @@ from src.models import (
 from src.ai.summarizer import DailySummarizer
 from src.ai.enricher import EnrichmentBatchResult
 from src.mcp.server import hz_get_metrics
+from src.mcp.errors import HorizonMcpError
 from src.mcp.service import HorizonPipelineService
 from src.orchestrator import (
     BalancedDigestResult,
@@ -79,6 +80,32 @@ def test_validate_config_smoke(tmp_path: Path) -> None:
     assert result["config_path"] == str(config_path.resolve())
     assert result["enabled_sources"]
     assert result["missing_env"] == []
+
+
+def test_validate_config_rejects_unknown_group_by_profile(tmp_path: Path) -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    config = json.loads(
+        (repo_root / "data" / "config.example.json").read_text(encoding="utf-8")
+    )
+    config["digest"]["group_by"] = "profile"
+    config["digest"]["category_groups"] = {
+        "tech": {"limit": 1, "categories": ["tech-news", "missing-profile"]}
+    }
+    config_path = tmp_path / "config.json"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+
+    service = HorizonPipelineService(runs_root=tmp_path / "mcp-runs")
+    with pytest.raises(HorizonMcpError) as exc_info:
+        asyncio.run(
+            service.validate_config(
+                horizon_path=str(repo_root),
+                config_path=str(config_path),
+                check_env=False,
+            )
+        )
+
+    assert exc_info.value.code == "HZ_CONFIG_INVALID"
+    assert "missing-profile" in exc_info.value.details["error"]
 
 
 def test_get_effective_config_can_filter_sources(tmp_path: Path) -> None:

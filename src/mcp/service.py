@@ -230,6 +230,15 @@ class HorizonPipelineService:
             sources=sources,
         )
 
+        try:
+            self._profiles(ctx).validate_digest_references(ctx.config.digest)
+        except ValueError as exc:
+            raise HorizonMcpError(
+                code="HZ_CONFIG_INVALID",
+                message="Config references unknown processing profiles.",
+                details={"config_path": str(ctx.config_path), "error": str(exc)},
+            ) from exc
+
         warnings: list[str] = []
         missing_env: list[str] = []
 
@@ -270,6 +279,7 @@ class HorizonPipelineService:
                     key: group.model_dump(mode="json")
                     for key, group in ctx.config.digest.category_groups.items()
                 },
+                "group_by": ctx.config.digest.group_by,
                 "default_group": ctx.config.digest.default_group,
                 "default_group_limit": ctx.config.digest.default_group_limit,
             },

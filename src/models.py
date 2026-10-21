@@ -552,6 +552,7 @@ class DigestConfig(BaseModel):
 
     max_items: Optional[int] = Field(default=None, gt=0)
     category_groups: Dict[str, CategoryGroupConfig] = Field(default_factory=dict)
+    group_by: Literal["category", "profile"] = "category"
     default_group: str = "other"
     default_group_limit: Optional[int] = Field(default=None, gt=0)
     profile_order: List[str] = Field(default_factory=list)

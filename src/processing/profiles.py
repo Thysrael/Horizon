@@ -3,9 +3,12 @@
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Optional
+from typing import TYPE_CHECKING, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+if TYPE_CHECKING:
+    from ..models import DigestConfig
 
 BUILTIN_PROFILES_DIR = Path(__file__).resolve().parents[1] / "_builtin_profiles"
 
@@ -160,6 +163,22 @@ class ProfileRegistry:
         elif isinstance(value, list):
             for child in value:
                 self.validate_source_references(child)
+
+    def validate_digest_references(self, digest: "DigestConfig") -> None:
+        """Reject unknown profile IDs in profile-based digest quota groups."""
+        if digest.group_by != "profile":
+            return
+        requested = {
+            profile_id
+            for group in digest.category_groups.values()
+            for profile_id in group.categories
+        }
+        unknown = requested - self.ids
+        if unknown:
+            raise ValueError(
+                'digest.category_groups contains unknown profiles for group_by "profile" '
+                f"({', '.join(sorted(unknown))})"
+            )
 
     @property
     def ids(self) -> set[str]:

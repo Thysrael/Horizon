@@ -634,8 +634,12 @@ digest limits:
   `limit` and a non-empty `categories` list. Items within each group are kept by
   analysis score, highest first.
 - `category_groups.*.name`: Optional display name used in run logs
-- `default_group`: Group key for items whose category does not match any
-  configured group. Default is `other`.
+- `group_by`: What `category_groups` match. `"category"` (default) uses the
+  source category; `"profile"` uses the resolved processing profile, and the
+  `categories` lists then contain profile IDs.
+- `default_group`: Group key for items whose category (or profile, with
+  `group_by: "profile"`) does not match any configured group. Default is
+  `other`.
 - `default_group_limit`: Optional positive limit for unmatched items. If omitted,
   unmatched items are unlimited except for `max_items`.
 
@@ -651,6 +655,39 @@ All source types support a `category` field: `sources.rss[].category`,
 `sources.openbb.watchlists[].category`, `sources.ossinsight.category`,
 `sources.gdelt.category`, and `sources.google_news.category`.
 Sources without a category set enter the default group.
+
+With `"group_by": "profile"`, group matching uses the final resolved profile in
+`item.processing.classification.profile` instead, and each `categories` list
+contains profile IDs. This lets quotas follow the content domain rather than the
+source, for example with mixed feeds that use automatic or candidate-profile
+routing:
+
+```json
+{
+  "digest": {
+    "max_items": 18,
+    "group_by": "profile",
+    "category_groups": {
+      "tech": {
+        "name": "Technology",
+        "limit": 12,
+        "categories": ["tech-news", "tech-blog"]
+      },
+      "finance": {
+        "name": "Finance",
+        "limit": 5,
+        "categories": ["finance-news"]
+      }
+    },
+    "default_group_limit": 3
+  }
+}
+```
+
+Profiles in the same group share its limit: `tech-news` and `tech-blog` items
+together contribute at most 12 items. Profiles not listed in any group, such as
+`ai-creator`, enter the default group and its `default_group_limit`. Unknown
+profile IDs are rejected at startup and by MCP config validation.
 
 If the same category appears in multiple groups, Horizon logs a warning and uses
 the first group in configuration order. Omitting `category_groups`,
