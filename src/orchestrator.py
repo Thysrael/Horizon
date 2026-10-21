@@ -34,6 +34,7 @@ from .ai.summarizer import DailySummarizer
 from .ai.enricher import ContentEnricher, EnrichmentBatchResult
 from .ai.tokens import get_usage_snapshot
 from .processing import ProfileRegistry
+from .processing.content import COMMENTS_MARKER, split_content
 from .processing.tools import ToolRegistry
 
 
@@ -648,9 +649,9 @@ class HorizonOrchestrator:
         This is a stable stage helper for integrations such as MCP.
 
         Sends all item titles, tags, and summaries to AI in a single call.
-        Items must already be sorted by analysis score descending so that the first
-        item in each duplicate group is always the highest-scored one.
-        Content (comments) from duplicate items is merged into the primary.
+        The highest-scored item of each duplicate group is kept as the primary.
+        Source text and community comments from duplicate items are merged into
+        the primary's source text and comments respectively.
 
         Falls back to returning items unchanged if the AI call fails.
         """
@@ -690,26 +691,65 @@ class HorizonOrchestrator:
         if not duplicate_groups:
             return items
 
+        def score_of(idx: int) -> float:
+            analysis = items[idx].processing.analysis if items[idx].processing else None
+            return analysis.score if analysis and analysis.score is not None else float("-inf")
+
+        # Keep valid indices only; groups that share an item describe one topic
+        if not isinstance(duplicate_groups, list):
+            duplicate_groups = []
+        parent = list(range(len(items)))
+
+        def find(idx: int) -> int:
+            while parent[idx] != idx:
+                parent[idx] = parent[parent[idx]]
+                idx = parent[idx]
+            return idx
+
+        grouped: set[int] = set()
+        for group in duplicate_groups:
+            if not isinstance(group, list):
+                continue
+            members = sorted({
+                idx
+                for idx in group
+                if isinstance(idx, int) and not isinstance(idx, bool) and 0 <= idx < len(items)
+            })
+            if len(members) < 2:
+                continue
+            grouped.update(members)
+            for idx in members[1:]:
+                parent[find(idx)] = find(members[0])
+        clusters: Dict[int, List[int]] = defaultdict(list)
+        for idx in sorted(grouped):
+            clusters[find(idx)].append(idx)
+
         # Build a set of indices to drop (all non-primary duplicates)
         drop_indices: set[int] = set()
-        for group in duplicate_groups:
-            if not isinstance(group, list) or len(group) < 2:
-                continue
-            primary_idx = group[0]
-            if primary_idx < 0 or primary_idx >= len(items):
-                continue
+        for members in clusters.values():
+            # Highest analysis score wins; ties keep the earlier (higher-ranked) item
+            primary_idx = min(members, key=lambda idx: (-score_of(idx), idx))
             primary = items[primary_idx]
-            for dup_idx in group[1:]:
-                if not isinstance(dup_idx, int) or dup_idx < 0 or dup_idx >= len(items):
-                    continue
+            for dup_idx in members:
                 if dup_idx == primary_idx:
                     continue
                 dup = items[dup_idx]
-                # Merge comments/content from the duplicate into the primary
-                if dup.content:
-                    if not primary.content or dup.content not in primary.content:
-                        label = dup.source_type.value
-                        primary.content = (primary.content or "") + f"\n\n--- From {label} ---\n{dup.content}"
+                # Merge the duplicate's source text before the primary's community
+                # comments so later stages still read it as source content
+                primary_parts = split_content(primary.content)
+                dup_parts = split_content(dup.content)
+                header = f"--- From {dup.source_type.value} ---"
+                main = primary_parts.main
+                if dup_parts.main and dup_parts.main not in main:
+                    main = f"{main}\n\n{header}\n{dup_parts.main}" if main else f"{header}\n{dup_parts.main}"
+                comments = primary_parts.comments
+                if dup_parts.comments and dup_parts.comments not in comments:
+                    labeled = f"{header}\n{dup_parts.comments}"
+                    comments = f"{comments}\n\n{labeled}" if comments else labeled
+                merged = main
+                if comments:
+                    merged = f"{main}\n\n{COMMENTS_MARKER}\n{comments}"
+                primary.content = merged or primary.content
                 if log:
                     self.console.print(
                         f"   [dim]dedup: keep [{primary_idx}] {primary.title}[/dim]\n"
