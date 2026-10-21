@@ -239,7 +239,8 @@ results. Categories come from source configuration such as
 ```
 
 Group limits are applied after profile filtering and before enrichment. If
-`category_groups` and `max_items` are omitted, no balanced digest limits apply.
+`category_groups`, `max_items`, and `default_group_limit` are omitted, no balanced
+digest limits apply.
 
 `api_key_env` must be the name of an environment variable, not the API key
 itself. Put the real secret in `.env`:

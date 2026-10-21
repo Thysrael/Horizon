@@ -247,7 +247,7 @@ cp data/config.example.json data/config.json  # 自定义信息源
 ```
 
 分组限额在 Profile 筛选之后、内容补充之前执行。未配置
-`category_groups` 和 `max_items` 时，不应用均衡日报限额。
+`category_groups`、`max_items` 和 `default_group_limit` 时，不应用均衡日报限额。
 
 `data/config.json` 里的任意字符串值都可以通过 `${VAR_NAME}` 引用环境变量。这适合用于 `ai.base_url`、私有 RSS 链接、Webhook 地址或自定义请求头模板等字段。
 

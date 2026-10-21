@@ -236,7 +236,7 @@ cp data/config.example.json data/config.json  # 情報源をカスタマイズ
 }
 ```
 
-グループの上限は、プロファイルのフィルタリング後、エンリッチ前に適用されます。`category_groups`と`max_items`を省略した場合、カテゴリ別の上限は適用されません。
+グループの上限は、プロファイルのフィルタリング後、エンリッチ前に適用されます。`category_groups`、`max_items`、`default_group_limit`を省略した場合、カテゴリ別の上限は適用されません。
 
 `api_key_env`はAPIキーそのものではなく、環境変数の名前でなければなりません。実際のシークレットは`.env`に記述してください。
 

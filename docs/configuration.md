@@ -653,9 +653,9 @@ All source types support a `category` field: `sources.rss[].category`,
 Sources without a category set enter the default group.
 
 If the same category appears in multiple groups, Horizon logs a warning and uses
-the first group in configuration order. Omitting both `category_groups` and
-`max_items` disables balanced digest limits; configured profile thresholds still
-apply.
+the first group in configuration order. Omitting `category_groups`,
+`max_items`, and `default_group_limit` disables balanced digest limits;
+configured profile thresholds still apply.
 
 ## Environment Variable Substitution
 
