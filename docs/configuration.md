@@ -215,9 +215,11 @@ Recommended models: `MiniMax-M3.1-Flash` (default), `MiniMax-M3`.
 Existing configurations and explicitly entered model IDs are left unchanged,
 including when MiniMax is the configured provider in a fallback chain. Model
 availability still depends on the configured endpoint and account.
-Horizon leaves thinking and reasoning effort unset, using the API defaults;
-Flash uses adaptive thinking with maximum effort. The completion interface is
-single-turn and does not expose effort settings or tool conversations.
+By default Horizon leaves thinking and reasoning effort unset, using the API
+defaults; Flash uses adaptive thinking with maximum effort. The completion
+interface is single-turn and does not expose tool conversations; to send
+provider-specific fields such as effort settings, use
+[`ai.extra_body`](#extra-request-fields).
 
 Use the endpoint for your account region and preferred compatible API:
 
@@ -317,6 +319,34 @@ By default, AI scoring and enrichment run one item at a time. If your API endpoi
 - Preserve the existing retry behavior per item.
 - Result ordering is preserved regardless of concurrency.
 - If you also use `throttle_sec`, each concurrent task sleeps independently after finishing an item.
+
+### Extra request fields
+
+Some servers accept request fields that Horizon does not set itself. Use
+`ai.extra_body` to send them with every request. For example, to turn off the
+thinking phase of Qwen3-style models served by llama.cpp or vLLM, which
+otherwise return reasoning text instead of the requested JSON:
+
+```json
+{
+  "ai": {
+    "provider": "ollama",
+    "model": "qwen3",
+    "api_key_env": "",
+    "base_url": "http://127.0.0.1:8080",
+    "extra_body": {
+      "chat_template_kwargs": {"enable_thinking": false}
+    }
+  }
+}
+```
+
+- `extra_body`: Optional JSON object merged into the request body as is. Which
+  fields work depends on the server; Horizon does not validate them.
+- Supported for OpenAI-compatible, Azure OpenAI and Anthropic-compatible
+  providers. The `gemini` provider rejects it.
+- With `provider_chain`, it applies only to the configured `provider`, like
+  `base_url`.
 
 **Custom Base URL** (for proxies):
 

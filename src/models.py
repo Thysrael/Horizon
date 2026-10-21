@@ -192,6 +192,7 @@ class AIConfig(BaseModel):
     model: str
     base_url: Optional[str] = None
     api_key_env: str
+    extra_body: Optional[Dict[str, Any]] = None
     temperature: float = 0.3
     max_tokens: int = 4096
     throttle_sec: float = 0.0
