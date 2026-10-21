@@ -130,6 +130,16 @@ def test_max_items_works_without_category_groups() -> None:
     assert [item.id for item in result.items] == ["higher"]
 
 
+def test_default_group_limit_works_without_category_groups() -> None:
+    filtering = DigestConfig(default_group_limit=1)
+    items = [make_item("lower", 7.0, None), make_item("higher", 9.0, None)]
+
+    result = make_orchestrator(filtering).apply_balanced_digest(items)
+
+    assert [item.id for item in result.items] == ["higher"]
+    assert result.group_counts == {"other": 1}
+
+
 def test_filter_items_skips_ai_topic_dedup_for_disabled_profile(monkeypatch) -> None:
     orchestrator = make_orchestrator(DigestConfig())
     orchestrator.profiles = ProfileRegistry.load(

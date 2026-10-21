@@ -876,7 +876,7 @@ class HorizonOrchestrator:
         groups = digest.category_groups
         max_items = digest.max_items
 
-        if not groups and max_items is None:
+        if not groups and max_items is None and digest.default_group_limit is None:
             return BalancedDigestResult(items=items)
 
         sorted_items = sorted(
