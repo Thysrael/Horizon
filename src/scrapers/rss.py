@@ -154,13 +154,27 @@ class RSSScraper(BaseScraper):
         Returns:
             str: Extracted text content
         """
-        # Try different content fields
-        if "summary" in entry:
-            return entry.summary
-        if "description" in entry:
-            return entry.description
-        if "content" in entry and entry.content:
-            # content is usually a list
-            return entry.content[0].get("value", "")
-
-        return ""
+        content = entry.get("content", [])
+        if not isinstance(content, (list, tuple)):
+            content = []
+        candidates = []
+        for part in content:
+            if not isinstance(part, dict):
+                continue
+            media_type = part.get("type", "")
+            if not isinstance(media_type, str):
+                continue
+            media_type = media_type.split(";", 1)[0].strip().lower()
+            if media_type and not (
+                media_type.startswith("text/")
+                or media_type in ("html", "xhtml", "application/xhtml+xml")
+            ):
+                continue
+            candidates.append(part.get("value"))
+        # max keeps the first candidate on ties, so prefer content alternatives.
+        candidates.extend([entry.get("summary"), entry.get("description")])
+        return max(
+            (value for value in candidates if isinstance(value, str) and value.strip()),
+            key=len,
+            default="",
+        )

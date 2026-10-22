@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
 
+import feedparser
+import pytest
+
 from src.models import RSSSourceConfig
 from src.scrapers.rss import RSSScraper
 
@@ -107,3 +110,174 @@ def test_unknown_extractor_name_ignored() -> None:
 
     assert len(items) == 1
     assert items[0].content == "Short summary from feed."
+
+
+_FULL_CONTENT = "<p>The full article contains more detail than the short summary.</p>"
+_FULL_RSS_FEED = _FEED.replace(
+    '<rss version="2.0">',
+    '<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">',
+).replace(
+    "</item>", f"<content:encoded><![CDATA[{_FULL_CONTENT}]]></content:encoded></item>"
+)
+_FULL_ATOM_FEED = f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Test</title><id>https://example.com/</id>
+  <updated>2026-04-24T12:00:00Z</updated>
+  <entry>
+    <id>entry-1</id><title>Item 1</title>
+    <link href="https://example.com/item-1"/>
+    <updated>2026-04-24T12:00:00Z</updated>
+    <summary>Short summary from feed.</summary>
+    <content type="html"><![CDATA[{_FULL_CONTENT}]]></content>
+  </entry>
+</feed>
+"""
+
+
+@pytest.mark.parametrize("feed", [_FULL_RSS_FEED, _FULL_ATOM_FEED], ids=["rss", "atom"])
+def test_full_feed_content_is_not_hidden_by_summary(feed) -> None:
+    client = _make_feed_client(feed)
+    source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
+
+    result = asyncio.run(RSSScraper([source], client).fetch(_SINCE))
+
+    assert result.status == "success"
+    assert len(result.items) == 1
+    assert result.items[0].content == _FULL_CONTENT
+
+
+def test_atom_parameterized_xhtml_content_is_not_hidden_by_summary() -> None:
+    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Test</title><id>https://example.com/</id>
+  <updated>2026-04-24T12:00:00Z</updated>
+  <author><name>Example</name></author>
+  <entry>
+    <id>https://example.com/item-1</id><title>Item 1</title>
+    <link href="https://example.com/item-1"/>
+    <updated>2026-04-24T12:00:00Z</updated>
+    <summary>Short summary from feed.</summary>
+    <content type="application/xhtml+xml; charset=utf-8"><![CDATA[{_FULL_CONTENT}]]></content>
+  </entry>
+</feed>
+"""
+    parsed = feedparser.parse(feed)
+    assert not parsed.bozo
+    assert parsed.entries[0].content[0].type == "application/xhtml+xml; charset=utf-8"
+    assert parsed.entries[0].content[0].value == _FULL_CONTENT
+    client = _make_feed_client(feed)
+    source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
+
+    result = asyncio.run(RSSScraper([source], client).fetch(_SINCE))
+
+    assert result.status == "success"
+    assert len(result.items) == 1
+    assert result.items[0].content == _FULL_CONTENT
+
+
+def test_atom_inline_png_content_does_not_hide_summary() -> None:
+    png = (
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk"
+        "+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Test</title><id>https://example.com/</id>
+  <updated>2026-04-24T12:00:00Z</updated>
+  <author><name>Example</name></author>
+  <entry>
+    <id>https://example.com/item-1</id><title>Item 1</title>
+    <link href="https://example.com/item-1"/>
+    <updated>2026-04-24T12:00:00Z</updated>
+    <summary>Readable summary.</summary>
+    <content type="image/png">{png}</content>
+  </entry>
+</feed>
+"""
+    parsed = feedparser.parse(feed)
+    assert not parsed.bozo
+    assert parsed.entries[0].content[0].type == "image/png"
+    assert parsed.entries[0].content[0].value == png
+    client = _make_feed_client(feed)
+    source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
+
+    result = asyncio.run(RSSScraper([source], client).fetch(_SINCE))
+
+    assert result.status == "success"
+    assert len(result.items) == 1
+    assert result.items[0].content == "Readable summary."
+
+
+@pytest.mark.parametrize("fields,expected", [
+    ({"content": [{"value": "whole"}], "summary": "tease"}, "whole"),
+    ({"content": [{"value": "short"}], "summary": "A longer summary"}, "A longer summary"),
+    ({"content": [{"value": "tiny"}, {"value": "The longest alternative"}],
+      "summary": "A summary"}, "The longest alternative"),
+    ({"content": [{"value": "first"}, {"value": "later"}]}, "first"),
+    ({"content": [{"value": "Article"}], "summary": "  \n"}, "Article"),
+    ({"content": [{"value": "Article"}], "summary": None}, "Article"),
+    ({"content": [None, "not a mapping", {"value": 42}, {"value": "Full article"}],
+      "summary": "Teaser"}, "Full article"),
+    ({"content": [{"value": 42}], "summary": "Text summary"}, "Text summary"),
+    ({"content": [{"value": "  \n"}], "summary": ""}, ""),
+    ({}, ""),
+    ({"description": "Description only"}, "Description only"),
+    ({"content": [{}]}, ""),
+    ({"content": 42, "summary": "Fallback summary"}, "Fallback summary"),
+    ({"content": [{"value": "  <p>" + "article " * 3000 + "</p>\n"}],
+      "summary": "Teaser"}, "  <p>" + "article " * 3000 + "</p>\n"),
+], ids=[
+    "content_wins_tie", "longer_summary", "later_content", "first_content_wins_tie",
+    "blank_summary", "nonstring_summary", "malformed_alternatives", "nonstring_values",
+    "blank_candidates", "missing_candidates", "description_only", "missing_value",
+    "malformed_content_container", "preserve_representation",
+])
+def test_content_selection_candidates(fields, expected) -> None:
+    scraper = RSSScraper([], _make_feed_client(_FEED))
+
+    assert scraper._extract_content(feedparser.FeedParserDict(fields)) == expected
+
+
+@pytest.mark.parametrize("media_type,is_text", [
+    ("", True),
+    ("text/plain", True),
+    ("text/html", True),
+    ("text/markdown", True),
+    ("html", True),
+    ("xhtml", True),
+    ("application/xhtml+xml", True),
+    ("application/xhtml+xml; charset=utf-8", True),
+    (" APPLICATION/XHTML+XML ; charset=UTF-8 ", True),
+    ("text/plain; charset=utf-8", True),
+    ("image/png", False),
+    ("audio/mpeg", False),
+    ("application/octet-stream", False),
+    ("application/xml", False),
+    (None, False),
+    (42, False),
+])
+def test_content_selection_respects_media_type(media_type, is_text) -> None:
+    scraper = RSSScraper([], _make_feed_client(_FEED))
+    entry = feedparser.FeedParserDict({
+        "content": [{"type": media_type, "value": "Full article"}],
+        "summary": "Summary",
+    })
+
+    assert scraper._extract_content(entry) == ("Full article" if is_text else "Summary")
+
+
+@pytest.mark.parametrize("extracted", ["Extractor text", None], ids=["override", "fallback"])
+def test_extractor_still_overrides_longest_feed_content(extracted) -> None:
+    client = _make_feed_client(_FULL_RSS_FEED)
+    extractor = AsyncMock()
+    extractor.extract.return_value = extracted
+    source = RSSSourceConfig(
+        name="Test", url="https://example.com/feed.xml", content_extractor="my-ext"
+    )
+    scraper = RSSScraper([source], client, extractors=_make_registry("my-ext", extractor))
+
+    result = asyncio.run(scraper.fetch(_SINCE))
+
+    assert result.status == "success"
+    assert result.items[0].content == (extracted if extracted is not None else _FULL_CONTENT)
+    extractor.extract.assert_awaited_once_with("https://example.com/item-1", client)
