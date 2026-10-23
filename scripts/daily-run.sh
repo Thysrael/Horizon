@@ -27,15 +27,16 @@ cd "$PROJECT_DIR"
 
 echo "$LOG_PREFIX Starting Horizon daily run..."
 
-# 1. Update to the latest main without requiring a clean worktree
+# 1. Discard server-generated lockfile changes, then update to the latest main
 retry git fetch --quiet origin main
+git restore --source=HEAD -- uv.lock
 git merge --ff-only origin/main
 
-# 2. Install/update dependencies
-uv sync --quiet
+# 2. Install/update dependencies using the committed lockfile
+uv sync --locked --quiet
 
 # 3. Run Horizon
-uv run horizon --hours 24
+uv run --locked horizon --hours 24
 
 # 4. Deploy docs to gh-pages
 echo "$LOG_PREFIX Deploying to gh-pages..."

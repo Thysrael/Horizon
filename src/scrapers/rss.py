@@ -2,6 +2,7 @@
 
 import calendar
 import hashlib
+import logging
 import os
 import re
 from datetime import datetime, timezone
@@ -13,6 +14,8 @@ import feedparser
 from .base import BaseScraper, FetchResult
 from ..extractors import ExtractorRegistry
 from ..models import ContentItem, SourceType, RSSSourceConfig
+
+logger = logging.getLogger(__name__)
 
 class RSSScraper(BaseScraper):
     """Scraper for RSS/Atom feeds."""
@@ -49,13 +52,20 @@ class RSSScraper(BaseScraper):
             if not source.enabled:
                 continue
 
-            await result.collect(source.name, self._fetch_feed(source, since))
+            try:
+                feed_result = await self._fetch_feed(source, since)
+            except Exception as exc:
+                result.fail(source.name, exc)
+            else:
+                result.items.extend(feed_result.items)
+                result.failures.update(feed_result.failures)
+                result.successful += feed_result.successful
 
         return result
 
     async def _fetch_feed(
         self, source: RSSSourceConfig, since: datetime
-    ) -> List[ContentItem]:
+    ) -> FetchResult:
         """Fetch items from a single RSS feed.
 
         Args:
@@ -63,9 +73,9 @@ class RSSScraper(BaseScraper):
             since: Only fetch items after this time
 
         Returns:
-            List[ContentItem]: Feed content items
+            FetchResult: Feed content items and entry failures
         """
-        items = []
+        result = FetchResult()
 
         # Expand environment variables in URL (e.g. ${LWN_TOKEN})
         feed_url = re.sub(
@@ -79,42 +89,52 @@ class RSSScraper(BaseScraper):
         if feed.bozo and not feed.entries:
             raise ValueError("Invalid RSS/Atom feed")
 
-        for entry in feed.entries:
-            published_at = self._parse_date(entry)
-            if not published_at or published_at < since:
-                continue
+        for ordinal, entry in enumerate(feed.entries, start=1):
+            try:
+                published_at = self._parse_date(entry)
+                if not published_at or published_at < since:
+                    continue
 
-            feed_id = str(source.url).split("//")[1].replace("/", "_")
-            entry_id = entry.get("id", entry.get("link", ""))
-            entry_hash = hashlib.sha256(str(entry_id).encode("utf-8")).hexdigest()[:16]
-            content = self._extract_content(entry)
+                feed_id = str(source.url).split("//")[1].replace("/", "_")
+                entry_id = entry.get("id", entry.get("link", ""))
+                entry_hash = hashlib.sha256(str(entry_id).encode("utf-8")).hexdigest()[:16]
+                content = self._extract_content(entry)
 
-            if source.content_extractor and self._extractors:
-                extractor = self._extractors.get(source.content_extractor)
-                if extractor:
-                    url = entry.get("link", "")
-                    if url:
-                        full = await extractor.extract(url, self.client)
-                        if full:
-                            content = full
+                if source.content_extractor and self._extractors:
+                    extractor = self._extractors.get(source.content_extractor)
+                    if extractor:
+                        url = entry.get("link", "")
+                        if url:
+                            full = await extractor.extract(url, self.client)
+                            if full:
+                                content = full
 
-            items.append(ContentItem(
-                id=self._generate_id("rss", feed_id, entry_hash),
-                source_type=SourceType.RSS,
-                title=entry.get("title", "Untitled"),
-                url=entry.get("link", str(source.url)),
-                content=content,
-                author=entry.get("author", source.name),
-                published_at=published_at,
-                profile=source.profile,
-                metadata={
-                    "feed_name": source.name,
-                    "category": source.category,
-                    "tags": [tag.term for tag in entry.get("tags", [])],
-                },
-            ))
+                result.items.append(ContentItem(
+                    id=self._generate_id("rss", feed_id, entry_hash),
+                    source_type=SourceType.RSS,
+                    title=entry.get("title", "Untitled"),
+                    url=entry.get("link", str(source.url)),
+                    content=content,
+                    author=entry.get("author", source.name),
+                    published_at=published_at,
+                    profile=source.profile,
+                    metadata={
+                        "feed_name": source.name,
+                        "category": source.category,
+                        "tags": [tag.term for tag in entry.get("tags", [])],
+                    },
+                ))
+            except Exception as exc:
+                label = f"{source.name}/entry:{ordinal}"
+                # Avoid multiline validation details that include entry values.
+                reason = str(exc).partition("\n")[0][:200]
+                error = f"{type(exc).__name__}: {reason}"
+                result.failures[label] = error
+                logger.warning("Skipping RSS entry %s: %s", label, error)
 
-        return items
+        # A feed with only rejected entries is not a successful empty response.
+        result.successful = int(bool(result.items) or not result.failures)
+        return result
 
     def _parse_date(self, entry: dict) -> datetime:
         """Parse publication date from feed entry.
