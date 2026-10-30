@@ -88,7 +88,7 @@ Uses the [Firecrawl](https://www.firecrawl.dev) scrape API (`POST https://api.fi
 
 Each extracted entry is one scrape request and uses Firecrawl credits. Requests carry `"integration": "_horizon"` so Firecrawl can attribute them to Horizon.
 
-**Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and inherits whatever timeout and connection settings are configured on it. Any HTTP error, timeout or unexpected response falls back to the feed content.
+**Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient`, explicitly requests a 60-second Firecrawl scrape timeout, and sets a 65-second HTTP timeout for that request to allow time for the response. Other requests keep the shared client's timeout settings. No automatic retries are added. Any HTTP error, timeout, unsuccessful response, or missing, non-string, or blank Markdown falls back to the feed content.
 
 ## Adding a new extractor type
 
