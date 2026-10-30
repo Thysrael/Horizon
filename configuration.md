@@ -150,12 +150,19 @@ Common API key variable names:
 {
   "ai": {
     "provider": "anthropic",
-    "model": "claude-sonnet-4.5-20250929",
+    "model": "claude-sonnet-5-5",
     "api_key_env": "ANTHROPIC_API_KEY",
     "throttle_sec": 0
   }
 }
 ```
+
+For Anthropic, Azure OpenAI, and OpenAI-compatible APIs, Horizon retries without `temperature` when the
+model explicitly rejects it, then omits it for the rest of that client's lifetime.
+This also applies to internal `temperature=0` overrides and a `temperature` field
+in `ai.extra_body`. Models that accept temperature keep the configured value.
+OpenAI-compatible and Azure clients can adapt both the token-limit parameter and
+temperature in the same call, with at most one retry per parameter.
 
 **OpenAI**:
 
