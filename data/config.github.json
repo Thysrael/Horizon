@@ -84,6 +84,20 @@
       },
       {
         "type": "repo_releases",
+        "owner": "EzraCerpac",
+        "repo": "jj-waltz",
+        "enabled": true,
+        "profile": "tools-update"
+      },
+      {
+        "type": "repo_releases",
+        "owner": "max-sixty",
+        "repo": "worktrunk",
+        "enabled": true,
+        "profile": "tools-update"
+      },
+      {
+        "type": "repo_releases",
         "owner": "ogulcancelik",
         "repo": "herdr",
         "enabled": true,
