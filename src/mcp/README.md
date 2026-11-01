@@ -44,6 +44,18 @@ uv run horizon-mcp
 
 The server runs over stdio and is intended to be launched by an MCP client. Stdout is reserved for the MCP protocol; progress, logs, warnings, and errors are written to stderr through one shared Rich console.
 
+### Workspace and application version
+
+The server uses the Horizon version that launched `horizon-mcp`. `horizon_path`
+(or `HORIZON_PATH`) selects the workspace for configuration, Profiles, and
+credentials; it does not switch the running Python modules. An explicitly
+selected workspace needs to be an existing directory, but does not need to
+contain Python source. A missing explicit path is an error.
+
+The default config is `<workspace>/data/config.json`. Relative Profile paths are
+resolved from the workspace. To use another Horizon code revision, launch the
+server with that revision's environment.
+
 ## Run Artifacts
 
 Each run writes artifacts under `data/mcp-runs/<run_id>/`:
@@ -54,6 +66,10 @@ Each run writes artifacts under `data/mcp-runs/<run_id>/`:
 - `filtered_items.json`
 - `enriched_items.json`
 - `summary-<lang>.md`
+
+Fetch responses and run metadata include `fetch_status` and `fetch_report`.
+Source reports preserve named failures, including partial failures within a
+source type (for example, one unavailable RSS feed among several working feeds).
 
 ## Design Principles
 

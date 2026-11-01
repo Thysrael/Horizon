@@ -5,7 +5,21 @@ title: Source Scrapers
 
 # Source Scrapers
 
-Horizon fetches content from multiple source types. All scrapers inherit from `BaseScraper`, share an async HTTP client, and implement a `fetch(since)` method that returns a list of `ContentItem` objects. Sources are fetched concurrently via `asyncio.gather`.
+Horizon fetches content from multiple source types. Scrapers inherit from `BaseScraper` and implement `fetch(since) -> FetchResult`. HTTP scrapers share an async client; sources are fetched concurrently via `asyncio.gather`.
+
+`FetchResult` contains `items`, named `failures`, and a `successful` request count.
+Its status distinguishes `success`, `empty`, `partial_failure`, and `failure`.
+A successful request with no new items still counts as successful. Missing
+credentials/dependencies and exhausted request failures must be reported rather
+than returned as an empty success. The orchestrator aggregates these results for
+both CLI and MCP, retaining items from healthy sources.
+
+For independent feeds, users, or queries, use
+`await result.collect(label, fetch_items())`; the inner coroutine returns a list
+of `ContentItem` objects and raises on failure. Keep retries and alternate
+endpoints inside that coroutine, so a recovered request counts as successful.
+Consumers that previously used the scraper's return value as a list should now
+read `result.items` and inspect `result.status` / `result.failures`.
 
 ## Hacker News
 
@@ -153,7 +167,7 @@ Subreddits and users are fetched concurrently. Comments are sorted by score, lim
 
 Uses the [OpenBB Platform](https://www.openbb.co/platform) Python SDK via `obb.news.company()` to fetch company news for one or more ticker watchlists.
 
-The scraper imports `openbb` lazily. If the optional dependency is not installed, Horizon logs a warning and skips the source instead of failing the whole run.
+The scraper imports `openbb` lazily. If the optional dependency is not installed, it reports a source failure. Other healthy sources can still produce a digest; the CLI fails when every attempted source fails.
 
 **Config** (`sources.openbb`):
 

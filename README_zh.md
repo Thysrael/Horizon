@@ -5,7 +5,7 @@
 <p><strong>你只需享受新闻，剩下交给 Horizon。</strong></p>
 
 <a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/weekly?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
 <a href="https://hellogithub.com/repository/Thysrael/Horizon" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=7a4b606e28e4477998d35851cf4fdddf&claim_uid=rtjnLkYT7ziQJUG" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 <br>
 
@@ -117,9 +117,22 @@ Horizon 是一个业余时间维护的开源项目。如果你愿意支持这个
 
 | 支持方 | 说明 |
 |--------|------|
+| [<img src="docs/assets/modelflare-logo.png" alt="Modelflare" width="220" />](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon) | 感谢 Modelflare 赞助本项目！Modelflare：满血、稳定、不掺水，以更低成本使用全球 SOTA 模型。平台由美国 Havenbyte LLC 运营，通过常见兼容协议支持 GPT、Claude、Gemini、Grok 等领先模型，并提供 40+ 图片和视频模型。<br><br>缓存补偿是一大亮点：指定 OpenAI 分组（价格优先、稳定、优质）分别保障每日 65%、75% 或 85% 的缓存命中率；符合条件的请求若未达标，Modelflare 将退还差额，结算后可在用量看板查看。<br><br>特别优惠：单笔充值 20 美元即可解锁价格倍率为 0.015x 的 GPT 优惠分组，单笔充值 50 美元即可解锁价格倍率为 0.03x 的 Claude 优惠分组。通过[此专属链接](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon)注册即可开始使用。 |
 | [<img src="docs/assets/compshare-logo.png" alt="Compshare / 优云智算" width="220" />](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon) | 优云智算目前正在支持 Horizon。优云智算是 UCloud 旗下 AI 云平台，主打包月、按次的高性价比国模 Agent Plan 套餐，低至 49 元/月起，同时提供官转稳定海外模型。支持接入 Claude Code、Codex 及 API 调用，支持企业高并发、7*24 技术支持和自助开票。<br><br>通过其[链接](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon)注册，可获得 5 元平台体验金。 |
-| [<img src="docs/assets/apimart-logo.jpg" alt="APIMart" width="220" />](https://go.apimart.ai/gh-horizon) | 感谢 APIMart 赞助了本项目！APIMart 是专注 AI 图片/视频生成的低价 API 平台，GPT-Image-2 低至 $0.006/张，1 美元可出图 160+ 张。图片、视频一套异步 API 通吃，提交任务拿 ID、回调取结果，跑批万张不超时、换模型不改代码。按量付费、无月费，通过此[注册链接](https://go.apimart.ai/gh-horizon)注册即可开用。 |
 | [<img src="docs/assets/ofoxai-logo.svg" alt="OfoxAI" width="220" />](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) | OfoxAI 是统一的 AI API 平台，汇集多家文本、图像和视频模型，支持 OpenAI 兼容接口及 Anthropic、Gemini 原生接口。开发者可通过一个平台为 AI 应用、智能体和内容创作接入模型，按任务选择合适的能力。<br><br>[探索 OfoxAI 模型与 API →](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) |
+| [<img src="docs/assets/astraflow-logo.png" alt="星图 AstraFlow" width="100" /><br>星图 AstraFlow](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon) | 感谢星图 AstraFlow 赞助 Horizon！AstraFlow 是 UCloud 推出的模型服务平台，汇集 200+ 主流大模型及视频生成模型，在一个平台完成文本与视频生成。支持按 Key 级别计费，调用明细可查。<br><br>Horizon 用户专属福利：通过[专属链接领取 50 元算力金](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon)，体验模型调用与内容创作。 |
+
+## Agent Skill
+
+让 AI 助手帮你配置信息源、定制 Profile、生成日报：
+
+```bash
+npx skills add Thysrael/Horizon --skill horizon -g
+```
+
+[安装与使用](docs/agent-skill.md) · [下载 Skill ZIP](https://thysrael.github.io/Horizon/downloads/horizon-skill.zip)
+
+安装命令需要 Node.js 22.20+。装好 Skill 后，可以直接说“帮我安装并配置 Horizon”，也可按下方步骤手动安装。
 
 ## 快速开始
 
@@ -176,6 +189,8 @@ uv run horizon-wizard
 ```
 
 向导会询问你的兴趣（如"LLM 推理"、"嵌入式"、"web 安全"），自动推荐并生成 `data/config.json`，还可选让 AI 补充推荐小众源。若你想分享信息源，请前往 [horizon1123.top](https://horizon1123.top/)。CLI 选项见[交互式向导](docs/configuration.md#interactive-wizard)。
+
+符合条件的 ChatGPT 订阅用户可选择 `openai-chatgpt`，通过[官方登录授权](docs/chatgpt.md)使用订阅额度，无需 OpenAI API Key。
 
 **方式 B：手动配置**
 
@@ -247,7 +262,7 @@ cp data/config.example.json data/config.json  # 自定义信息源
 ```
 
 分组限额在 Profile 筛选之后、内容补充之前执行。未配置
-`category_groups` 和 `max_items` 时，不应用均衡日报限额。
+`category_groups`、`max_items` 和 `default_group_limit` 时，不应用均衡日报限额。
 
 `data/config.json` 里的任意字符串值都可以通过 `${VAR_NAME}` 引用环境变量。这适合用于 `ai.base_url`、私有 RSS 链接、Webhook 地址或自定义请求头模板等字段。
 
@@ -318,6 +333,7 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 | [抓取器](docs/scrapers.md) | 信息源抓取器说明和扩展细节 |
 | [内容提取器](docs/extractors.md) | RSS 信息源的全文提取 |
 | [MCP 工具](src/mcp/README.md) | MCP 客户端可调用的工具说明 |
+| [Agent Skill](docs/agent-skill.md) | 让 AI 助手配置、运行、定制、定时投递和扩展 Horizon |
 
 ## 项目状态
 

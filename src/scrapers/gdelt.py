@@ -13,9 +13,8 @@ Design notes:
 * GDELT expresses source-language and source-country filters as query
   operators (``sourcelang:`` / ``sourcecountry:``) rather than separate
   parameters, so they are appended to the query string.
-* GDELT can return non-JSON or empty bodies on transient errors, so the
-  ``.json()`` call is guarded and an empty/missing ``articles`` key yields
-  an empty list rather than raising.
+* GDELT can return non-JSON bodies on transient errors; these are reported
+  as failures. An empty/missing ``articles`` key is a successful empty fetch.
 * A single malformed article is skipped, not allowed to abort the batch.
 """
 
@@ -27,7 +26,7 @@ from typing import Any, List, Optional
 
 import httpx
 
-from .base import BaseScraper
+from .base import BaseScraper, FetchResult
 from ..models import ContentItem, GDELTConfig, SourceType
 
 logger = logging.getLogger(__name__)
@@ -49,7 +48,13 @@ class GDELTScraper(BaseScraper):
         super().__init__({"gdelt": config}, http_client)
         self.gdelt_config = config
 
-    async def fetch(self, since: datetime) -> List[ContentItem]:
+    async def fetch(self, since: datetime) -> FetchResult:
+        result = FetchResult()
+        if self.gdelt_config.enabled:
+            await result.collect("articles", self._fetch_articles(since))
+        return result
+
+    async def _fetch_articles(self, since: datetime) -> List[ContentItem]:
         """Fetch articles from the GDELT DOC API.
 
         Args:
@@ -89,38 +94,22 @@ class GDELTScraper(BaseScraper):
             params["startdatetime"] = since_utc.strftime("%Y%m%d%H%M%S")
             params["enddatetime"] = now_utc.strftime("%Y%m%d%H%M%S")
 
-        try:
-            response = await self.client.get(
-                self.BASE_URL, params=params, follow_redirects=True
-            )
-            response.raise_for_status()
-
-            try:
-                payload = response.json()
-            except Exception as exc:
-                logger.warning("GDELT returned a non-JSON body: %s", exc)
-                return []
-
-            if not isinstance(payload, dict):
-                return []
-
-            articles = payload.get("articles")
-            if not articles:
-                return []
-
-            items: List[ContentItem] = []
-            for raw in articles:
-                item = self._raw_to_item(raw)
-                if item is not None:
-                    items.append(item)
-            return items
-
-        except httpx.HTTPError as exc:
-            logger.warning("Error fetching GDELT articles: %s", exc)
-            return []
-        except Exception as exc:
-            logger.warning("Error parsing GDELT response: %s", exc)
-            return []
+        response = await self.client.get(
+            self.BASE_URL, params=params, follow_redirects=True
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("GDELT returned an invalid response")
+        articles = payload.get("articles") or []
+        if not isinstance(articles, list):
+            raise ValueError("GDELT returned an invalid article list")
+        items: List[ContentItem] = []
+        for raw in articles:
+            item = self._raw_to_item(raw)
+            if item is not None:
+                items.append(item)
+        return items
 
     def _raw_to_item(self, raw: Any) -> Optional[ContentItem]:
         """Map one GDELT article record into a ContentItem.

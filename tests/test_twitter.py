@@ -84,7 +84,7 @@ def test_disabled_returns_empty():
         TwitterScraper(_make_config(enabled=False), client).fetch(
             datetime.now(timezone.utc)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -96,7 +96,7 @@ def test_no_users_returns_empty():
         TwitterScraper(_make_config(users=[], keywords=[]), client).fetch(
             datetime.now(timezone.utc)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -109,7 +109,9 @@ def test_missing_token_returns_empty(monkeypatch):
         TwitterScraper(_make_config(), client).fetch(datetime.now(timezone.utc))
     )
     asyncio.run(client.aclose())
-    assert result == []
+    assert result.items == []
+    assert result.status == "failure"
+    assert "credentials" in result.failures
 
 
 def test_successful_fetch_returns_items(monkeypatch):
@@ -130,7 +132,7 @@ def test_successful_fetch_returns_items(monkeypatch):
     client = httpx.AsyncClient(transport=transport)
     result = asyncio.run(
         TwitterScraper(_make_config(profile="twitter-profile"), client).fetch(since)
-    )
+    ).items
     asyncio.run(client.aclose())
 
     assert len(result) == 2
@@ -173,7 +175,7 @@ def test_metadata_keys_aligned_for_analyzer(monkeypatch):
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport)
-    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since)).items
     asyncio.run(client.aclose())
 
     assert len(result) == 1
@@ -201,7 +203,7 @@ def test_filters_old_tweets(monkeypatch):
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport)
-    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since)).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -224,7 +226,8 @@ def test_run_failure_returns_empty(monkeypatch):
         )
     )
     asyncio.run(client.aclose())
-    assert result == []
+    assert result.items == []
+    assert result.status == "failure"
 
 
 def test_start_run_http_error_returns_empty(monkeypatch):
@@ -237,7 +240,8 @@ def test_start_run_http_error_returns_empty(monkeypatch):
         )
     )
     asyncio.run(client.aclose())
-    assert result == []
+    assert result.items == []
+    assert result.status == "failure"
 
 
 def test_no_results_item_skipped(monkeypatch):
@@ -255,7 +259,7 @@ def test_no_results_item_skipped(monkeypatch):
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport)
-    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since)).items
     asyncio.run(client.aclose())
 
     assert len(result) == 1
@@ -279,7 +283,7 @@ def test_iso_date_fallback(monkeypatch):
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport)
-    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since)).items
     asyncio.run(client.aclose())
     assert len(result) == 1
 
@@ -301,7 +305,7 @@ def test_url_constructed_when_missing(monkeypatch):
 
     transport = httpx.MockTransport(handler)
     client = httpx.AsyncClient(transport=transport)
-    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since))
+    result = asyncio.run(TwitterScraper(_make_config(), client).fetch(since)).items
     asyncio.run(client.aclose())
 
     assert len(result) == 1
@@ -334,7 +338,7 @@ def test_keywords_only_fetch_returns_items(monkeypatch):
     client = httpx.AsyncClient(transport=transport)
     result = asyncio.run(
         TwitterScraper(_make_config(users=[], keywords=["LLM"]), client).fetch(since)
-    )
+    ).items
     asyncio.run(client.aclose())
 
     assert len(result) == 1
@@ -354,7 +358,7 @@ def test_missing_token_with_keywords_returns_empty(monkeypatch):
         TwitterScraper(_make_config(users=[], keywords=["AI"]), client).fetch(
             datetime.now(timezone.utc)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -366,7 +370,7 @@ def test_empty_users_and_keywords_returns_empty():
         TwitterScraper(_make_config(users=[], keywords=[]), client).fetch(
             datetime.now(timezone.utc)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -387,7 +391,7 @@ def test_keyword_run_timed_out_returns_empty(monkeypatch):
         TwitterScraper(_make_config(users=[], keywords=["AI"]), client).fetch(
             datetime.now(timezone.utc) - timedelta(hours=1)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -422,8 +426,10 @@ def test_keyword_failure_does_not_drop_user_tweets(monkeypatch):
     )
     asyncio.run(client.aclose())
 
-    assert len(result) == 1
-    assert result[0].id == "twitter:tweet:u1"
+    assert len(result.items) == 1
+    assert result.items[0].id == "twitter:tweet:u1"
+    assert result.status == "partial_failure"
+    assert set(result.failures) == {"search:AI"}
 
 
 def test_keyword_no_results_returns_empty(monkeypatch):
@@ -445,7 +451,7 @@ def test_keyword_no_results_returns_empty(monkeypatch):
         TwitterScraper(_make_config(users=[], keywords=["nobody-uses-this"]), client).fetch(
             since
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -458,7 +464,7 @@ def test_keyword_start_run_http_error_returns_empty(monkeypatch):
         TwitterScraper(_make_config(users=[], keywords=["AI"]), client).fetch(
             datetime.now(timezone.utc) - timedelta(hours=1)
         )
-    )
+    ).items
     asyncio.run(client.aclose())
     assert result == []
 
@@ -486,7 +492,7 @@ def test_users_and_keywords_dedupe_by_id(monkeypatch):
         TwitterScraper(
             _make_config(users=["karpathy"], keywords=["LLM"]), client
         ).fetch(since)
-    )
+    ).items
     asyncio.run(client.aclose())
 
     assert len(result) == 1
@@ -499,7 +505,30 @@ def test_playwright_keywords_only_skips_without_users():
         http_client=None,
     )
     result = asyncio.run(scraper.fetch(datetime.now(timezone.utc)))
-    assert result == []
+    assert result.items == []
+    assert result.status == "failure"
+    assert "keywords" in result.failures
+
+
+def test_playwright_browser_failure_is_reported(tmp_path, monkeypatch):
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import src.scrapers.twitter_playwright as module
+
+    @asynccontextmanager
+    async def browser_context():
+        yield SimpleNamespace(chromium=SimpleNamespace(launch=AsyncMock(side_effect=RuntimeError("browser missing"))))
+
+    monkeypatch.setattr(module, "PLAYWRIGHT_AVAILABLE", True)
+    monkeypatch.setattr(module, "async_playwright", lambda: None, raising=False)
+    monkeypatch.setattr(module, "Stealth", lambda: SimpleNamespace(use_async=lambda _: browser_context()))
+    (tmp_path / "x_cookies_test.json").write_text("[]")
+    scraper = TwitterPlaywrightScraper(_make_config(mode="playwright", cookie_dir=str(tmp_path)))
+
+    result = asyncio.run(scraper.fetch(datetime.now(timezone.utc)))
+    assert result.status == "failure"
+    assert result.failures["browser"] == "RuntimeError: browser missing"
 
 
 # ---------------------------------------------------------------------------
@@ -630,5 +659,3 @@ def test_fetch_replies_no_conversation_id_returns_empty(monkeypatch):
     result = asyncio.run(scraper.fetch_replies_for_item(item))
     asyncio.run(client.aclose())
     assert result == []
-
-

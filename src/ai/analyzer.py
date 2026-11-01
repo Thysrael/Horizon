@@ -6,19 +6,19 @@ from typing import List, Optional
 from pydantic import ValidationError
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, MofNCompleteColumn
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 logger = logging.getLogger(__name__)
 
 from .client import AIClient
 from .classifier import ContentClassifier
 from .prompting.analysis import analysis_system_prompt, analysis_user_prompt
-from .utils import parse_json_response
+from .utils import gather_ai_tasks, parse_json_response
+from .errors import AIProviderUnavailableError
 from ..models import ContentAnalysis, ContentItem
 from ..processing.content import select_content, split_content
 from ..processing.profiles import ProfileRegistry
 
-DEFAULT_THROTTLE_SEC = 0.0
 
 class ContentAnalyzer:
     """Analyzes content items using AI to determine importance."""
@@ -28,11 +28,16 @@ class ContentAnalyzer:
         ai_client: AIClient,
         profiles: ProfileRegistry,
         console: Optional[Console] = None,
+        *,
+        concurrency: int = 1,
+        throttle_sec: float = 0.0,
     ):
         self.client = ai_client
         self.profiles = profiles
         self.classifier = ContentClassifier(ai_client, profiles)
         self.console = console or Console(stderr=True)
+        self.concurrency = max(concurrency, 1)
+        self.throttle_sec = max(throttle_sec, 0.0)
 
     @staticmethod
     def _parse_json_response(response: str) -> Optional[dict]:
@@ -42,27 +47,15 @@ class ContentAnalyzer:
         """
         return parse_json_response(response)
 
-    def _get_throttle_sec(self) -> float:
-        """Return the configured inter-item throttle, clamped to zero or above."""
-        config = getattr(self.client, "config", None)
-        throttle_sec = getattr(config, "throttle_sec", DEFAULT_THROTTLE_SEC)
-        return max(throttle_sec, 0.0)
-
-    def _get_concurrency(self) -> int:
-        """Return the configured analysis concurrency, clamped to 1 or above."""
-        config = getattr(self.client, "config", None)
-        concurrency = getattr(config, "analysis_concurrency", 1)
-        return max(concurrency, 1)
-
     async def analyze_batch(self, items: List[ContentItem]) -> List[ContentItem]:
-        throttle_sec = self._get_throttle_sec()
-        concurrency = self._get_concurrency()
-        semaphore = asyncio.Semaphore(concurrency)
+        semaphore = asyncio.Semaphore(self.concurrency)
 
         async def _process(item: ContentItem, index: int, progress_task) -> ContentItem:
             async with semaphore:
                 try:
                     await self._analyze_item(item)
+                except AIProviderUnavailableError:
+                    raise
                 except Exception as e:
                     logger.error("Error analyzing item %s: %s", item.id, e)
                     if item.processing:
@@ -71,8 +64,8 @@ class ContentAnalyzer:
                             reason="Analysis failed",
                             summary=item.title,
                         )
-                if throttle_sec > 0 and index < len(items) - 1:
-                    await asyncio.sleep(throttle_sec)
+                if self.throttle_sec > 0 and index < len(items) - 1:
+                    await asyncio.sleep(self.throttle_sec)
             progress.advance(progress_task)
             return item
 
@@ -88,11 +81,12 @@ class ContentAnalyzer:
             coros = [
                 _process(item, i, task) for i, item in enumerate(items)
             ]
-            analyzed_items = await asyncio.gather(*coros)
+            analyzed_items = await gather_ai_tasks(coros)
 
         return analyzed_items
 
     @retry(
+        retry=retry_if_exception_type(Exception) & retry_if_not_exception_type(AIProviderUnavailableError),
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=10)
     )

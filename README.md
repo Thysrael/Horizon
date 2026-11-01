@@ -4,7 +4,7 @@
 <p><strong>Enjoy the News itself. Leave others to Horizon</strong></p>
 
 <a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/weekly?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
 <a href="https://hellogithub.com/repository/Thysrael/Horizon" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=7a4b606e28e4477998d35851cf4fdddf&claim_uid=rtjnLkYT7ziQJUG" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 <br>
 
@@ -110,6 +110,18 @@ Assign a profile to a source, or let AI choose. Want a different take? Adapt an 
 
 Run the full pipeline through the CLI, or let an AI assistant call its stages through [MCP](src/mcp/README.md).
 
+## Agent Skill
+
+Let your AI assistant configure sources, customize Profiles, and run Horizon:
+
+```bash
+npx skills add Thysrael/Horizon --skill horizon -g
+```
+
+[Setup and usage](docs/agent-skill.md) · [Download Skill ZIP](https://thysrael.github.io/Horizon/downloads/horizon-skill.zip)
+
+The command requires Node.js 22.20+. Then ask your assistant to install and configure Horizon, or follow the Quick Start below.
+
 ## Quick Start
 
 ### 1. Install
@@ -165,6 +177,8 @@ uv run horizon-wizard
 ```
 
 The wizard asks about your interests (e.g. "LLM inference", "嵌入式", "web security") and auto-generates `data/config.json`. See [Interactive Wizard](docs/configuration.md#interactive-wizard) for CLI options.
+
+Eligible ChatGPT subscribers can choose `openai-chatgpt` to use their plan through [Sign in with ChatGPT](docs/chatgpt.md), without an OpenAI API key.
 
 **Option B: Manual configuration**
 
@@ -239,7 +253,8 @@ results. Categories come from source configuration such as
 ```
 
 Group limits are applied after profile filtering and before enrichment. If
-`category_groups` and `max_items` are omitted, no balanced digest limits apply.
+`category_groups`, `max_items`, and `default_group_limit` are omitted, no balanced
+digest limits apply.
 
 `api_key_env` must be the name of an environment variable, not the API key
 itself. Put the real secret in `.env`:
@@ -325,9 +340,10 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 
 | Supporter | Details |
 |-----------|---------|
+| [<img src="docs/assets/modelflare-logo.png" alt="Modelflare" width="220" />](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon) | Thanks to Modelflare for sponsoring this project! Modelflare: Full strength, stable, nothing watered down. Global SOTA models at a lower cost. Operated by US-based Havenbyte LLC, Modelflare supports GPT, Claude, Gemini, Grok, and other leading models through common compatible protocols, plus 40+ image and video models.<br><br>Cache compensation is a highlight: selected OpenAI groups (price-first, stable, and premium) guarantee daily cache hit rates of 65%, 75%, or 85%, and if eligible requests fall short, Modelflare refunds the difference, visible on the usage dashboard after settlement.<br><br>Special offers: a single top-up of US$20 unlocks the GPT discount group at a 0.015x price multiplier, and a single top-up of US$50 unlocks the Claude discount group at a 0.03x multiplier. Register via [this exclusive link](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon) to get started. |
 | [<img src="docs/assets/compshare-logo.png" alt="Compshare / 优云智算" width="220" />](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon) | Compshare currently supports Horizon. Compshare is UCloud's AI cloud platform, offering cost-effective monthly and pay-as-you-go domestic model agent plans starting from RMB 49/month, as well as stable officially relayed overseas models. It supports Claude Code, Codex, and API usage, with enterprise-grade high concurrency, 24/7 technical support, and self-service invoicing.<br><br>Register through their [link](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon) to receive a free RMB 5 trial credit. |
-| [<img src="docs/assets/apimart-logo.jpg" alt="APIMart" width="220" />](https://go.apimart.ai/gh-horizon) | Thanks to APIMart for sponsoring this project! APIMart is a low-cost API platform for AI image & video generation — GPT-Image-2 from $0.006/image, 160+ images per dollar. One async API covers both image and video: submit a task, get an ID, fetch results via polling or callback. Batch tens of thousands of images without timeouts, switch models without changing code. Pay-as-you-go with no monthly fee — [sign up here](https://go.apimart.ai/gh-horizon) to get started. |
 | [<img src="docs/assets/ofoxai-logo.svg" alt="OfoxAI" width="220" />](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) | OfoxAI is a unified AI API platform bringing together text, image, and video models from multiple providers. With OpenAI-compatible endpoints and native Anthropic and Gemini interfaces, developers can access models for AI applications, agents, and content creation through one platform.<br><br>[Explore OfoxAI models and APIs →](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) |
+| [<img src="docs/assets/astraflow-logo.png" alt="AstraFlow" width="100" /><br>AstraFlow](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon) | Thanks to AstraFlow for sponsoring Horizon! AstraFlow is UCloud's model platform, bringing together 200+ leading AI models and video generation models for text and video creation in one place. It offers per-key billing and detailed usage records.<br><br>Exclusive offer for Horizon users: [claim RMB 50 in compute credits](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon) to try model APIs and content creation. |
 
 ## Documentation
 
@@ -339,6 +355,7 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 | [Scrapers](docs/scrapers.md) | Source scraper details and extension notes |
 | [Extractors](docs/extractors.md) | Full article extraction for RSS sources |
 | [MCP Tools](src/mcp/README.md) | Tool reference for MCP-compatible clients |
+| [Agent Skill](docs/agent-skill.md) | Use an AI assistant to configure, run, customize, schedule, and extend Horizon |
 
 ## Project Status
 

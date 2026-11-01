@@ -93,13 +93,14 @@ def test_fetch_channel_uses_alternate_domain_after_dns_failure() -> None:
             )
             return await scraper.fetch(datetime(2026, 7, 6, 0, 0, tzinfo=timezone.utc))
 
-    items = asyncio.run(fetch_items())
+    result = asyncio.run(fetch_items())
 
     assert requested_hosts == ["telegram.me", "telegram.dog"]
-    assert len(items) == 1
+    assert len(result.items) == 1
+    assert result.status == "success"
 
 
-def test_fetch_raises_when_all_telegram_endpoints_fail() -> None:
+def test_fetch_reports_failure_when_all_telegram_endpoints_fail() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("Name or service not known", request=request)
 
@@ -111,9 +112,6 @@ def test_fetch_raises_when_all_telegram_endpoints_fail() -> None:
             )
             return await scraper.fetch(datetime(2026, 7, 6, 0, 0, tzinfo=timezone.utc))
 
-    try:
-        asyncio.run(fetch_items())
-    except RuntimeError as exc:
-        assert "All Telegram channels failed" in str(exc)
-    else:
-        raise AssertionError("Expected all Telegram endpoint failures to propagate")
+    result = asyncio.run(fetch_items())
+    assert result.status == "failure"
+    assert "All Telegram endpoints failed" in result.failures["channel"]

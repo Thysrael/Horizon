@@ -5,7 +5,7 @@
 <p><strong>ニュースそのものを楽しもう。あとはHorizonにおまかせを</strong></p>
 
 <a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
-<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/weekly?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/22864?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-22864" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/22864/daily?language=Python" alt="Thysrael%2FHorizon | Trendshift" width="250" height="55"/></a>
 <a href="https://hellogithub.com/repository/Thysrael/Horizon" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=7a4b606e28e4477998d35851cf4fdddf&claim_uid=rtjnLkYT7ziQJUG" alt="Featured｜HelloGitHub" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 <br>
 
@@ -111,6 +111,18 @@
 
 CLIから全体を実行するほか、[MCP](src/mcp/README.md)を通じてAIアシスタントから収集・分析・生成などの各段階を呼び出せます。
 
+## Agent Skill
+
+AIアシスタントに情報源の設定、プロファイルのカスタマイズ、日報の生成を任せられます。
+
+```bash
+npx skills add Thysrael/Horizon --skill horizon -g
+```
+
+[インストールと使い方](docs/agent-skill.md) · [Skill ZIPをダウンロード](https://thysrael.github.io/Horizon/downloads/horizon-skill.zip)
+
+インストールコマンドにはNode.js 22.20+が必要です。Skillを追加したら、AIアシスタントにHorizonのインストールと設定を依頼するか、以下の手順で手動インストールできます。
+
 ## クイックスタート
 
 ### 1. インストール
@@ -166,6 +178,8 @@ uv run horizon-wizard
 ```
 
 ウィザードはあなたの興味（例: 「LLM inference」「嵌入式」「web security」）について質問し、`data/config.json`を自動生成します。CLIオプションは[対話式ウィザード](docs/configuration.md#interactive-wizard)を参照してください。
+
+対象のChatGPTサブスクリプションをお持ちの方は、`openai-chatgpt`を選び、[公式ログイン認証](docs/chatgpt.md)でプランの利用枠を使用できます。OpenAI APIキーは不要です。
 
 **オプションB: 手動設定**
 
@@ -236,7 +250,7 @@ cp data/config.example.json data/config.json  # 情報源をカスタマイズ
 }
 ```
 
-グループの上限は、プロファイルのフィルタリング後、エンリッチ前に適用されます。`category_groups`と`max_items`を省略した場合、カテゴリ別の上限は適用されません。
+グループの上限は、プロファイルのフィルタリング後、エンリッチ前に適用されます。`category_groups`、`max_items`、`default_group_limit`を省略した場合、カテゴリ別の上限は適用されません。
 
 `api_key_env`はAPIキーそのものではなく、環境変数の名前でなければなりません。実際のシークレットは`.env`に記述してください。
 
@@ -321,9 +335,10 @@ Horizonは余暇に運営されているオープンソースプロジェクト�
 
 | サポーター | 詳細 |
 |-----------|---------|
+| [<img src="docs/assets/modelflare-logo.png" alt="Modelflare" width="220" />](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon) | 本プロジェクトをご支援いただいているModelflareに感謝します！Modelflareは、性能を落とさず、安定した品質で、世界最先端のモデルをより低コストで提供します。米国のHavenbyte LLCが運営し、一般的な互換プロトコルを通じてGPT、Claude、Gemini、Grokなどの主要モデルに対応するほか、40以上の画像・動画モデルも利用できます。<br><br>キャッシュ補償が特長です。対象のOpenAIグループ（価格優先・安定・プレミアム）では、日次キャッシュヒット率65%、75%、85%をそれぞれ保証します。条件を満たすリクエストが基準に届かない場合、Modelflareが差額を返金し、精算後に利用状況ダッシュボードで確認できます。<br><br>特別オファー：1回で20米ドルをチャージすると価格倍率0.015xのGPT割引グループが、1回で50米ドルをチャージすると価格倍率0.03xのClaude割引グループが利用可能になります。[こちらの専用リンク](https://modelflare.dev/sign-up?utm_source=github&utm_campaign=horizon)から登録してご利用ください。 |
 | [<img src="docs/assets/compshare-logo.png" alt="Compshare / 优云智算" width="220" />](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon) | Compshareは現在Horizonをサポートしています。CompshareはUCloudのAIクラウドプラットフォームで、月額49人民元から始まるコスト効率の良い月額・従量課金の国内モデルエージェントプランや、安定した公式リレーの海外モデルを提供しています。Claude Code、Codex、APIの利用に対応し、エンタープライズグレードの高同時実行、24時間365日の技術サポート、セルフサービスの請求書発行を備えています。<br><br>彼らの[リンク](https://www.compshare.cn/?ytag=GPU_YY_git_Horizon)から登録すると、無料で5人民元のトライアルクレジットを受け取れます。 |
-| [<img src="docs/assets/apimart-logo.jpg" alt="APIMart" width="220" />](https://go.apimart.ai/gh-horizon) | 本プロジェクトをご支援いただいているAPIMartに感謝します！APIMartはAI画像・動画生成に特化した低価格のAPIプラットフォームです。GPT-Image-2は1枚あたり$0.006から利用でき、1ドルで160枚以上の画像を生成できます。画像と動画を共通の非同期APIで扱い、タスクを送信してIDを取得し、ポーリングまたはコールバックで結果を受け取れます。数万枚の画像をタイムアウトなしでバッチ処理でき、コードを変更せずにモデルを切り替えられます。月額料金なしの従量課金制で、[こちらのリンク](https://go.apimart.ai/gh-horizon)から登録して利用を開始できます。 |
 | [<img src="docs/assets/ofoxai-logo.svg" alt="OfoxAI" width="220" />](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) | OfoxAIは、複数のプロバイダーのテキスト・画像・動画モデルを集約した統合AI APIプラットフォームです。OpenAI互換インターフェースに加え、AnthropicとGeminiのネイティブインターフェースにも対応しています。開発者はひとつのプラットフォームを通じて、AIアプリケーション、エージェント、コンテンツ制作にモデルを組み込み、タスクに適した機能を選択できます。<br><br>[OfoxAIのモデルとAPIを見る →](https://ofox.ai/?utm_source=github&utm_medium=sponsorship&utm_content=horizon) |
+| [<img src="docs/assets/astraflow-logo.png" alt="AstraFlow" width="100" /><br>AstraFlow](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon) | Horizonをご支援いただいているAstraFlowに感謝します！AstraFlowはUCloudが提供するモデルプラットフォームで、200以上の主要AIモデルや動画生成モデルを集約し、テキストと動画の生成をひとつのプラットフォームで利用できます。キー単位の課金と詳細な利用履歴の確認に対応しています。<br><br>Horizonユーザー向け特典：[専用リンクから50人民元分のコンピューティングクレジットを受け取る](https://www.ucloud.cn/site/active/astraflow-credit?ytag=geo_waituo_Horizon)。モデルAPIやコンテンツ制作をお試しいただけます。 |
 
 ## ドキュメント
 
@@ -335,6 +350,7 @@ Horizonは余暇に運営されているオープンソースプロジェクト�
 | [スクレイパー](docs/scrapers.md) | 情報源スクレイパーの詳細と拡張に関する注記 |
 | [コンテンツエクストラクター](docs/extractors.md) | RSS情報源の全文抽出 |
 | [MCPツール](src/mcp/README.md) | MCP互換クライアント向けのツールリファレンス |
+| [Agent Skill](docs/agent-skill.md) | AIアシスタントによるHorizonの設定、実行、カスタマイズ、定期配信、拡張 |
 
 ## プロジェクトの状況
 

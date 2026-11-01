@@ -75,17 +75,19 @@ def _news_row(
 
 
 class TestFetchGuards:
-    def test_returns_empty_when_obb_not_installed(self):
+    def test_reports_failure_when_obb_not_installed(self):
         scraper = _make_scraper(_cfg(), obb=None)
         since = datetime.now(timezone.utc) - timedelta(days=1)
         result = asyncio.run(scraper.fetch(since))
-        assert result == []
+        assert result.items == []
+        assert result.status == "failure"
+        assert "openbb" in result.failures
 
     def test_returns_empty_when_disabled(self):
         obb = MagicMock()
         scraper = _make_scraper(_cfg(enabled=False), obb=obb)
         since = datetime.now(timezone.utc) - timedelta(days=1)
-        assert asyncio.run(scraper.fetch(since)) == []
+        assert asyncio.run(scraper.fetch(since)).items == []
         obb.news.company.assert_not_called()
 
     def test_skips_disabled_watchlist(self):
@@ -99,7 +101,7 @@ class TestFetchGuards:
         )
         scraper = _make_scraper(cfg, obb=obb)
         since = datetime.now(timezone.utc) - timedelta(days=1)
-        assert asyncio.run(scraper.fetch(since)) == []
+        assert asyncio.run(scraper.fetch(since)).items == []
         obb.news.company.assert_not_called()
 
     def test_skips_watchlist_with_no_symbols(self):
@@ -110,7 +112,7 @@ class TestFetchGuards:
         )
         scraper = _make_scraper(cfg, obb=obb)
         since = datetime.now(timezone.utc) - timedelta(days=1)
-        assert asyncio.run(scraper.fetch(since)) == []
+        assert asyncio.run(scraper.fetch(since)).items == []
         obb.news.company.assert_not_called()
 
 
@@ -124,7 +126,7 @@ class TestMapping:
         scraper = _make_scraper(_cfg(), obb=obb)
         since = now - timedelta(hours=1)
 
-        result = asyncio.run(scraper.fetch(since))
+        result = asyncio.run(scraper.fetch(since)).items
 
         assert len(result) == 1
         item = result[0]
@@ -157,7 +159,7 @@ class TestMapping:
             results=[_news_row(date=now, symbols="")]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
+        result = asyncio.run(scraper.fetch(now - timedelta(hours=1))).items
         assert result[0].metadata["symbols"] == ["AAPL", "NVDA"]
 
     def test_parses_iso_string_date(self):
@@ -168,7 +170,7 @@ class TestMapping:
             results=[_news_row(date=iso)]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
+        result = asyncio.run(scraper.fetch(now - timedelta(hours=1))).items
         assert len(result) == 1
         assert result[0].published_at.tzinfo is not None
 
@@ -182,7 +184,7 @@ class TestFiltering:
             results=[_news_row(date=old)]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
+        result = asyncio.run(scraper.fetch(now - timedelta(hours=1))).items
         assert result == []
 
     def test_deduplicates_across_watchlists_by_url(self):
@@ -200,7 +202,7 @@ class TestFiltering:
             results=[_news_row(url=shared_url, date=now)]
         )
         scraper = _make_scraper(cfg, obb=obb)
-        result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
+        result = asyncio.run(scraper.fetch(now - timedelta(hours=1))).items
         assert len(result) == 1
         assert result[0].metadata["watchlist"] == "wl1"
         assert obb.news.company.call_count == 2
@@ -210,7 +212,7 @@ class TestFiltering:
         obb = MagicMock()
         obb.news.company.return_value = SimpleNamespace(results=[])
         scraper = _make_scraper(_cfg(), obb=obb)
-        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))) == []
+        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))).items == []
 
 
 class TestResilience:
@@ -224,7 +226,7 @@ class TestResilience:
             ]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
+        result = asyncio.run(scraper.fetch(now - timedelta(hours=1))).items
         assert len(result) == 1
 
     def test_malformed_row_missing_title_is_skipped(self):
@@ -234,7 +236,7 @@ class TestResilience:
             results=[_news_row(title="", date=now)]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))) == []
+        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))).items == []
 
     def test_malformed_row_missing_date_is_skipped(self):
         now = datetime.now(timezone.utc)
@@ -243,7 +245,7 @@ class TestResilience:
             results=[_news_row(date=None)]
         )
         scraper = _make_scraper(_cfg(), obb=obb)
-        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))) == []
+        assert asyncio.run(scraper.fetch(now - timedelta(hours=1))).items == []
 
     def test_watchlist_exception_does_not_block_others(self):
         now = datetime.now(timezone.utc)
@@ -261,8 +263,10 @@ class TestResilience:
         ]
         scraper = _make_scraper(cfg, obb=obb)
         result = asyncio.run(scraper.fetch(now - timedelta(hours=1)))
-        assert len(result) == 1
-        assert result[0].metadata["watchlist"] == "ok"
+        assert len(result.items) == 1
+        assert result.items[0].metadata["watchlist"] == "ok"
+        assert result.status == "partial_failure"
+        assert set(result.failures) == {"boom"}
 
 
 class TestStatic:

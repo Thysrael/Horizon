@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'win32'",
@@ -840,6 +840,15 @@ wheels = [
 ]
 
 [[package]]
+name = "filelock"
+version = "4.2.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/28/3893324bcadf8f89b1616637468d766af3f625008c0735bf704fdfa86617/filelock-4.2.4.tar.gz", hash = "sha256:c6d8663535e1650ee430507b4ffbac7b464dd64b7647ea0112a9f406499d163d", size = 652444, upload-time = "2026-10-19T01:57:51.001Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/1b/5e74289a1878e666bb4b65fe5805a04cafcac2aa5f519ef1ead67ef91c56/filelock-4.2.4-py3-none-any.whl", hash = "sha256:301241438c57936ef93f4243a94f2559022268bfcf9b375a9a72eb0f8db8358e", size = 162475, upload-time = "2026-10-19T01:57:49.419Z" },
+]
+
+[[package]]
 name = "frozendict"
 version = "2.4.7"
 source = { registry = "https://pypi.org/simple" }
@@ -1102,6 +1111,7 @@ dependencies = [
     { name = "beautifulsoup4" },
     { name = "ddgs" },
     { name = "feedparser" },
+    { name = "filelock" },
     { name = "google-genai" },
     { name = "httpx" },
     { name = "markdown" },
@@ -1109,6 +1119,7 @@ dependencies = [
     { name = "openai" },
     { name = "opencc-python-reimplemented" },
     { name = "pydantic" },
+    { name = "pyjwt", extra = ["crypto"] },
     { name = "python-dateutil" },
     { name = "python-dotenv" },
     { name = "qrcode" },
@@ -1137,17 +1148,19 @@ requires-dist = [
     { name = "beautifulsoup4", specifier = ">=4.12.0" },
     { name = "ddgs", specifier = ">=7.0.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
+    { name = "filelock", specifier = ">=3.16.0" },
     { name = "google-genai", specifier = ">=0.3.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "markdown", specifier = ">=3.10.2" },
-    { name = "mcp", specifier = ">=1.0.0" },
-    { name = "openai", specifier = ">=1.54.0" },
+    { name = "mcp", specifier = ">=1.0.0,<2" },
+    { name = "openai", specifier = ">=1.68.0" },
     { name = "openbb", marker = "extra == 'openbb'", specifier = ">=4.4.0" },
     { name = "openbb-benzinga", marker = "extra == 'openbb'", specifier = ">=1.6.0" },
     { name = "opencc-python-reimplemented", specifier = ">=0.1.7" },
     { name = "playwright", marker = "extra == 'twitter'", specifier = ">=1.40.0" },
     { name = "playwright-stealth", marker = "extra == 'twitter'", specifier = ">=1.0.0" },
     { name = "pydantic", specifier = ">=2.9.0" },
+    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "python-dateutil", specifier = ">=2.9.0" },

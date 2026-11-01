@@ -14,6 +14,7 @@ from .console_icons import get_icons
 from .logging_config import configure_logging
 from .storage.manager import ConfigError, StorageManager
 from .orchestrator import HorizonOrchestrator
+from .models import AIProvider
 
 
 console = Console(stderr=True)
@@ -99,6 +100,9 @@ def main():
             sys.exit(1)
 
         icons = get_icons(config.display.icon_style)
+        if config.ai.provider == AIProvider.OPENAI_CHATGPT:
+            from .ai.chatgpt_auth import MANAGE_USAGE_URL
+            console.print(f"Using ChatGPT plan. Manage usage: {MANAGE_USAGE_URL}")
 
         # Create and run orchestrator
         orchestrator = HorizonOrchestrator(config, storage, console=console)
@@ -111,86 +115,6 @@ def main():
         console.print(f"\n[bold red]{icons['error']} Fatal error: {e}[/bold red]")
         console.print_exception()
         sys.exit(1)
-
-
-def print_config_template():
-    """Print configuration template."""
-    template = """
-{
-  "ai": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4.5-20250929",
-    "api_key_env": "ANTHROPIC_API_KEY",
-    "temperature": 0.3,
-    "max_tokens": 4096
-  },
-  "display": {
-    "icon_style": "emoji"
-  },
-  "sources": {
-    "github": [
-      {
-        "type": "user_events",
-        "username": "torvalds",
-        "enabled": true,
-        "profile": "tech-news"
-      }
-    ],
-    "hackernews": {
-      "enabled": true,
-      "fetch_top_stories": 30,
-      "min_score": 100,
-      "profile": "tech-news"
-    },
-    "rss": [
-      {
-        "name": "Example Blog",
-        "url": "https://example.com/feed.xml",
-        "enabled": true,
-        "category": "software-engineering",
-        "profile": "auto"
-      }
-    ]
-  },
-  "collection": {
-    "time_window_hours": 24
-  },
-  "digest": {
-    "max_items": null,
-    "profile_order": [
-      "tech-news",
-      "tech-blog",
-      "finance-news"
-    ],
-    "category_groups": {},
-    "default_group": "other",
-    "default_group_limit": null
-  },
-  "processing": {
-    "profiles_dir": "profiles",
-    "default_profile": "tech-news",
-    "profile_settings": {
-      "tech-news": {
-        "threshold": 7.0,
-        "topic_dedup": true
-      },
-      "tech-blog": {
-        "threshold": 4.0,
-        "topic_dedup": false
-      },
-      "finance-news": {
-        "threshold": 7.0,
-        "topic_dedup": true
-      }
-    }
-  }
-}
-
-Also create a .env file with:
-ANTHROPIC_API_KEY=your_api_key_here
-GITHUB_TOKEN=your_github_token_here (optional but recommended)
-"""
-    console.print(template)
 
 
 if __name__ == "__main__":

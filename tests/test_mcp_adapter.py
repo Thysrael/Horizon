@@ -2,24 +2,55 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
+
+import pytest
 
 from src.mcp.horizon_adapter import (
     _load_mcp_secrets,
     apply_source_filter,
     get_enabled_sources,
     load_config,
-    load_runtime,
     resolve_config_path,
     resolve_horizon_path,
 )
 from src.models import AIProvider, Config, SOURCE_REGISTRY, SourceType
+from src.mcp.errors import HorizonMcpError
+from src.mcp.service import HorizonPipelineService
 
 
 def test_resolve_horizon_path_accepts_explicit_repo() -> None:
     repo_root = Path(__file__).resolve().parents[1]
 
     assert resolve_horizon_path(str(repo_root)) == repo_root.resolve()
+
+
+def test_workspace_supplies_data_and_environment_without_loading_code(tmp_path, monkeypatch):
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/models.py").write_text("raise RuntimeError('workspace code must not load')")
+    (tmp_path / ".env").write_text("HORIZON_TEST_BASE=https://example.com/v1\n")
+    monkeypatch.delenv("HORIZON_TEST_BASE", raising=False)
+    monkeypatch.setattr("src.mcp.horizon_adapter._load_mcp_secrets", lambda *args, **kwargs: None)
+    (tmp_path / "config.json").write_text(json.dumps({
+        "ai": {"provider": "openai", "model": "test", "api_key_env": "UNUSED_KEY",
+               "base_url": "${HORIZON_TEST_BASE}"},
+        "sources": {},
+    }))
+    before = list(sys.path)
+    service = HorizonPipelineService(runs_root=tmp_path / "runs")
+    ctx, _, _ = service._build_context(str(tmp_path), "config.json", None)
+
+    assert type(ctx.config) is Config
+    assert ctx.config.ai.base_url == "https://example.com/v1"
+    assert ctx.horizon_path == tmp_path
+    assert sys.path == before
+
+
+def test_explicit_missing_workspace_does_not_fall_back(tmp_path):
+    with pytest.raises(HorizonMcpError) as error:
+        resolve_horizon_path(str(tmp_path / "missing"))
+    assert error.value.code == "HZ_INVALID_HORIZON_PATH"
 
 
 def test_resolve_config_path_defaults_to_repo_data_config(tmp_path: Path) -> None:
@@ -77,9 +108,7 @@ def test_load_config_expands_env_vars(tmp_path: Path, monkeypatch) -> None:
         encoding="utf-8",
     )
     monkeypatch.setenv("TEST_BASE_URL", "https://api.example.com")
-    runtime = load_runtime(Path(__file__).resolve().parents[1])
-
-    config = load_config(runtime, config_path)
+    config = load_config(config_path)
 
     assert config.ai.base_url == "https://api.example.com/v1"
 

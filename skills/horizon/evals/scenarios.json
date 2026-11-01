@@ -1,0 +1,52 @@
+{
+  "skill_name": "horizon",
+  "scenarios": [
+    {
+      "id": "onboarding",
+      "prompt": "用 Horizon 帮我配置一个关注 AI 推理和开源工具的中文新闻雷达，每天最多十条。模型配置已经有了。",
+      "setup": "An example config with an existing AI configuration and a local preset catalog.",
+      "expected": ["Preserves the existing model and secret references", "Selects real sources from the catalog", "Sets Chinese generation and a ten-item cap", "Validates and distinguishes a first-run result from missing prerequisites"]
+    },
+    {
+      "id": "read-existing",
+      "prompt": "读一下今天的 Horizon 日报，把值得看的三条和原始链接给我。",
+      "setup": "A current dated digest with original URLs and run metadata, plus an older digest.",
+      "expected": ["Finds the current digest before fetching again", "Uses actual content and original URLs", "Reports the source digest path"]
+    },
+    {
+      "id": "tune-threshold",
+      "prompt": "这次 Horizon 日报太长了，用刚才的评分结果把门槛临时改成 8 分，别重新抓取。",
+      "setup": "A run with scored fixtures and metadata pointing to a non-default config; topic dedup is disabled for an offline run.",
+      "expected": ["Reuses the run and its config", "Filters scored items with a one-off threshold", "Does not refetch or change permanent thresholds", "Regenerates affected downstream artifacts"]
+    },
+    {
+      "id": "profile-contribution",
+      "prompt": "给 Horizon 增加一个读工程复盘的 Profile，提炼事故原因、解决方案和可迁移的经验。",
+      "setup": "A checkout with built-in Profiles and development dependencies.",
+      "expected": ["Compares existing Profiles before selecting reuse or a new policy", "Uses the four-file contract and valid block/tool definitions", "Keeps thresholds in runtime config", "Checks routing boundaries and relevant tests"]
+    },
+    {
+      "id": "schedule-delivery",
+      "prompt": "把 Horizon 配成每天北京时间八点发到飞书。部署环境我还没有定。",
+      "setup": "An existing config and disabled workflow template; no scheduler or delivery credentials are provisioned.",
+      "expected": ["Asks for the deployment host", "Records Asia/Shanghai and the intended local time", "Uses CLI delivery rather than assuming staged generation sends notifications", "Distinguishes written configuration from verified scheduler and delivery status"]
+    },
+    {
+      "id": "extractor-contribution",
+      "prompt": "为 Horizon 增加一个可选的托管全文提取器，失败时继续使用 RSS 摘要。",
+      "setup": "A checkout with extractor interfaces and tests; provider documentation supplied as fixture input.",
+      "expected": ["Reads the existing extractor extension guide", "Updates the config type and registry alongside the implementation", "Reuses the shared client and existing fallback behavior", "Tests with mocked responses, including invalid or empty content"]
+    },
+    {
+      "id": "partial-result",
+      "prompt": "Horizon 工具返回 ok=true，但是今天的内容看起来不全，帮我判断是否成功。",
+      "setup": "A native response containing ok=true, a partial fetch report, and failed enrichment item IDs.",
+      "expected": ["Reads business-level outcomes rather than only ok", "Reports incomplete coverage and affected stages", "Inspects run artifacts before choosing a recovery stage"]
+    }
+  ],
+  "should_not_trigger": [
+    "Explain how an RSS feed works in general.",
+    "Translate this paragraph about a sunset on the horizon.",
+    "Create a scheduled backup job for my unrelated photo application."
+  ]
+}

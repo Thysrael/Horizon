@@ -7,12 +7,13 @@ import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any, List, Optional, cast
+from urllib.parse import urlsplit
 
 import feedparser
 import httpx
 from bs4 import BeautifulSoup
 
-from .base import BaseScraper
+from .base import BaseScraper, FetchResult
 from ..models import (
     ContentItem,
     ProfileRoute,
@@ -52,26 +53,20 @@ class RedditScraper(BaseScraper):
         self.reddit_config = config
         self._comment_semaphore = asyncio.Semaphore(MAX_COMMENT_CONCURRENCY)
 
-    async def fetch(self, since: datetime) -> List[ContentItem]:
+    async def fetch(self, since: datetime) -> FetchResult:
+        result = FetchResult()
         if not self.config.get("enabled", True):
-            return []
+            return result
 
-        items = []
         for sub_cfg in self.reddit_config.subreddits:
             if sub_cfg.enabled:
-                try:
-                    items.extend(await self._fetch_subreddit(sub_cfg, since))
-                except Exception as e:
-                    logger.warning("Error fetching Reddit source: %s", e)
+                await result.collect(f"r/{sub_cfg.subreddit}", self._fetch_subreddit(sub_cfg, since))
 
         for user_cfg in self.reddit_config.users:
             if user_cfg.enabled:
-                try:
-                    items.extend(await self._fetch_user(user_cfg, since))
-                except Exception as e:
-                    logger.warning("Error fetching Reddit source: %s", e)
+                await result.collect(f"u/{user_cfg.username}", self._fetch_user(user_cfg, since))
 
-        return items
+        return result
 
     async def _fetch_subreddit(
         self, cfg: RedditSubredditConfig, since: datetime
@@ -120,21 +115,19 @@ class RedditScraper(BaseScraper):
     ) -> List[ContentItem]:
         rss_url = f"{REDDIT_BASE}/r/{cfg.subreddit}/{cfg.sort}/.rss"
 
-        try:
-            response = await self.client.get(
-                rss_url,
-                headers={
-                    **REDDIT_HEADERS,
-                    "Accept": "application/atom+xml,application/xml,text/xml,*/*",
-                },
-                follow_redirects=True,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            logger.warning("Reddit RSS fallback failed for r/%s: %s", cfg.subreddit, e)
-            return []
+        response = await self.client.get(
+            rss_url,
+            headers={
+                **REDDIT_HEADERS,
+                "Accept": "application/atom+xml,application/xml,text/xml,*/*",
+            },
+            follow_redirects=True,
+        )
+        response.raise_for_status()
 
         feed = feedparser.parse(response.text)
+        if feed.bozo and not feed.entries:
+            raise ValueError("Invalid Reddit RSS feed")
         items = []
         for entry in feed.entries[: cfg.fetch_limit]:
             published_at = self._parse_rss_date(entry)
@@ -147,6 +140,19 @@ class RedditScraper(BaseScraper):
             title = str(entry.get("title") or "Untitled")
             link = str(entry.get("link") or f"{REDDIT_BASE}/r/{cfg.subreddit}/")
             content = self._strip_html(str(entry.get("summary") or ""))
+
+            post_id = self._rss_post_id(entry_id, link)
+            if self.reddit_config.fetch_comments > 0 and post_id:
+                # RSS entries are processed sequentially, bounding comment requests.
+                try:
+                    comments = await self._fetch_comments(cfg.subreddit, post_id)
+                    comment_text = self._format_comments(comments)
+                except Exception as exc:
+                    logger.info("Reddit RSS comments failed for %s (%s); keeping post", post_id, type(exc).__name__)
+                    logger.debug("Reddit RSS comment-fetching error for %s: %s", post_id, exc, exc_info=True)
+                else:
+                    if comment_text:
+                        content = f"{content}\n\n{comment_text}" if content else comment_text
 
             items.append(
                 ContentItem(
@@ -172,6 +178,22 @@ class RedditScraper(BaseScraper):
                 )
             )
         return items
+
+    @staticmethod
+    def _rss_post_id(entry_id: str, link: str) -> Optional[str]:
+        match = re.fullmatch(r"t3_([a-zA-Z0-9]+)", entry_id)
+        if match:
+            return match.group(1)
+        try:
+            parsed = urlsplit(link)
+        except ValueError:
+            return None
+        if parsed.scheme not in {"http", "https"} or parsed.hostname not in {
+            "reddit.com", "www.reddit.com", "old.reddit.com",
+        }:
+            return None
+        match = re.match(r"/r/[^/]+/comments/([a-zA-Z0-9]+)(?:/|$)", parsed.path)
+        return match.group(1) if match else None
 
     async def _fetch_subreddit_html(
         self, cfg: RedditSubredditConfig, since: datetime
@@ -495,15 +517,7 @@ class RedditScraper(BaseScraper):
             parts.append(text)
 
         if comments:
-            parts.append("\n--- Top Comments ---")
-            for c in comments:
-                commenter = c.get("author", "anon")
-                body = c.get("body", "")
-                body = body.strip()
-                if len(body) > 500:
-                    body = body[:497] + "..."
-                score = c.get("score", 0)
-                parts.append(f"[{commenter} ({score} pts)]: {body}")
+            parts.append(self._format_comments(comments))
 
         content = "\n\n".join(parts)
 
@@ -528,36 +542,33 @@ class RedditScraper(BaseScraper):
             },
         )
 
+    @staticmethod
+    def _format_comments(comments: List[dict]) -> str:
+        if not comments:
+            return ""
+        parts = ["\n--- Top Comments ---"]
+        for comment in comments:
+            body = comment.get("body", "").strip()
+            if len(body) > 500:
+                body = body[:497] + "..."
+            parts.append(f"[{comment.get('author', 'anon')} ({comment.get('score', 0)} pts)]: {body}")
+        return "\n\n".join(parts)
+
     async def _reddit_get(self, url: str, params: dict) -> Optional[Any]:
-        try:
+        response = await self.client.get(
+            url, params=params, headers=REDDIT_HEADERS, follow_redirects=True,
+        )
+        if response.status_code == 429:
+            retry_after = int(response.headers.get("Retry-After", 5))
+            logger.warning("Reddit rate limited, retrying after %ds", retry_after)
+            await asyncio.sleep(retry_after)
             response = await self.client.get(
-                url,
-                params=params,
-                headers=REDDIT_HEADERS,
-                follow_redirects=True,
+                url, params=params, headers=REDDIT_HEADERS, follow_redirects=True,
             )
-            if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 5))
-                logger.warning("Reddit rate limited, retrying after %ds", retry_after)
-                await asyncio.sleep(retry_after)
-                response = await self.client.get(
-                    url,
-                    params=params,
-                    headers=REDDIT_HEADERS,
-                    follow_redirects=True,
-                )
-            if response.status_code == 403 and "/comments/" in url:
-                logger.info(
-                    "Reddit blocked comments request for %s; continuing without comments",
-                    url,
-                )
-                return None
-            if response.status_code == 403:
-                raise RedditBlockedError(url)
-            response.raise_for_status()
-            return response.json()
-        except RedditBlockedError:
-            raise
-        except httpx.HTTPError as e:
-            logger.warning("Reddit request failed for %s: %s", url, e)
+        if response.status_code == 403 and "/comments/" in url:
+            logger.info("Reddit blocked comments request for %s; continuing without comments", url)
             return None
+        if response.status_code == 403:
+            raise RedditBlockedError(url)
+        response.raise_for_status()
+        return response.json()

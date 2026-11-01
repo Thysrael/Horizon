@@ -7,10 +7,25 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
+import httpx
 from rich.console import Console
 
 from src.models import ContentItem, SourceType
 from src.orchestrator import FetchReport, HorizonOrchestrator, SourceFetchOutcome
+from src.scrapers.base import FetchResult
+from src.scrapers.github import GitHubScraper
+from src.scrapers.hackernews import HackerNewsScraper
+from src.scrapers.rss import RSSScraper
+from src.scrapers.reddit import RedditScraper
+from src.scrapers.telegram import TelegramScraper
+from src.scrapers.gdelt import GDELTScraper
+from src.scrapers.google_news import GoogleNewsScraper
+from src.scrapers.ossinsight import OSSInsightScraper
+from src.models import (
+    GitHubSourceConfig, HackerNewsConfig, RSSSourceConfig, RedditConfig,
+    RedditSubredditConfig, TelegramConfig, TelegramChannelConfig, GDELTConfig,
+    GoogleNewsConfig, OSSInsightConfig,
+)
 
 
 SINCE = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -62,7 +77,7 @@ class StubScraper:
     async def fetch(self, since):  # type: ignore[no-untyped-def]
         if self.error:
             raise self.error
-        return self.result
+        return FetchResult(items=self.result, successful=1)
 
 
 def test_all_success_empty_has_normal_success_report(monkeypatch) -> None:
@@ -165,3 +180,92 @@ def test_native_run_treats_all_success_empty_as_no_content(monkeypatch) -> None:
     asyncio.run(orchestrator.run())
 
     send_failure.assert_not_awaited()
+
+
+@pytest.mark.parametrize("scraper_type,config,empty_payload", [
+    (HackerNewsScraper, HackerNewsConfig(), []),
+    (GitHubScraper, [GitHubSourceConfig(type="user_events", username="test")], []),
+    (RSSScraper, [RSSSourceConfig(name="feed", url="https://example.com/feed")], "<rss version='2.0'><channel/></rss>"),
+    (RedditScraper, RedditConfig(subreddits=[RedditSubredditConfig(subreddit="test")]), {"data": {"children": []}}),
+    (TelegramScraper, TelegramConfig(channels=[TelegramChannelConfig(channel="test")]), "<html></html>"),
+    (GDELTScraper, GDELTConfig(enabled=True), {"articles": []}),
+    (GoogleNewsScraper, GoogleNewsConfig(enabled=True), "<rss version='2.0'><channel/></rss>"),
+    (OSSInsightScraper, OSSInsightConfig(enabled=True, languages=["Python"]), {"data": {"rows": []}}),
+])
+@pytest.mark.parametrize("status_code", [200, 503])
+def test_real_scrapers_distinguish_empty_responses_from_http_failure(scraper_type, config, empty_payload, status_code):
+    def handle(request):
+        if isinstance(empty_payload, str):
+            return httpx.Response(status_code, text=empty_payload)
+        return httpx.Response(status_code, json=empty_payload)
+
+    async def fetch():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            return await make_orchestrator()._fetch_with_progress(
+                scraper_type.__name__, scraper_type(config, client), SINCE
+            )
+
+    outcome = asyncio.run(fetch())
+    report = FetchReport([outcome])
+    assert outcome.items == []
+    if status_code == 503:
+        assert outcome.status == "failure"
+        assert outcome.failures
+        assert report.status == "failure"
+        assert report.all_failed
+    else:
+        assert outcome.status == "empty"
+        assert not outcome.failures
+        assert report.status == "success"
+        assert not report.all_failed
+
+
+@pytest.mark.parametrize("has_items", [False, True])
+def test_rss_partial_failure_keeps_successful_feed_and_diagnostics(has_items):
+    entry = """
+    <item><title>Story</title><link>https://example.com/story</link>
+    <pubDate>Thu, 01 Jan 2026 12:00:00 GMT</pubDate></item>
+    """ if has_items else ""
+
+    def handle(request):
+        if request.url.path == "/bad":
+            return httpx.Response(503)
+        return httpx.Response(200, text=f"<rss version='2.0'><channel>{entry}</channel></rss>")
+
+    async def fetch():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            scraper = RSSScraper([
+                RSSSourceConfig(name="bad", url="https://example.com/bad"),
+                RSSSourceConfig(name="good", url="https://example.com/good"),
+            ], client)
+            return await make_orchestrator()._fetch_with_progress("RSS", scraper, SINCE)
+
+    outcome = asyncio.run(fetch())
+    report = FetchReport([outcome])
+    assert outcome.status == "partial_failure"
+    assert len(outcome.items) == int(has_items)
+    assert set(outcome.failures) == {"bad"}
+    assert report.status == "partial_failure"
+    assert not report.all_failed
+    assert report.to_dict()["partial_failure"] == 1
+
+
+def test_hackernews_reports_failed_story_requests_without_dropping_other_stories():
+    def handle(request):
+        if request.url.path.endswith("topstories.json"):
+            return httpx.Response(200, json=[1, 2])
+        if request.url.path.endswith("1.json"):
+            return httpx.Response(503)
+        return httpx.Response(200, json={
+            "id": 2, "title": "Story", "score": 200, "time": SINCE.timestamp(),
+            "url": "https://example.com/story",
+        })
+
+    async def fetch():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
+            return await HackerNewsScraper(HackerNewsConfig(), client).fetch(SINCE)
+
+    result = asyncio.run(fetch())
+    assert result.status == "partial_failure"
+    assert [item.id for item in result.items] == ["hackernews:story:2"]
+    assert set(result.failures) == {"story:1"}

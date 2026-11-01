@@ -1,8 +1,21 @@
 """Shared AI utility functions."""
 
+import asyncio
 import json
 import re
 from typing import Optional
+
+
+async def gather_ai_tasks(coros):
+    """Drain cancelled siblings when a batch cannot continue."""
+    tasks = [asyncio.create_task(coro) for coro in coros]
+    try:
+        return await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+        raise
 
 
 def parse_json_response(response: str) -> Optional[dict]:

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 from anthropic import AsyncAnthropic
+from openai import BadRequestError
 
 from src.ai.client import AnthropicClient, OpenAIClient, create_ai_client
 from src.models import AIConfig, AIProvider, AI_PROVIDER_DEFAULTS
@@ -24,6 +25,14 @@ def _make_config(**overrides) -> AIConfig:
     }
     defaults.update(overrides)
     return AIConfig(**defaults)
+
+
+def _bad_request(message: str) -> BadRequestError:
+    return BadRequestError(
+        message,
+        response=httpx.Response(400, request=httpx.Request("POST", "https://example.com")),
+        body=None,
+    )
 
 
 def _make_ollama_config(**overrides) -> AIConfig:
@@ -245,7 +254,7 @@ class TestTemperatureFallback:
             api_key_env="OPENAI_API_KEY",
         ))
 
-        first_error = Exception(
+        first_error = _bad_request(
             "400 Bad Request: `temperature` is deprecated for this model."
         )
         with patch.object(
@@ -314,7 +323,7 @@ class TestTemperatureFallback:
         with patch.object(
             client.client.chat.completions, "create", new_callable=AsyncMock
         ) as mock_create:
-            mock_create.side_effect = [Exception(msg), self._make_response("ok")]
+            mock_create.side_effect = [_bad_request(msg), self._make_response("ok")]
             result = asyncio.run(client.complete(system="s", user="u"))
 
         assert result == "ok"
@@ -324,7 +333,7 @@ class TestTemperatureFallback:
 class TestFactoryFunction:
     def test_minimax_provider_defaults(self):
         defaults = AI_PROVIDER_DEFAULTS[AIProvider.MINIMAX]
-        assert defaults["model"] == "MiniMax-M3"
+        assert defaults["model"] == "MiniMax-M3.1-Flash"
         assert defaults["base_url"] == "https://api.minimax.io/v1"
 
     def test_creates_openai_client_for_minimax(self, monkeypatch):

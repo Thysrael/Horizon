@@ -3,7 +3,8 @@ name: Deploy Docs
 on:
   push:
     branches: [main]
-    paths: ['docs/**']
+    paths: ['docs/**', 'skills/horizon/**', 'LICENSE', '.github/workflows/deploy-docs.yml']
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -16,6 +17,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Package Horizon skill
+        run: |
+          mkdir -p docs/downloads
+          git archive --format=zip --prefix=horizon/ --add-file=LICENSE \
+            --output=docs/downloads/horizon-skill.zip HEAD:skills/horizon
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

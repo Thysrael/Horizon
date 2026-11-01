@@ -49,8 +49,7 @@ def test_analyze_batch_does_not_sleep_by_default(monkeypatch):
 
 
 def test_analyze_batch_sleeps_between_items_when_throttle_configured(monkeypatch):
-    client = SimpleNamespace(config=SimpleNamespace(throttle_sec=1.5))
-    analyzer = ContentAnalyzer(client, PROFILES)
+    analyzer = ContentAnalyzer(SimpleNamespace(), PROFILES, throttle_sec=1.5)
     items = [_make_item("rss:test:1"), _make_item("rss:test:2"), _make_item("rss:test:3")]
     sleep_calls = []
 
@@ -70,8 +69,7 @@ def test_analyze_batch_sleeps_between_items_when_throttle_configured(monkeypatch
 
 def test_analyze_batch_concurrent_processing(monkeypatch):
     """Verify that higher concurrency allows overlapping item processing."""
-    client = SimpleNamespace(config=SimpleNamespace(analysis_concurrency=3))
-    analyzer = ContentAnalyzer(client, PROFILES)
+    analyzer = ContentAnalyzer(SimpleNamespace(), PROFILES, concurrency=3)
     items = [_make_item(f"rss:test:{i}") for i in range(5)]
     active_count = 0
     max_active = 0
@@ -93,8 +91,7 @@ def test_analyze_batch_concurrent_processing(monkeypatch):
 
 def test_analyze_batch_concurrent_preserves_order(monkeypatch):
     """Verify that analyze_batch preserves input order in results."""
-    client = SimpleNamespace(config=SimpleNamespace(analysis_concurrency=3))
-    analyzer = ContentAnalyzer(client, PROFILES)
+    analyzer = ContentAnalyzer(SimpleNamespace(), PROFILES, concurrency=3)
     items = [_make_item(f"rss:test:{i}") for i in range(5)]
 
     async def fake_analyze_item(item):

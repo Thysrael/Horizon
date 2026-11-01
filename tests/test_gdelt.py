@@ -90,7 +90,7 @@ def test_parses_articles_into_content_items() -> None:
     config = GDELTConfig(enabled=True, query="ai", profile="gdelt-profile")
     scraper = GDELTScraper(config, client)
 
-    items = asyncio.run(scraper.fetch(SINCE))
+    items = asyncio.run(scraper.fetch(SINCE)).items
 
     assert len(items) == 2
     first = items[0]
@@ -108,7 +108,7 @@ def test_disabled_config_returns_empty() -> None:
     config = GDELTConfig(enabled=False, query="ai")
     scraper = GDELTScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(SINCE)) == []
+    assert asyncio.run(scraper.fetch(SINCE)).items == []
 
 
 def test_http_error_returns_empty() -> None:
@@ -117,7 +117,7 @@ def test_http_error_returns_empty() -> None:
     config = GDELTConfig(enabled=True, query="ai")
     scraper = GDELTScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(SINCE)) == []
+    assert asyncio.run(scraper.fetch(SINCE)).items == []
 
 
 def test_missing_articles_key_returns_empty() -> None:
@@ -125,7 +125,7 @@ def test_missing_articles_key_returns_empty() -> None:
     config = GDELTConfig(enabled=True, query="ai")
     scraper = GDELTScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(SINCE)) == []
+    assert asyncio.run(scraper.fetch(SINCE)).items == []
 
 
 def test_empty_query_returns_empty() -> None:
@@ -133,7 +133,7 @@ def test_empty_query_returns_empty() -> None:
     config = GDELTConfig(enabled=True, query="   ")
     scraper = GDELTScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(SINCE)) == []
+    assert asyncio.run(scraper.fetch(SINCE)).items == []
 
 
 def test_bad_article_is_skipped_not_crashing() -> None:
@@ -162,7 +162,7 @@ def test_bad_article_is_skipped_not_crashing() -> None:
     config = GDELTConfig(enabled=True, query="ai")
     scraper = GDELTScraper(config, client)
 
-    items = asyncio.run(scraper.fetch(SINCE))
+    items = asyncio.run(scraper.fetch(SINCE)).items
 
     assert len(items) == 1
     assert str(items[0].url) == "https://example.com/good"
@@ -177,4 +177,4 @@ def test_non_json_body_returns_empty() -> None:
     config = GDELTConfig(enabled=True, query="ai")
     scraper = GDELTScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(SINCE)) == []
+    assert asyncio.run(scraper.fetch(SINCE)).items == []

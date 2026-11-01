@@ -108,7 +108,7 @@ def test_parses_feed_into_content_items() -> None:
     )
     scraper = GoogleNewsScraper(config, client)
 
-    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365)))
+    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365))).items
 
     assert len(items) == 2
     first = items[0]
@@ -126,7 +126,7 @@ def test_disabled_config_returns_empty() -> None:
     config = GoogleNewsConfig(enabled=False, query="ai")
     scraper = GoogleNewsScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(_now())) == []
+    assert asyncio.run(scraper.fetch(_now())).items == []
 
 
 def test_empty_query_returns_empty() -> None:
@@ -134,7 +134,7 @@ def test_empty_query_returns_empty() -> None:
     config = GoogleNewsConfig(enabled=True, query="   ")
     scraper = GoogleNewsScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(_now())) == []
+    assert asyncio.run(scraper.fetch(_now())).items == []
 
 
 def test_http_error_returns_empty() -> None:
@@ -143,7 +143,7 @@ def test_http_error_returns_empty() -> None:
     config = GoogleNewsConfig(enabled=True, query="ai")
     scraper = GoogleNewsScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(_now())) == []
+    assert asyncio.run(scraper.fetch(_now())).items == []
 
 
 def test_empty_feed_returns_empty() -> None:
@@ -151,7 +151,7 @@ def test_empty_feed_returns_empty() -> None:
     config = GoogleNewsConfig(enabled=True, query="ai")
     scraper = GoogleNewsScraper(config, client)
 
-    assert asyncio.run(scraper.fetch(_now())) == []
+    assert asyncio.run(scraper.fetch(_now())).items == []
 
 
 def test_entry_missing_link_or_title_is_skipped() -> None:
@@ -164,7 +164,7 @@ def test_entry_missing_link_or_title_is_skipped() -> None:
     config = GoogleNewsConfig(enabled=True, query="ai")
     scraper = GoogleNewsScraper(config, client)
 
-    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365)))
+    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365))).items
 
     assert len(items) == 1
     assert str(items[0].url) == "https://example.com/good"
@@ -178,6 +178,6 @@ def test_max_results_cap() -> None:
     config = GoogleNewsConfig(enabled=True, query="ai", max_results=2)
     scraper = GoogleNewsScraper(config, client)
 
-    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365)))
+    items = asyncio.run(scraper.fetch(_now() - timedelta(days=365))).items
 
     assert len(items) == 2

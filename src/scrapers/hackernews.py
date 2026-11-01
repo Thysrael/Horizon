@@ -1,16 +1,13 @@
 """Hacker News scraper implementation."""
 
-import logging
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
 import asyncio
 import httpx
 
-from .base import BaseScraper
+from .base import BaseScraper, FetchResult
 from ..models import ContentItem, SourceType, HackerNewsConfig
-
-logger = logging.getLogger(__name__)
 
 # Max top-level comments to fetch per story
 TOP_COMMENTS_LIMIT = 5
@@ -23,65 +20,41 @@ class HackerNewsScraper(BaseScraper):
         super().__init__(config.model_dump(), http_client)
         self.base_url = "https://hacker-news.firebaseio.com/v0"
 
-    async def fetch(self, since: datetime) -> List[ContentItem]:
+    async def fetch(self, since: datetime) -> FetchResult:
+        result = FetchResult()
         if not self.config.get("enabled", True):
-            return []
+            return result
 
         try:
             response = await self.client.get(f"{self.base_url}/topstories.json")
             response.raise_for_status()
             story_ids = response.json()
 
-            fetch_count = self.config.get("fetch_top_stories", 30)
-            story_ids = story_ids[:fetch_count]
+            if not isinstance(story_ids, list):
+                raise ValueError("Hacker News returned an invalid story list")
+        except Exception as exc:
+            result.fail("topstories", exc)
+            return result
 
-            # Fetch story details concurrently
-            tasks = [self._fetch_story(story_id) for story_id in story_ids]
-            stories = await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.gather(*(
+            result.collect(f"story:{story_id}", self._fetch_story_item(story_id, since))
+            for story_id in story_ids[:self.config.get("fetch_top_stories", 30)]
+        ))
+        return result
 
-            # Filter and process stories, then fetch comments
-            items = []
-            min_score = self.config.get("min_score", 100)
-
-            comment_tasks = []
-            valid_stories = []
-
-            for story in stories:
-                if isinstance(story, Exception) or story is None:
-                    continue
-                if story.get("score", 0) < min_score:
-                    continue
-                published_at = datetime.fromtimestamp(story["time"], tz=timezone.utc)
-                if published_at < since:
-                    continue
-                valid_stories.append(story)
-                # Queue comment fetching
-                comment_ids = story.get("kids", [])[:TOP_COMMENTS_LIMIT]
-                comment_tasks.append(self._fetch_comments(comment_ids))
-
-            # Fetch all comments concurrently
-            all_comments = await asyncio.gather(*comment_tasks, return_exceptions=True)
-
-            for story, comments in zip(valid_stories, all_comments):
-                if isinstance(comments, Exception):
-                    comments = []
-                item = self._parse_story(story, comments)
-                if item:
-                    items.append(item)
-
-            return items
-
-        except httpx.HTTPError as e:
-            logger.warning("Error fetching Hacker News stories: %s", e)
+    async def _fetch_story_item(self, story_id: int, since: datetime) -> List[ContentItem]:
+        story = await self._fetch_story(story_id)
+        if not story or story.get("score", 0) < self.config.get("min_score", 100):
             return []
+        if datetime.fromtimestamp(story["time"], tz=timezone.utc) < since:
+            return []
+        comments = await self._fetch_comments(story.get("kids", [])[:TOP_COMMENTS_LIMIT])
+        return [self._parse_story(story, comments)]
 
     async def _fetch_story(self, story_id: int) -> Optional[dict]:
-        try:
-            response = await self.client.get(f"{self.base_url}/item/{story_id}.json")
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPError:
-            return None
+        response = await self.client.get(f"{self.base_url}/item/{story_id}.json")
+        response.raise_for_status()
+        return response.json()
 
     async def _fetch_comments(self, comment_ids: List[int]) -> List[dict]:
         """Fetch multiple comments concurrently."""

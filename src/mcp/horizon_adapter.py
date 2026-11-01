@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import importlib
 import json
 import os
 import re
-import sys
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 
-from ..models import SOURCE_REGISTRY
+from ..models import Config, ContentItem, SOURCE_REGISTRY
+from ..storage.manager import StorageManager, _expand_env_vars
 from .errors import HorizonMcpError
 
 
@@ -21,43 +19,23 @@ VALID_SOURCES = frozenset(SOURCE_REGISTRY)
 ENV_KEY_RE = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
 
-@dataclass
-class HorizonRuntime:
-    """Loaded runtime references from a Horizon codebase."""
-
-    horizon_path: Path
-    ContentItem: Any
-    Config: Any
-    StorageManager: Any
-    HorizonOrchestrator: Any
-    create_ai_client: Any
-    ContentAnalyzer: Any
-    ContentEnricher: Any
-    DailySummarizer: Any
-    expand_env_vars: Any
-
-
 def resolve_horizon_path(explicit: str | None = None) -> Path:
-    """Resolve Horizon repository path by explicit arg/env/common locations."""
+    """Resolve the workspace containing configuration, profiles, and credentials."""
 
-    candidates: list[Path] = []
-    if explicit:
-        candidates.append(Path(explicit).expanduser())
-
-    env_path = os.getenv("HORIZON_PATH")
-    if env_path:
-        candidates.append(Path(env_path).expanduser())
+    requested = explicit or os.getenv("HORIZON_PATH")
+    if requested:
+        path = Path(requested).expanduser().resolve()
+        if path.is_dir():
+            return path
+        raise HorizonMcpError(
+            code="HZ_INVALID_HORIZON_PATH",
+            message="horizon_path must be an existing workspace directory.",
+            details={"horizon_path": str(path)},
+        )
 
     repo_root = Path(__file__).resolve().parents[2]
     cwd = Path.cwd()
-    candidates.extend(
-        [
-            repo_root,
-            cwd,
-            cwd / "Horizon",
-            cwd.parent / "Horizon",
-        ]
-    )
+    candidates = [repo_root, cwd, cwd / "Horizon", cwd.parent / "Horizon"]
 
     seen: set[Path] = set()
     for candidate in candidates:
@@ -99,60 +77,20 @@ def resolve_config_path(horizon_path: Path, config_path: str | None = None) -> P
     return path
 
 
-def load_runtime(horizon_path: Path) -> HorizonRuntime:
-    """Load Horizon modules dynamically from local repository path."""
-
-    if not _is_horizon_repo(horizon_path):
-        raise HorizonMcpError(
-            code="HZ_INVALID_HORIZON_PATH",
-            message="horizon_path is not a valid Horizon repository.",
-            details={"horizon_path": str(horizon_path)},
-        )
-
+def load_environment(horizon_path: Path) -> None:
+    """Load workspace credentials; application code comes from this installation."""
     load_dotenv(horizon_path / ".env", override=False)
     _load_mcp_secrets(horizon_path, override=False)
 
-    horizon_path_str = str(horizon_path)
-    if horizon_path_str not in sys.path:
-        sys.path.insert(0, horizon_path_str)
 
-    try:
-        models = importlib.import_module("src.models")
-        storage = importlib.import_module("src.storage.manager")
-        orchestrator = importlib.import_module("src.orchestrator")
-        ai_client = importlib.import_module("src.ai.client")
-        analyzer = importlib.import_module("src.ai.analyzer")
-        enricher = importlib.import_module("src.ai.enricher")
-        summarizer = importlib.import_module("src.ai.summarizer")
-    except Exception as exc:  # pragma: no cover - import failure edge case
-        raise HorizonMcpError(
-            code="HZ_IMPORT_FAILED",
-            message="Failed to load Horizon modules.",
-            details={"error": str(exc)},
-        ) from exc
-
-    return HorizonRuntime(
-        horizon_path=horizon_path,
-        ContentItem=models.ContentItem,
-        Config=models.Config,
-        StorageManager=storage.StorageManager,
-        HorizonOrchestrator=orchestrator.HorizonOrchestrator,
-        create_ai_client=ai_client.create_ai_client,
-        ContentAnalyzer=analyzer.ContentAnalyzer,
-        ContentEnricher=enricher.ContentEnricher,
-        DailySummarizer=summarizer.DailySummarizer,
-        expand_env_vars=storage._expand_env_vars,
-    )
-
-
-def load_config(runtime: HorizonRuntime, config_path: Path) -> Any:
+def load_config(config_path: Path) -> Config:
     """Load Horizon config using native pydantic model."""
 
     try:
-        payload = runtime.expand_env_vars(
+        payload = _expand_env_vars(
             json.loads(config_path.read_text(encoding="utf-8"))
         )
-        return runtime.Config.model_validate(payload)
+        return Config.model_validate(payload)
     except Exception as exc:
         raise HorizonMcpError(
             code="HZ_CONFIG_INVALID",
@@ -161,30 +99,16 @@ def load_config(runtime: HorizonRuntime, config_path: Path) -> Any:
         ) from exc
 
 
-def make_storage(runtime: HorizonRuntime, config_path: Path) -> Any:
+def make_storage(config_path: Path) -> StorageManager:
     """Build Horizon storage manager bound to config's data directory."""
 
     data_dir = str(config_path.parent.resolve())
-    return runtime.StorageManager(data_dir=data_dir)
-
-
-def make_orchestrator(
-    runtime: HorizonRuntime,
-    config: Any,
-    storage: Any,
-    console: Any = None,
-    profiles: Any = None,
-) -> Any:
-    """Build native Horizon orchestrator."""
-
-    return runtime.HorizonOrchestrator(
-        config, storage, console=console, profiles=profiles
-    )
+    return StorageManager(data_dir=data_dir, config_path=str(config_path))
 
 
 def apply_source_filter(
-    config: Any, sources: list[str] | None
-) -> tuple[Any, list[str], list[str]]:
+    config: Config, sources: list[str] | None
+) -> tuple[Config, list[str], list[str]]:
     """Return filtered config and source selection diagnostics."""
 
     if not sources:
@@ -211,7 +135,7 @@ def apply_source_filter(
     return clone, chosen, unknown
 
 
-def get_enabled_sources(config: Any) -> list[str]:
+def get_enabled_sources(config: Config) -> list[str]:
     """List enabled top-level source types in effective config."""
 
     enabled: list[str] = []
@@ -228,19 +152,19 @@ def get_enabled_sources(config: Any) -> list[str]:
     return enabled
 
 
-def items_to_dicts(items: list[Any]) -> list[dict[str, Any]]:
+def items_to_dicts(items: list[ContentItem]) -> list[dict[str, Any]]:
     """Serialize Horizon ContentItem models."""
 
     return [item.model_dump(mode="json") for item in items]
 
 
-def dicts_to_items(runtime: HorizonRuntime, payload: list[dict[str, Any]]) -> list[Any]:
+def dicts_to_items(payload: list[dict[str, Any]]) -> list[ContentItem]:
     """Deserialize ContentItem list."""
 
-    return [runtime.ContentItem.model_validate(item) for item in payload]
+    return [ContentItem.model_validate(item) for item in payload]
 
 
-def get_source_counts(items: list[Any]) -> dict[str, int]:
+def get_source_counts(items: list[ContentItem]) -> dict[str, int]:
     """Count items by source type."""
 
     counts: dict[str, int] = {}
