@@ -255,6 +255,13 @@ class GitHubSourceConfig(BaseModel):
     enabled: bool = True
     category: Optional[str] = None
     profile: ProfileRoute = None
+    # Total look-back window for this source, in hours. None = use the global
+    # collection.time_window_hours. Release cadence is slower than the news
+    # cycle, so releases need a wider window than the default 24h.
+    window_hours: Optional[int] = None
+    # Max releases to keep for this source (newest first). Repos that cut a
+    # release per build would otherwise flood the digest with near-duplicates.
+    max_releases: Optional[int] = None
 
 
 class HackerNewsConfig(BaseModel):

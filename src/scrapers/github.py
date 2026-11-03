@@ -1,7 +1,7 @@
 """GitHub scraper implementation."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 import httpx
 
@@ -52,10 +52,16 @@ class GitHubScraper(BaseScraper):
             if not source.enabled:
                 continue
 
+            # Per-source look-back window (total hours from now). Falls back to the
+            # shared window when unset.
+            src_since = since
+            if source.window_hours:
+                src_since = datetime.now(timezone.utc) - timedelta(hours=source.window_hours)
+
             if source.type == "user_events" and source.username:
-                await result.collect(source.username, self._fetch_user_events(source, since))
+                await result.collect(source.username, self._fetch_user_events(source, src_since))
             elif source.type == "repo_releases" and source.owner and source.repo:
-                await result.collect(f"{source.owner}/{source.repo}", self._fetch_repo_releases(source, since))
+                await result.collect(f"{source.owner}/{source.repo}", self._fetch_repo_releases(source, src_since))
             else:
                 result.fail(source.username or source.repo or source.type, ValueError("Invalid GitHub source configuration"))
 
@@ -199,5 +205,9 @@ class GitHubScraper(BaseScraper):
                     "category": source.category,
                 },
             ))
+
+        # Keep only the newest N releases for this source (API returns newest first).
+        if source.max_releases is not None:
+            items = items[: source.max_releases]
 
         return items

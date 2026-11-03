@@ -46,6 +46,7 @@ data/mcp-secrets.json
 data/mcp-runs/
 data/x_cookies_*.json
 data/wechat_session.json
+data/logs/
 
 docs/_posts/*.md
 

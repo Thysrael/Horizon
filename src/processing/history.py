@@ -113,6 +113,25 @@ def _rank(entries: list[HistoryEntry], query: str) -> list[HistoryEntry]:
     return [entry for _, entry in scored]
 
 
+def reported_urls_before(directory: Path, before: date) -> set[str]:
+    """Return raw URLs already published in digests dated before `before`.
+
+    Used to suppress items a previous digest already covered. Per-source windows
+    (e.g. GitHub releases looking back 30h) intentionally span more than one day,
+    so without this filter the same release would appear in consecutive digests.
+    Digests dated `before` or later are ignored: a same-day rerun should be able
+    to regenerate the full digest.
+
+    URLs are returned as written in the digest; callers apply their own
+    normalization so the comparison matches their dedup key.
+    """
+    return {
+        entry.url
+        for entry in _read_entries(directory)
+        if entry.digest_date < before
+    }
+
+
 class HistorySearchTool:
     name = "history_search"
 

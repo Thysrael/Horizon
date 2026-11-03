@@ -288,6 +288,16 @@ class HorizonOrchestrator:
                     f"→ {len(merged_items)} unique items\n"
                 )
 
+            # 3b. Drop items an earlier day's digest already covered. Sources may
+            # look back further than the daily cadence (GitHub releases use 30h),
+            # so without this the same release lands in two digests.
+            merged_items = self.suppress_already_reported(merged_items)
+            if not merged_items:
+                self.console.print(
+                    "[yellow]No new content found. Exiting.[/yellow]"
+                )
+                return
+
             # 4. Analyze with AI
             analyzed_items = await self.analyze_items(merged_items)
             self.console.print(
@@ -590,6 +600,62 @@ class HorizonOrchestrator:
         if meta.get("domain"):
             return meta["domain"]
         return item.author or "unknown"
+
+    def suppress_already_reported(self, items: List[ContentItem]) -> List[ContentItem]:
+        """Drop items whose URL already appeared in an earlier day's digest.
+
+        Sources can look back further than the digest cadence (GitHub releases use
+        a 30h window so a slow release day is not missed), which makes the same
+        item eligible two runs in a row. Digests dated today are excluded from the
+        comparison so a same-day rerun can still rebuild the full digest.
+
+        Args:
+            items: Items to filter
+
+        Returns:
+            List[ContentItem]: Items not yet covered by a previous digest
+        """
+        from .processing.history import reported_urls_before
+
+        before = datetime.now(timezone.utc).date()
+        try:
+            reported = reported_urls_before(self.storage.summaries_dir, before)
+        except OSError as exc:
+            self.console.print(
+                f"[yellow]  history: could not read previous digests ({exc}); "
+                f"skipping already-reported filter[/yellow]"
+            )
+            return items
+        if not reported:
+            return items
+
+        reported_keys = set()
+        for url in reported:
+            try:
+                reported_keys.add(_deduplication_url_key(url))
+            except ValueError:
+                # Malformed URLs in older digests must not break the run.
+                continue
+        if not reported_keys:
+            return items
+
+        kept = []
+        for item in items:
+            try:
+                key = _deduplication_url_key(str(item.url)) if item.url else None
+            except ValueError:
+                key = None
+            if key is not None and key in reported_keys:
+                continue
+            kept.append(item)
+
+        removed = len(items) - len(kept)
+        if removed:
+            self.console.print(
+                f"{self.icons['cleanup']} Skipped {removed} already-reported items "
+                f"→ {len(kept)} new items\n"
+            )
+        return kept
 
     def merge_cross_source_duplicates(self, items: List[ContentItem]) -> List[ContentItem]:
         """Merge items that point to the same URL from different sources.
