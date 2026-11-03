@@ -1,0 +1,15 @@
+feeds.bbci.co.uk
+www.aljazeera.com
+news.un.org
+daily.jstor.org
+aeon.co
+dailynous.com
+blogs.lse.ac.uk
+ourworldindata.org
+lithub.com
+www.publicbooks.org
+simonwillison.net
+huggingface.co
+api.openai.com
+auth.openai.com
+chatgpt.com
