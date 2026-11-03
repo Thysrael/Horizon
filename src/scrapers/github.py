@@ -1,15 +1,17 @@
 """GitHub scraper implementation."""
 
 import os
-from datetime import datetime
+import re
+from datetime import datetime, timezone
 from typing import List, Optional
 import httpx
+from bs4 import BeautifulSoup
 
 from .base import BaseScraper, FetchResult
 from ..models import ContentItem, SourceType, GitHubSourceConfig
 
 class GitHubScraper(BaseScraper):
-    """Scraper for GitHub events and releases."""
+    """Scraper for GitHub events, releases, and official daily Trending."""
 
     def __init__(self, sources: List[GitHubSourceConfig], http_client: httpx.AsyncClient):
         """Initialize GitHub scraper.
@@ -52,7 +54,9 @@ class GitHubScraper(BaseScraper):
             if not source.enabled:
                 continue
 
-            if source.type == "user_events" and source.username:
+            if source.type == "trending":
+                await result.collect("trending/daily", self._fetch_daily_trending(source))
+            elif source.type == "user_events" and source.username:
                 await result.collect(source.username, self._fetch_user_events(source, since))
             elif source.type == "repo_releases" and source.owner and source.repo:
                 await result.collect(f"{source.owner}/{source.repo}", self._fetch_repo_releases(source, since))
@@ -60,6 +64,45 @@ class GitHubScraper(BaseScraper):
                 result.fail(source.username or source.repo or source.type, ValueError("Invalid GitHub source configuration"))
 
         return result
+
+    async def _fetch_daily_trending(self, source: GitHubSourceConfig) -> List[ContentItem]:
+        """Read a ranking snapshot; ``since`` does not describe repository age."""
+        response = await self.client.get(
+            "https://github.com/trending", params={"since": "daily"},
+            follow_redirects=True, timeout=25,
+        )
+        response.raise_for_status()
+        observed = datetime.now(timezone.utc)
+        rows = BeautifulSoup(response.text, "html.parser").select("article.Box-row")
+        if len(rows) < source.fetch_limit:
+            raise ValueError(
+                f"GitHub daily Trending returned {len(rows)} rows; "
+                f"expected at least {source.fetch_limit}"
+            )
+        items = []
+        for rank, row in enumerate(rows[:source.fetch_limit], 1):
+            link = row.select_one("h2 a[href]")
+            repo = link["href"].strip("/") if link else ""
+            if not re.fullmatch(r"[\w.-]+/[\w.-]+", repo):
+                raise ValueError("Invalid GitHub daily Trending repository row")
+            description = row.select_one("p")
+            language = row.select_one('[itemprop="programmingLanguage"]')
+            today = row.select_one("span.d-inline-block.float-sm-right")
+            stars = re.search(r"([\d,]+)\s+stars? today", today.get_text(" ", strip=True) if today else "")
+            items.append(ContentItem(
+                id=self._generate_id("github", "trending", repo),
+                source_type=SourceType.GITHUB, title=repo,
+                url=f"https://github.com/{repo}", author=repo.split("/")[0],
+                content=description.get_text(" ", strip=True) if description else "",
+                published_at=observed, profile=source.profile,
+                metadata={
+                    "github_trending": True, "ranking_period": "daily", "rank": rank,
+                    "observed_at": observed.isoformat(), "category": source.category,
+                    "language": language.get_text(strip=True) if language else None,
+                    "stars_today": int(stars.group(1).replace(",", "")) if stars else None,
+                },
+            ))
+        return items
 
     async def _fetch_user_events(
         self,

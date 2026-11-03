@@ -248,13 +248,14 @@ class AIConfig(BaseModel):
 class GitHubSourceConfig(BaseModel):
     """GitHub source configuration."""
 
-    type: str  # "user_events", "repo_releases", etc.
+    type: str  # "user_events", "repo_releases", "trending", etc.
     username: Optional[str] = None
     owner: Optional[str] = None
     repo: Optional[str] = None
     enabled: bool = True
     category: Optional[str] = None
     profile: ProfileRoute = None
+    fetch_limit: int = Field(default=5, ge=1, le=25)
 
 
 class HackerNewsConfig(BaseModel):

@@ -44,6 +44,11 @@
   "sources": {
     "github": [
       {
+        "type": "trending",
+        "enabled": false,
+        "fetch_limit": 5
+      },
+      {
         "type": "user_events",
         "username": "torvalds",
         "enabled": true,
