@@ -90,6 +90,35 @@ Each extracted entry is one scrape request and uses Firecrawl credits. Requests 
 
 **Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient`, explicitly requests a 60-second Firecrawl scrape timeout, and sets a 65-second HTTP timeout for that request to allow time for the response. Other requests keep the shared client's timeout settings. No automatic retries are added. Any HTTP error, timeout, unsuccessful response, or missing, non-string, or blank Markdown falls back to the feed content.
 
+### `outcrawl`
+
+**File**: `src/extractors/outcrawl.py`
+
+Uses the [Outcrawl](https://outcrawl.ai) scrape API (`POST https://api.outcrawl.ai/v1/scrape`) to load the page in a real browser and return its main content as Markdown. Like `firecrawl`, it helps on JavaScript-rendered pages where `trafilatura` gets an empty page. It needs an Outcrawl API key in the environment variable named by `api_key_env` (default `OUTCRAWL_API_KEY`); without one the extractor logs a warning and the feed content is used.
+
+```json
+{
+  "extractors": {
+    "outcrawl": {
+      "type": "outcrawl",
+      "api_key_env": "OUTCRAWL_API_KEY"
+    }
+  }
+}
+```
+
+**Config fields**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `"outcrawl"` | Extractor type identifier |
+| `api_key_env` | string | `"OUTCRAWL_API_KEY"` | Environment variable holding the Outcrawl API key |
+| `only_main_content` | bool | `true` | Strip navigation, headers and footers, keeping the article body |
+
+Each extracted entry is one scrape request and uses Outcrawl credits.
+
+**Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and sets a 65-second HTTP timeout for the scrape request, since rendering a page can take longer than a plain fetch. Other requests keep the shared client's timeout settings. No automatic retries are added. Any HTTP error, timeout, unexpected response, or missing, non-string, or blank Markdown falls back to the feed content.
+
 ## Adding a new extractor type
 
 1. Add an entry to `ExtractorType` in `src/models.py`.
