@@ -17,6 +17,9 @@ from ..models import ContentItem, SourceType, RSSSourceConfig
 
 logger = logging.getLogger(__name__)
 
+# Identify feed requests: some publishers reject httpx's default User-Agent.
+RSS_USER_AGENT = "Horizon/0.1.0 (+https://github.com/Thysrael/Horizon)"
+
 class RSSScraper(BaseScraper):
     """Scraper for RSS/Atom feeds."""
 
@@ -83,7 +86,11 @@ class RSSScraper(BaseScraper):
             lambda m: os.environ.get(m.group(1), m.group(0)).strip(),
             str(source.url),
         )
-        response = await self.client.get(feed_url, follow_redirects=True)
+        response = await self.client.get(
+            feed_url,
+            follow_redirects=True,
+            headers={"User-Agent": RSS_USER_AGENT},
+        )
         response.raise_for_status()
         feed = feedparser.parse(response.text)
         if feed.bozo and not feed.entries:
