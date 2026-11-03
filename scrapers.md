@@ -94,6 +94,12 @@ Two source types are supported:
 
 Fetches any Atom/RSS feed using the `feedparser` library. Tries multiple date fields (`published`, `updated`, `created`) with fallback parsing.
 
+Feed requests identify Horizon through a `User-Agent` header because some publishers
+reject the HTTP client default. This header is scoped to feed requests and does
+not change the shared client or full-article extractor requests. HTTP errors such
+as 403 and 410 remain source failures; retired feed URLs must be updated in the
+source configuration.
+
 **Config** (`sources.rss`, list of entries):
 
 ```json
