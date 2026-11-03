@@ -1812,3 +1812,7 @@ class TestSkipConsoleOutput:
         assert mock_console.print.call_count >= 1
         printed = " ".join(str(c) for c in mock_console.print.call_args_list)
         assert "not set" in printed.lower() or "empty" in printed.lower()
+
+
+# These tests mock HTTP; mock their DNS prerequisite as well.
+pytestmark = pytest.mark.usefixtures("public_example_dns")

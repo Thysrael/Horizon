@@ -64,9 +64,28 @@ async def probe_feeds(config: Config) -> int:
     return int(any(not row['ok'] for row in rows))
 
 
+async def collect(config: Config, hours: int) -> int:
+    """Run the native RSS scraper without creating any AI client."""
+    from datetime import timedelta
+    import httpx
+    from src.scrapers.rss import RSSScraper
+    async with httpx.AsyncClient(timeout=20) as client:
+        result = await RSSScraper(config.sources.rss, client).fetch(
+            datetime.now(timezone.utc) - timedelta(hours=hours))
+    destination = Path('/workspace/horizon-state/personal/raw')
+    destination.mkdir(parents=True, exist_ok=True)
+    path = destination / (datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.json')
+    path.write_text(json.dumps([item.model_dump(mode='json') for item in result.items],
+                               ensure_ascii=False, indent=2) + '\n')
+    print(json.dumps({'status': result.status, 'successful_feeds': result.successful,
+                      'items': len(result.items), 'failed_feeds': list(result.failures),
+                      'raw_file': str(path), 'ai_called': False}, ensure_ascii=False, indent=2))
+    return int(bool(result.failures))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=['validate', 'feeds', 'run'])
+    parser.add_argument('command', choices=['validate', 'feeds', 'collect', 'run'])
     parser.add_argument('--hours', type=int, default=None,
                         help='One-off collection window; omit for the configured 24 hours')
     args = parser.parse_args()
@@ -74,7 +93,7 @@ def main() -> int:
     if args.command == 'validate':
         print(json.dumps({'schema_valid': True, 'profiles': sorted(registry.ids),
                           'languages': config.ai.languages, 'max_items': config.digest.max_items,
-                          'model_selected': bool(os.getenv('HORIZON_CHATGPT_MODEL')),
+                          'model_selected': bool(os.getenv('HORIZON_AI_MODEL')),
                           'enabled_feeds': sum(s.enabled for s in config.sources.rss)},
                          ensure_ascii=False, indent=2))
         return 0
@@ -82,13 +101,15 @@ def main() -> int:
         return asyncio.run(probe_feeds(config))
     if args.hours is not None and args.hours <= 0:
         parser.error('--hours must be positive')
-    if not os.getenv('HORIZON_CHATGPT_MODEL', '').strip():
-        parser.error('Set HORIZON_CHATGPT_MODEL to an exact slug from horizon-chatgpt models; no model is assumed')
-    os.environ.setdefault('HORIZON_CHATGPT_AUTH_DIR', '/workspace/horizon-private/chatgpt')
-    from src.ai.chatgpt_auth import ChatGPTAuth
-    auth = ChatGPTAuth().status(config.ai.chatgpt_account)
-    if not auth.get('connected') or not auth.get('plan_usage'):
-        parser.error('ChatGPT plan usage is not authorized. Follow configs/personal/README.md; do not paste credentials into chat')
+    if args.command == 'collect':
+        return asyncio.run(collect(config, args.hours or config.collection.time_window_hours))
+    for name in ['HORIZON_AI_MODEL', 'HORIZON_AI_BASE_URL', 'HORIZON_AI_KEY']:
+        if not os.getenv(name, '').strip():
+            parser.error(f'Set {name} securely after choosing a provider; no inference was attempted')
+    from urllib.parse import urlsplit
+    endpoint = urlsplit(config.ai.base_url or '')
+    if endpoint.scheme != 'https' or not endpoint.hostname or endpoint.username or endpoint.password:
+        parser.error('HORIZON_AI_BASE_URL must be an HTTPS endpoint without embedded credentials')
     command = [str(ROOT / '.venv/bin/horizon'), '--config', str(CONFIG),
                '--data-dir', '/workspace/horizon-state/personal', '--log-level', 'INFO']
     if args.hours is not None:

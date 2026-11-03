@@ -4,6 +4,7 @@ import asyncio
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 import httpx
 
 from src.extractors import TrafilaturaExtractor
@@ -76,3 +77,7 @@ def test_returns_none_when_not_installed():
     with patch.dict(sys.modules, {"trafilatura": None}):
         result = asyncio.run(_extractor().extract(URL, client))
     assert result is None
+
+
+# These tests mock HTTP; mock their DNS prerequisite as well.
+pytestmark = pytest.mark.usefixtures("public_example_dns")

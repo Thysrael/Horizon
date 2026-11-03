@@ -66,3 +66,33 @@ def test_chinese_digest_preserves_publisher_and_original_link():
     assert '国际政治与国际关系' in rendered
     assert 'Original publisher' in rendered
     assert 'https://example.com/original-article' in rendered
+
+
+def test_run_rejects_missing_secret_without_starting_a_process(monkeypatch):
+    import pytest
+    from configs.personal import check
+    monkeypatch.setenv('HORIZON_AI_MODEL', 'test-model')
+    monkeypatch.setenv('HORIZON_AI_BASE_URL', 'https://api.example.com/v1')
+    monkeypatch.delenv('HORIZON_AI_KEY', raising=False)
+    monkeypatch.setattr(sys, 'argv', ['check.py', 'run'])
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A missing Secret must not launch inference')
+    monkeypatch.setattr(check.subprocess, 'run', forbidden)
+    with pytest.raises(SystemExit) as exc:
+        check.main()
+    assert exc.value.code == 2
+
+
+def test_run_rejects_insecure_endpoint_before_launch(monkeypatch):
+    import pytest
+    from configs.personal import check
+    monkeypatch.setenv('HORIZON_AI_MODEL', 'test-model')
+    monkeypatch.setenv('HORIZON_AI_BASE_URL', 'http://api.example.com/v1')
+    monkeypatch.setenv('HORIZON_AI_KEY', 'synthetic-unit-test-only')
+    monkeypatch.setattr(sys, 'argv', ['check.py', 'run'])
+    def forbidden(*args, **kwargs):
+        raise AssertionError('An insecure endpoint must not launch inference')
+    monkeypatch.setattr(check.subprocess, 'run', forbidden)
+    with pytest.raises(SystemExit) as exc:
+        check.main()
+    assert exc.value.code == 2

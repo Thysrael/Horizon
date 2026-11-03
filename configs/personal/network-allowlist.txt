@@ -10,6 +10,3 @@ lithub.com
 www.publicbooks.org
 simonwillison.net
 huggingface.co
-api.openai.com
-auth.openai.com
-chatgpt.com

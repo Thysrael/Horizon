@@ -1,13 +1,15 @@
 {
   "ai": {
-    "provider": "openai-chatgpt",
-    "model": "${HORIZON_CHATGPT_MODEL}",
+    "provider": "openai",
+    "model": "${HORIZON_AI_MODEL}",
     "languages": [
       "zh"
     ],
     "analysis_concurrency": 1,
     "enrichment_concurrency": 1,
-    "throttle_sec": 1
+    "throttle_sec": 1,
+    "api_key_env": "HORIZON_AI_KEY",
+    "base_url": "${HORIZON_AI_BASE_URL}"
   },
   "processing": {
     "profiles_dir": "configs/personal/profiles",
