@@ -4,8 +4,18 @@ from typing import Dict
 
 from pydantic import TypeAdapter
 
-from src.extractors import ExtractorRegistry, FirecrawlExtractor, TrafilaturaExtractor
-from src.models import ExtractorConfig, FirecrawlExtractorConfig, TrafilaturaExtractorConfig
+from src.extractors import (
+    ExtractorRegistry,
+    FirecrawlExtractor,
+    OutcrawlExtractor,
+    TrafilaturaExtractor,
+)
+from src.models import (
+    ExtractorConfig,
+    FirecrawlExtractorConfig,
+    OutcrawlExtractorConfig,
+    TrafilaturaExtractorConfig,
+)
 
 
 def test_default_trafilatura_registered():
@@ -34,6 +44,23 @@ def test_firecrawl_config_parsed_from_json():
     assert isinstance(named, FirecrawlExtractor)
     assert named._config.api_key_env == "MY_KEY"
     assert named._config.only_main_content is True
+
+
+def test_default_outcrawl_registered():
+    registry = ExtractorRegistry({})
+    extractor = registry.get("outcrawl")
+    assert isinstance(extractor, OutcrawlExtractor)
+    assert extractor._config == OutcrawlExtractorConfig()
+
+
+def test_outcrawl_config_parsed_from_json():
+    extractors = TypeAdapter(Dict[str, ExtractorConfig]).validate_python(
+        {"oc": {"type": "outcrawl", "api_key_env": "MY_KEY", "only_main_content": False}}
+    )
+    named = ExtractorRegistry(extractors).get("oc")
+    assert isinstance(named, OutcrawlExtractor)
+    assert named._config.api_key_env == "MY_KEY"
+    assert named._config.only_main_content is False
 
 
 def test_unknown_name_returns_none():

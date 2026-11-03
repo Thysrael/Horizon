@@ -4,17 +4,20 @@ from typing import Dict, Optional
 
 from .base import BaseExtractor
 from .firecrawl import FirecrawlExtractor
+from .outcrawl import OutcrawlExtractor
 from .trafilatura import TrafilaturaExtractor
 from ..models import (
     ExtractorConfig,
     ExtractorType,
     FirecrawlExtractorConfig,
+    OutcrawlExtractorConfig,
     TrafilaturaExtractorConfig,
 )
 
 _DEFAULTS: Dict[str, ExtractorConfig] = {
     ExtractorType.TRAFILATURA: TrafilaturaExtractorConfig(),
     ExtractorType.FIRECRAWL: FirecrawlExtractorConfig(),
+    ExtractorType.OUTCRAWL: OutcrawlExtractorConfig(),
 }
 
 
@@ -24,6 +27,8 @@ def _build(cfg: ExtractorConfig) -> BaseExtractor:
             return TrafilaturaExtractor(cfg)
         case FirecrawlExtractorConfig():
             return FirecrawlExtractor(cfg)
+        case OutcrawlExtractorConfig():
+            return OutcrawlExtractor(cfg)
         case _:
             raise NotImplementedError(f"Extractor type '{cfg.type}' is not yet implemented")
 
