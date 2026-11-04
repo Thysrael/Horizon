@@ -429,12 +429,10 @@ class HorizonOrchestrator:
             raise
 
     def _determine_time_window(self, force_hours: int = None) -> datetime:
-        if force_hours:
-            since = datetime.now(timezone.utc) - timedelta(hours=force_hours)
-        else:
-            hours = self.config.collection.time_window_hours
-            since = datetime.now(timezone.utc) - timedelta(hours=hours)
-        return since
+        hours = force_hours if force_hours is not None else self.config.collection.time_window_hours
+        if hours <= 0:
+            raise ValueError("hours must be greater than 0")
+        return datetime.now(timezone.utc) - timedelta(hours=hours)
 
     async def fetch_all_sources(self, since: datetime) -> List[ContentItem]:
         """Fetch content from all configured sources.
