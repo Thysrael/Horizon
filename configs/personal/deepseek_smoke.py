@@ -11,6 +11,9 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Any
+
+from pydantic import TypeAdapter
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -137,7 +140,9 @@ def finalize_report(report, directory):
     report['billing_note'] = ('Estimate covers reported response usage only; provider billing is authoritative. '
                               'Missing prices/usage mean unknown, not zero; failed requests may have unreported usage.')
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / 'report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+    # Match the project's mode='json' model dumps, including nested URLs/datetimes.
+    json_report = TypeAdapter(dict[str, Any]).dump_python(report, mode='json')
+    (directory / 'report.json').write_text(json.dumps(json_report, ensure_ascii=False, indent=2) + '\n')
     summary = ('# Horizon DeepSeek smoke test\n\n'
                f"- Status: {report['status']}\n- Candidates: {report.get('candidate_count', 0)} / 5 maximum\n"
                f"- Selected items: {report.get('selected_count', 0)}\n"
@@ -170,10 +175,11 @@ async def run(limit, directory, report):
         report['links'] = []
         usable = []
         for item in candidates:
+            url = str(item.url)
             try:
-                response = await safe_request(client, 'HEAD', item.url, max_redirects=5)
+                response = await safe_request(client, 'HEAD', url, max_redirects=5)
                 if response.status_code in {405, 501}:
-                    response = await safe_request(client, 'GET', item.url, max_redirects=5)
+                    response = await safe_request(client, 'GET', url, max_redirects=5)
                 ok = 200 <= response.status_code < 300
                 report['links'].append({'url': item.url, 'status': response.status_code, 'ok': ok})
                 if ok:

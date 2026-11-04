@@ -58,8 +58,8 @@
         "enabled": true
       },
       {
-        "name": "UN News",
-        "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+        "name": "UN Press",
+        "url": "https://press.un.org/en/rss.xml",
         "category": "world-affairs",
         "profile": "world-affairs",
         "enabled": true

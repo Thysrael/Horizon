@@ -1,3 +1,14 @@
+# 最新修复记录（2026-11-04）
+
+- `finalize_report` 使用 Pydantic `TypeAdapter(...).dump_python(mode="json")` 递归转为 JSON 支持的类型，保留 Unicode 和 URL 字符串；不使用 `default=str` 掩盖未知类型。
+- 链接检查边界显式把 `HttpUrl` 转成字符串，保留原有 URL 安全检查。
+- 895 项离线测试全部通过，新增成功/失败报告、嵌套 URL/模型/日期/Path/枚举/dataclass 和链接边界回归；未调用模型。
+- 联合国源替换为官方 UN Press RSS；Cloud 代理返回 403，在线可用性尚未确认，其余 12 个源未变。
+- 用户报告首次 Actions 运行失败；当前 GitHub API 访问仍被代理拒绝，无法读取实际运行日志。是否曾调用 DeepSeek、Token 消耗和费用均为**未知**，不作推测。
+- 密钥、DeepSeek 配置、六类 Profile、每日条数限制及工作流触发方式未修改；本次不触发 Actions。
+
+以下为此前准备阶段的历史记录，不代表最新 Actions 运行状态。
+
 # 当前验证记录：DeepSeek Actions 测试准备
 
 2026-11-04（北京时间）。用户已选择 DeepSeek，并报告在 GitHub Repository Secrets 添加

@@ -24,12 +24,14 @@
 
 | 兴趣 | 候选信息源 |
 | --- | --- |
-| 国际关系 | BBC World、Al Jazeera、UN News |
+| 国际关系 | BBC World、Al Jazeera、UN Press（联合国官方会议报道与新闻稿） |
 | 历史文明 | JSTOR Daily |
 | 哲学伦理 | Aeon、Daily Nous |
 | 经济社会 | LSE Business Review、Our World in Data |
 | 文学文化 | Literary Hub、Public Books |
 | AI 与科技 | Simon Willison、Hugging Face Blog、llama.cpp releases |
+
+联合国来源已改用官方 UN Press RSS（`https://press.un.org/en/rss.xml`）。当前 Cloud 代理拒绝该域名，替代端点尚待在线验证；其机构新闻稿与独立报道应区分阅读。
 
 端点见 `config.json`。GitHub Atom 已实际通过；其余 12 个端点被云代理拒绝，
 尚未验证远端有效性、重定向和内容质量。环境设置中应用 `network-allowlist.txt` 所列

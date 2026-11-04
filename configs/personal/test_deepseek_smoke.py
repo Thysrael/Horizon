@@ -107,3 +107,56 @@ def test_output_token_limit_cannot_be_overridden(monkeypatch):
     asyncio.run(client._do_request(system='synthetic', user='synthetic', max_tokens=9000))
     assert captured['max_tokens'] == 2048
     assert client.report['completion_attempts'] == 1
+
+
+@pytest.mark.parametrize('status', ['success', 'failed'])
+def test_report_serializes_nested_pydantic_urls_and_other_supported_types(monkeypatch, tmp_path, status):
+    import json
+    from src.ai.tokens import ProviderUsage, reset_usage
+    monkeypatch.delenv('GITHUB_STEP_SUMMARY', raising=False)
+    reset_usage()
+    item = make_item(1)
+    report = {'status': status, 'completion_attempts': 0, 'response_usage': [],
+              'candidates': [{'url': item.url}], 'links': [{'url': item.url}],
+              'selected': [{'url': item.url}],
+              'nested': {'item': item, 'timestamp': item.published_at,
+                         'path': tmp_path, 'source_type': SourceType.RSS,
+                         'usage_dataclass': ProviderUsage(input_tokens=2, output_tokens=3)},
+              'note': '中文报告'}
+    smoke.finalize_report(report, tmp_path)
+    saved = json.loads((tmp_path / 'report.json').read_text())
+    for field in ['candidates', 'links', 'selected']:
+        assert saved[field][0]['url'] == item.model_dump(mode='json')['url']
+        assert isinstance(saved[field][0]['url'], str)
+    assert saved['nested']['item'] == item.model_dump(mode='json')
+    assert isinstance(saved['nested']['timestamp'], str)
+    assert saved['nested']['path'] == str(tmp_path)
+    assert saved['nested']['source_type'] == 'rss'
+    assert saved['nested']['usage_dataclass'] == {'input_tokens': 2, 'output_tokens': 3}
+    assert '中文报告' in (tmp_path / 'report.json').read_text()
+    assert (tmp_path / 'summary.md').is_file()
+
+
+def test_link_check_converts_httpurl_before_safe_request(monkeypatch, tmp_path):
+    from src.orchestrator import HorizonOrchestrator
+    item = make_item(1)
+    async def fetch(self, since):
+        return [item]
+    checked = []
+    async def safe_request(client, method, url, **kwargs):
+        assert isinstance(url, str)
+        checked.append((method, url))
+        return SimpleNamespace(status_code=200)
+    async def stop_before_any_model_request(self, url, **kwargs):
+        assert url == smoke.PRICING_URL
+        raise smoke.SmokeCheckError('Synthetic stop before model initialization')
+    import httpx
+    monkeypatch.setattr(HorizonOrchestrator, 'fetch_all_sources', fetch)
+    monkeypatch.setattr(smoke, 'safe_request', safe_request)
+    monkeypatch.setattr(httpx.AsyncClient, 'get', stop_before_any_model_request)
+    report = {'completion_attempts': 0, 'response_usage': []}
+    with pytest.raises(smoke.SmokeCheckError, match='Synthetic stop'):
+        asyncio.run(smoke.run(5, tmp_path, report))
+    assert checked == [('HEAD', str(item.url))]
+    assert report['links'][0]['ok'] is True
+    assert report['completion_attempts'] == 0
