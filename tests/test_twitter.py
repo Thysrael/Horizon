@@ -686,3 +686,28 @@ def test_poll_timeout_includes_http_request_time(monkeypatch):
     scraper.client.get.side_effect = get
     assert asyncio.run(scraper._wait_for_run("synthetic-token", "synthetic-run")) is False
     assert timeouts == [10.0, 1.0]
+
+
+def test_poll_wall_clock_budget_cancels_a_blocked_request(monkeypatch):
+    from unittest.mock import AsyncMock
+    import src.scrapers.twitter as module
+
+    monkeypatch.setattr(module, "_MAX_WAIT", 0.01)
+    cancelled = []
+
+    async def blocked_request(*args, **kwargs):
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.append(True)
+
+    async def run():
+        scraper = TwitterScraper(TwitterConfig(), AsyncMock())
+        scraper.client.get.side_effect = blocked_request
+        result = await asyncio.wait_for(
+            scraper._wait_for_run("synthetic-token", "synthetic-run"), timeout=0.5,
+        )
+        assert result is False
+        assert cancelled == [True]
+
+    asyncio.run(run())
