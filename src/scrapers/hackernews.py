@@ -46,6 +46,8 @@ class HackerNewsScraper(BaseScraper):
         story = await self._fetch_story(story_id)
         if not story or story.get("score", 0) < self.config.get("min_score", 100):
             return []
+        if story.get("dead") or story.get("deleted") or story.get("type", "story") != "story":
+            return []
         if datetime.fromtimestamp(story["time"], tz=timezone.utc) < since:
             return []
         comments = await self._fetch_comments(story.get("kids", [])[:TOP_COMMENTS_LIMIT])
