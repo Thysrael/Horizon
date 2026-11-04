@@ -36,6 +36,25 @@ class GitHubScraper(BaseScraper):
             headers["Authorization"] = f"token {self.token}"
         return headers
 
+    async def _fetch_pages(self, url: str) -> list[dict]:
+        """Read all API pages without truncating sources to GitHub's first page."""
+        records = []
+        page = 1
+        while True:
+            response = await self.client.get(
+                url, headers=self._get_headers(), params={"per_page": 100, "page": page},
+                follow_redirects=True,
+            )
+            response.raise_for_status()
+            batch = response.json()
+            if not isinstance(batch, list):
+                raise ValueError("GitHub returned an invalid listing")
+            records.extend(batch)
+            if not batch or "next" not in response.links:
+                return records
+            # Retain the configured endpoint rather than following an arbitrary URL.
+            page += 1
+
     async def fetch(self, since: datetime) -> FetchResult:
         """Fetch GitHub content items.
 
@@ -78,9 +97,7 @@ class GitHubScraper(BaseScraper):
         url = f"{self.base_url}/users/{source.username}/events/public"
         items = []
 
-        response = await self.client.get(url, headers=self._get_headers(), follow_redirects=True)
-        response.raise_for_status()
-        events = response.json()
+        events = await self._fetch_pages(url)
 
         for event in events:
             created_at = datetime.fromisoformat(
@@ -173,9 +190,7 @@ class GitHubScraper(BaseScraper):
         url = f"{self.base_url}/repos/{owner}/{repo}/releases"
         items = []
 
-        response = await self.client.get(url, headers=self._get_headers(), follow_redirects=True)
-        response.raise_for_status()
-        releases = response.json()
+        releases = await self._fetch_pages(url)
 
         for release in releases:
             published_at = datetime.fromisoformat(
