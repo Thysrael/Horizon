@@ -1,0 +1,12 @@
+{
+  "provider": "deepseek",
+  "model": "deepseek-chat",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "base_url": "https://api.deepseek.com",
+  "languages": ["zh"],
+  "max_tokens": 2048,
+  "temperature": 0.3,
+  "analysis_concurrency": 1,
+  "enrichment_concurrency": 1,
+  "throttle_sec": 0
+}

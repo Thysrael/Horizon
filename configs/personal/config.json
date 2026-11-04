@@ -1,0 +1,222 @@
+{
+  "ai": {
+    "provider": "openai",
+    "model": "${HORIZON_AI_MODEL}",
+    "languages": [
+      "zh"
+    ],
+    "analysis_concurrency": 1,
+    "enrichment_concurrency": 1,
+    "throttle_sec": 1,
+    "api_key_env": "HORIZON_AI_KEY",
+    "base_url": "${HORIZON_AI_BASE_URL}"
+  },
+  "processing": {
+    "profiles_dir": "configs/personal/profiles",
+    "default_profile": "world-affairs",
+    "profile_settings": {
+      "world-affairs": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      },
+      "history-civilization": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      },
+      "philosophy-ethics": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      },
+      "economy-society": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      },
+      "literature-culture": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      },
+      "ai-technology": {
+        "threshold": 7.0,
+        "topic_dedup": true
+      }
+    }
+  },
+  "sources": {
+    "rss": [
+      {
+        "name": "BBC World",
+        "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "category": "world-affairs",
+        "profile": "world-affairs",
+        "enabled": true
+      },
+      {
+        "name": "Al Jazeera",
+        "url": "https://www.aljazeera.com/xml/rss/all.xml",
+        "category": "world-affairs",
+        "profile": "world-affairs",
+        "enabled": true
+      },
+      {
+        "name": "UN News",
+        "url": "https://news.un.org/feed/subscribe/en/news/all/rss.xml",
+        "category": "world-affairs",
+        "profile": "world-affairs",
+        "enabled": true
+      },
+      {
+        "name": "JSTOR Daily",
+        "url": "https://daily.jstor.org/feed/",
+        "category": "history-civilization",
+        "profile": "history-civilization",
+        "enabled": true
+      },
+      {
+        "name": "Aeon",
+        "url": "https://aeon.co/feed.rss",
+        "category": "philosophy-ethics",
+        "profile": "philosophy-ethics",
+        "enabled": true
+      },
+      {
+        "name": "Daily Nous",
+        "url": "https://dailynous.com/feed/",
+        "category": "philosophy-ethics",
+        "profile": "philosophy-ethics",
+        "enabled": true
+      },
+      {
+        "name": "LSE Business Review",
+        "url": "https://blogs.lse.ac.uk/businessreview/feed/",
+        "category": "economy-society",
+        "profile": "economy-society",
+        "enabled": true
+      },
+      {
+        "name": "Our World in Data",
+        "url": "https://ourworldindata.org/atom.xml",
+        "category": "economy-society",
+        "profile": "economy-society",
+        "enabled": true
+      },
+      {
+        "name": "Literary Hub",
+        "url": "https://lithub.com/feed/",
+        "category": "literature-culture",
+        "profile": "literature-culture",
+        "enabled": true
+      },
+      {
+        "name": "Public Books",
+        "url": "https://www.publicbooks.org/feed/",
+        "category": "literature-culture",
+        "profile": "literature-culture",
+        "enabled": true
+      },
+      {
+        "name": "Simon Willison",
+        "url": "https://simonwillison.net/atom/everything/",
+        "category": "ai-technology",
+        "profile": "ai-technology",
+        "enabled": true
+      },
+      {
+        "name": "Hugging Face Blog",
+        "url": "https://huggingface.co/blog/feed.xml",
+        "category": "ai-technology",
+        "profile": "ai-technology",
+        "enabled": true
+      },
+      {
+        "name": "llama.cpp releases",
+        "url": "https://github.com/ggml-org/llama.cpp/releases.atom",
+        "category": "ai-technology",
+        "profile": "ai-technology",
+        "enabled": true
+      }
+    ],
+    "hackernews": {
+      "enabled": false
+    },
+    "reddit": {
+      "enabled": false
+    },
+    "telegram": {
+      "enabled": false
+    },
+    "ossinsight": {
+      "enabled": false
+    }
+  },
+  "collection": {
+    "time_window_hours": 24
+  },
+  "digest": {
+    "max_items": 15,
+    "group_by": "profile",
+    "profile_order": [
+      "world-affairs",
+      "history-civilization",
+      "philosophy-ethics",
+      "economy-society",
+      "literature-culture",
+      "ai-technology"
+    ],
+    "category_groups": {
+      "world-affairs": {
+        "name": "国际政治与国际关系",
+        "limit": 3,
+        "categories": [
+          "world-affairs"
+        ]
+      },
+      "history-civilization": {
+        "name": "世界历史与文明",
+        "limit": 3,
+        "categories": [
+          "history-civilization"
+        ]
+      },
+      "philosophy-ethics": {
+        "name": "哲学、伦理学与思想史",
+        "limit": 3,
+        "categories": [
+          "philosophy-ethics"
+        ]
+      },
+      "economy-society": {
+        "name": "经济、社会与公共政策",
+        "limit": 3,
+        "categories": [
+          "economy-society"
+        ]
+      },
+      "literature-culture": {
+        "name": "文学与文化",
+        "limit": 3,
+        "categories": [
+          "literature-culture"
+        ]
+      },
+      "ai-technology": {
+        "name": "人工智能与科技发展",
+        "limit": 3,
+        "categories": [
+          "ai-technology"
+        ]
+      }
+    },
+    "default_group": "other",
+    "default_group_limit": 1
+  },
+  "display": {
+    "icon_style": "ascii"
+  },
+  "email": null,
+  "webhook": {
+    "enabled": false
+  },
+  "wechat": {
+    "enabled": false
+  }
+}

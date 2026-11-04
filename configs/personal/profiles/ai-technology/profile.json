@@ -1,0 +1,41 @@
+{
+  "id": "ai-technology",
+  "name": "人工智能与科技发展",
+  "display_names": {
+    "zh": "人工智能与科技发展"
+  },
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "content": {
+    "analysis_max_chars": 5000,
+    "enrichment_max_chars": 14000,
+    "sampling": "head-middle-tail"
+  },
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "section",
+        "tools": [],
+        "primary": true
+      },
+      {
+        "id": "context",
+        "type": "section",
+        "tools": []
+      },
+      {
+        "id": "perspectives",
+        "type": "section",
+        "tools": [],
+        "optional": true
+      },
+      {
+        "id": "evidence",
+        "type": "section",
+        "tools": []
+      }
+    ]
+  }
+}
