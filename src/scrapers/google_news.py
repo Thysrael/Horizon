@@ -105,7 +105,7 @@ class GoogleNewsScraper(BaseScraper):
             if len(items) >= self.gn_config.max_results:
                 break
             item = self._entry_to_item(entry)
-            if item is not None:
+            if item is not None and item.published_at >= self._ensure_utc(since):
                 items.append(item)
         return items
 
@@ -196,7 +196,8 @@ class GoogleNewsScraper(BaseScraper):
                         return datetime.fromtimestamp(
                             calendar.timegm(parsed), tz=timezone.utc
                         )
-                    return parsedate_to_datetime(entry[field])
+                    moment = parsedate_to_datetime(entry[field])
+                    return GoogleNewsScraper._ensure_utc(moment)
                 except Exception:
                     continue
         return None

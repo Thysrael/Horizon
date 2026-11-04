@@ -181,3 +181,20 @@ def test_max_results_cap() -> None:
     items = asyncio.run(scraper.fetch(_now() - timedelta(days=365))).items
 
     assert len(items) == 2
+
+
+def test_precise_since_filter_runs_before_max_results_cap() -> None:
+    items_xml = (
+        _item("Old", "https://example.com/old", pub="Sat, 27 Jun 2026 11:59:59 GMT")
+        + _item("Current", "https://example.com/current", pub="Sat, 27 Jun 2026 12:00:00 GMT")
+    )
+    scraper = GoogleNewsScraper(
+        GoogleNewsConfig(enabled=True, query="ai", max_results=1), _mock_client(_feed(items_xml)),
+    )
+    result = asyncio.run(scraper.fetch(datetime(2026, 6, 27, 12, tzinfo=timezone.utc)))
+    assert [item.title for item in result.items] == ["Current"]
+
+
+def test_date_without_timezone_is_explicitly_utc() -> None:
+    result = GoogleNewsScraper._parse_date({"published": "27 Jun 2026 12:00:00"})
+    assert result == datetime(2026, 6, 27, 12, tzinfo=timezone.utc)
