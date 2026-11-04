@@ -115,3 +115,25 @@ def test_fetch_reports_failure_when_all_telegram_endpoints_fail() -> None:
     result = asyncio.run(fetch_items())
     assert result.status == "failure"
     assert "All Telegram endpoints failed" in result.failures["channel"]
+
+
+def test_unparseable_retry_after_tries_remaining_preview_endpoints():
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(429, headers={"Retry-After": "try later"})
+        return httpx.Response(200, text="<html><body>No posts</body></html>")
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            cfg = TelegramChannelConfig(channel="example")
+            return await TelegramScraper(TelegramConfig(channels=[cfg]), client).fetch(
+                datetime(2026, 1, 1, tzinfo=timezone.utc),
+            )
+
+    result = asyncio.run(run())
+    assert result.status == "empty"
+    assert result.successful == 1
+    assert [request.url.host for request in requests] == ["telegram.me", "telegram.dog"]

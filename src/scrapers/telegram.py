@@ -52,7 +52,11 @@ class TelegramScraper(BaseScraper):
             try:
                 response = await self.client.get(url, headers=headers, follow_redirects=True, timeout=120.0)
                 if response.status_code == 429:
-                    retry_after = int(response.headers.get("Retry-After", 5))
+                    try:
+                        retry_after = int(response.headers.get("Retry-After", 5))
+                    except ValueError:
+                        # Preserve endpoint failover when the delay is not numeric.
+                        response.raise_for_status()
                     logger.warning("Telegram rate limited for %s, retrying after %ds", cfg.channel, retry_after)
                     await asyncio.sleep(retry_after)
                     response = await self.client.get(url, headers=headers, follow_redirects=True, timeout=120.0)
