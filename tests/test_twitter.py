@@ -659,3 +659,30 @@ def test_fetch_replies_no_conversation_id_returns_empty(monkeypatch):
     result = asyncio.run(scraper.fetch_replies_for_item(item))
     asyncio.run(client.aclose())
     assert result == []
+
+
+def test_poll_timeout_includes_http_request_time(monkeypatch):
+    from unittest.mock import AsyncMock, MagicMock
+    from types import SimpleNamespace
+    import src.scrapers.twitter as module
+
+    clock = [0.0]
+    timeouts = []
+
+    async def get(*args, **kwargs):
+        timeouts.append(kwargs["timeout"])
+        clock[0] += 6.0
+        response = MagicMock()
+        response.json.return_value = {"data": {"status": "RUNNING"}}
+        return response
+
+    async def sleep(delay):
+        clock[0] += delay
+
+    monkeypatch.setattr(module, "time", SimpleNamespace(monotonic=lambda: clock[0]), raising=False)
+    monkeypatch.setattr(module, "_MAX_WAIT", 10)
+    monkeypatch.setattr(module.asyncio, "sleep", sleep)
+    scraper = TwitterScraper(TwitterConfig(), AsyncMock())
+    scraper.client.get.side_effect = get
+    assert asyncio.run(scraper._wait_for_run("synthetic-token", "synthetic-run")) is False
+    assert timeouts == [10.0, 1.0]
