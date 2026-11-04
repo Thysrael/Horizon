@@ -130,7 +130,8 @@ class TwitterScraper(BaseScraper):
         deadline = time.monotonic() + _MAX_WAIT
         while (remaining := deadline - time.monotonic()) > 0:
             try:
-                resp = await self.client.get(url, timeout=min(10.0, remaining))
+                async with asyncio.timeout(remaining):
+                    resp = await self.client.get(url, timeout=min(10.0, remaining))
                 resp.raise_for_status()
                 status = resp.json()["data"]["status"]
                 if status == "SUCCEEDED":
