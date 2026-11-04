@@ -47,20 +47,21 @@ def parse_json_response(response: str) -> Optional[dict]:
         except (json.JSONDecodeError, ValueError, IndexError):
             pass
 
-    # Strategy 4: find the first { ... } block using brace matching
+    # Strategy 4: decode an object starting at each "{". raw_decode understands
+    # JSON strings, so braces inside values don't end the object early, and a
+    # brace group in surrounding prose (e.g. "{0-10}") is skipped instead of
+    # ending the search.
+    decoder = json.JSONDecoder()
     start = text.find("{")
-    if start != -1:
-        depth = 0
-        for i in range(start, len(text)):
-            if text[i] == "{":
-                depth += 1
-            elif text[i] == "}":
-                depth -= 1
-                if depth == 0:
-                    try:
-                        return json.loads(text[start : i + 1])
-                    except (json.JSONDecodeError, ValueError):
-                        break
+    while start != -1:
+        try:
+            obj, _ = decoder.raw_decode(text, start)
+        except ValueError:
+            pass
+        else:
+            if isinstance(obj, dict):
+                return obj
+        start = text.find("{", start + 1)
 
     # Strategy 5: regex extraction as last resort
     match = re.search(r"\{[\s\S]*\}", text)
