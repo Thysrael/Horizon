@@ -195,7 +195,7 @@ class TwitterScraper(BaseScraper):
         """Convert scweet rows into compact reply lines."""
         min_likes = max(self.config.reply_min_likes, 0)
         tweet_id = str(item.metadata.get("tweet_id") or "")
-        own_author = (item.author or "").lstrip("@")
+        own_author = (item.metadata.get("screen_name") or item.author or "").lstrip("@")
         candidates = []
 
         for row in rows:
@@ -215,7 +215,7 @@ class TwitterScraper(BaseScraper):
                 or user.get("username")
                 or "unknown"
             )
-            if handle and own_author and handle.lower() == own_author.lower():
+            if handle and own_author and handle.lstrip("@").lower() == own_author.lower():
                 continue
 
             text = unescape((row.get("text") or "").strip())
@@ -331,6 +331,7 @@ class TwitterScraper(BaseScraper):
                 profile=self.config.profile,
                 metadata={
                     "tweet_id": numeric_id,
+                    "screen_name": screen_name,
                     "conversation_id": conversation_id,
                     "favorite_count": item.get("favorite_count", 0),
                     "retweet_count": item.get("retweet_count", 0),
