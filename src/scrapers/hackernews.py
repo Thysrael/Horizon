@@ -14,6 +14,16 @@ from ..models import ContentItem, SourceType, HackerNewsConfig
 TOP_COMMENTS_LIMIT = 5
 
 
+def _html_text(value: str) -> str:
+    """Decode HN HTML while retaining paragraph, line, and code boundaries."""
+    soup = BeautifulSoup(value, "html.parser")
+    for br in soup.find_all("br"):
+        br.replace_with("\n")
+    for block in soup.find_all(("p", "div", "li", "pre", "blockquote")):
+        block.append("\n\n")
+    return soup.get_text().strip()
+
+
 class HackerNewsScraper(BaseScraper):
     """Scraper for Hacker News stories with top comments."""
 
@@ -81,7 +91,7 @@ class HackerNewsScraper(BaseScraper):
         # Build content: original text + top comments
         parts = []
         if story.get("text"):
-            parts.append(BeautifulSoup(story["text"], "html.parser").get_text(" ", strip=True))
+            parts.append(_html_text(story["text"]))
 
         if comments:
             parts.append("\n--- Top Comments ---")
@@ -89,7 +99,7 @@ class HackerNewsScraper(BaseScraper):
                 commenter = c.get("by", "anon")
                 text = c.get("text", "")
                 # HN text is HTML; decode entities along with removing markup.
-                text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
+                text = _html_text(text)
                 # Truncate very long comments
                 if len(text) > 500:
                     text = text[:497] + "..."
