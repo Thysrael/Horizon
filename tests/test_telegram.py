@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import httpx
+import pytest
 from bs4 import BeautifulSoup
 
 from src.models import TelegramChannelConfig, TelegramConfig
@@ -117,13 +118,29 @@ def test_fetch_reports_failure_when_all_telegram_endpoints_fail() -> None:
     assert "All Telegram endpoints failed" in result.failures["channel"]
 
 
-def test_unparseable_retry_after_tries_remaining_preview_endpoints():
+@pytest.mark.parametrize("header,expected", [
+    ("7", 7),
+    ("Mon, 01 Jan 2029 00:00:07 GMT", 7),
+    ("Sun, 31 Dec 2028 23:59:00 GMT", 0),
+    ("try later", 5),
+])
+def test_retry_after_supports_delay_and_http_date(header, expected, monkeypatch):
+    import src.scrapers.telegram as module
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2029, 1, 1, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(module, "datetime", Clock)
+    sleep = AsyncMock()
+    monkeypatch.setattr(module.asyncio, "sleep", sleep)
     requests = []
 
     def handler(request):
         requests.append(request)
-        if len(requests) == 1:
-            return httpx.Response(429, headers={"Retry-After": "try later"})
+        if len(requests) <= 2:
+            return httpx.Response(429, headers={"Retry-After": header})
         return httpx.Response(200, text="<html><body>No posts</body></html>")
 
     async def run():
@@ -136,4 +153,5 @@ def test_unparseable_retry_after_tries_remaining_preview_endpoints():
     result = asyncio.run(run())
     assert result.status == "empty"
     assert result.successful == 1
-    assert [request.url.host for request in requests] == ["telegram.me", "telegram.dog"]
+    sleep.assert_awaited_once_with(expected)
+    assert [request.url.host for request in requests] == ["telegram.me", "telegram.me", "telegram.dog"]

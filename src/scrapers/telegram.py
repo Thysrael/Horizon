@@ -2,8 +2,10 @@
 
 import asyncio
 import logging
+import math
 import re
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import List, Optional
 
 import httpx
@@ -55,8 +57,14 @@ class TelegramScraper(BaseScraper):
                     try:
                         retry_after = int(response.headers.get("Retry-After", 5))
                     except ValueError:
-                        # Preserve endpoint failover when the delay is not numeric.
-                        response.raise_for_status()
+                        try:
+                            retry_at = parsedate_to_datetime(response.headers["Retry-After"])
+                            if retry_at.tzinfo is None:
+                                retry_at = retry_at.replace(tzinfo=timezone.utc)
+                            retry_after = math.ceil((retry_at - datetime.now(timezone.utc)).total_seconds())
+                        except (TypeError, ValueError, OverflowError):
+                            retry_after = 5
+                    retry_after = max(0, retry_after)
                     logger.warning("Telegram rate limited for %s, retrying after %ds", cfg.channel, retry_after)
                     await asyncio.sleep(retry_after)
                     response = await self.client.get(url, headers=headers, follow_redirects=True, timeout=120.0)
