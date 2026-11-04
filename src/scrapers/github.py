@@ -178,6 +178,9 @@ class GitHubScraper(BaseScraper):
         releases = response.json()
 
         for release in releases:
+            # Authenticated listings can include drafts without a publication date.
+            if release.get("draft") or not release.get("published_at"):
+                continue
             published_at = datetime.fromisoformat(
                 release["published_at"].replace("Z", "+00:00")
             )
