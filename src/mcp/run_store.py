@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,6 +12,9 @@ from typing import Any
 from uuid import uuid4
 
 from .._file_utils import _atomic_write_text
+
+
+logger = logging.getLogger(__name__)
 
 
 STAGES = {
@@ -142,7 +146,14 @@ class RunStore:
                 continue
             try:
                 meta = json.loads(meta_path.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                logger.warning("Could not read run metadata %s: %s", run_dir.name, exc)
+                continue
+            if not isinstance(meta, dict) or any(
+                key in meta and not isinstance(meta[key], str)
+                for key in ("created_at", "updated_at")
+            ):
+                logger.warning("Skipping invalid run metadata: %s", run_dir.name)
                 continue
 
             created = meta.get("created_at") or ""
