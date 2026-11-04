@@ -23,3 +23,8 @@ def test_hackernews_text_preserves_code_indentation_and_line_breaks():
     from src.scrapers.hackernews import _html_text
     text = _html_text("<p>Example<br>next line</p><pre>def f():\n    return 1</pre>")
     assert text == "Example\nnext line\n\ndef f():\n    return 1"
+
+
+def test_leading_preformatted_code_indentation_is_preserved():
+    from src.scrapers.hackernews import _html_text
+    assert _html_text("<pre><code>    indented\n    second</code></pre>") == "    indented\n    second"

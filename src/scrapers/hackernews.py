@@ -21,7 +21,7 @@ def _html_text(value: str) -> str:
         br.replace_with("\n")
     for block in soup.find_all(("p", "div", "li", "pre", "blockquote")):
         block.append("\n\n")
-    return soup.get_text().strip()
+    return soup.get_text().strip("\r\n")
 
 
 class HackerNewsScraper(BaseScraper):
