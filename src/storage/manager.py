@@ -137,9 +137,12 @@ class StorageManager:
 
         try:
             with open(subscribers_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except json.JSONDecodeError:
-            return []
+                subscribers = json.load(f)
+        except (json.JSONDecodeError, UnicodeError) as exc:
+            raise ConfigError(f"Invalid subscriber file: {subscribers_path}") from exc
+        if not isinstance(subscribers, list) or any(not isinstance(address, str) for address in subscribers):
+            raise ConfigError(f"Invalid subscriber list: {subscribers_path}; expected a list of strings")
+        return subscribers
 
     def add_subscriber(self, email_addr: str):
         """Adds a new subscriber email."""
