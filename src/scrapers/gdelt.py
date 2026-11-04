@@ -121,6 +121,10 @@ class GDELTScraper(BaseScraper):
         if not isinstance(raw, dict):
             return None
 
+        # Validate before calling string methods so malformed rows stay isolated.
+        if any(not isinstance(raw.get(field), str) for field in ("url", "title", "seendate")):
+            return None
+
         url = (raw.get("url") or "").strip()
         title = (raw.get("title") or "").strip()
         if not url or not title:
