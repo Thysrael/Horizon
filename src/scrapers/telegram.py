@@ -5,6 +5,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from typing import List, Optional
+from urllib.parse import urlsplit
 
 import httpx
 from bs4 import BeautifulSoup
@@ -131,7 +132,13 @@ class TelegramScraper(BaseScraper):
         canonical_url = msg_url
         for a in text_el.find_all("a", href=True):
             href = a["href"]
-            if href.startswith("http") and "t.me" not in href:
+            try:
+                parsed = urlsplit(href)
+            except ValueError:
+                continue
+            if parsed.scheme in {"http", "https"} and parsed.hostname not in {
+                "t.me", "telegram.me", "telegram.dog",
+            } and parsed.hostname:
                 canonical_url = href
                 break
 
