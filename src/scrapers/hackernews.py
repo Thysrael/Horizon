@@ -1,10 +1,11 @@
 """Hacker News scraper implementation."""
 
-import re
+from html import unescape
 from datetime import datetime, timezone
 from typing import List, Optional
 import asyncio
 import httpx
+from bs4 import BeautifulSoup
 
 from .base import BaseScraper, FetchResult
 from ..models import ContentItem, SourceType, HackerNewsConfig
@@ -72,7 +73,7 @@ class HackerNewsScraper(BaseScraper):
 
     def _parse_story(self, story: dict, comments: List[dict]) -> ContentItem:
         story_id = story["id"]
-        title = story.get("title", "")
+        title = unescape(story.get("title", ""))
         url = story.get("url", f"https://news.ycombinator.com/item?id={story_id}")
         author = story.get("by", "unknown")
         published_at = datetime.fromtimestamp(story["time"], tz=timezone.utc)
@@ -80,15 +81,15 @@ class HackerNewsScraper(BaseScraper):
         # Build content: original text + top comments
         parts = []
         if story.get("text"):
-            parts.append(story["text"])
+            parts.append(BeautifulSoup(story["text"], "html.parser").get_text(" ", strip=True))
 
         if comments:
             parts.append("\n--- Top Comments ---")
             for c in comments:
                 commenter = c.get("by", "anon")
                 text = c.get("text", "")
-                # Strip HTML tags roughly
-                text = re.sub(r'<[^>]+>', ' ', text).strip()
+                # HN text is HTML; decode entities along with removing markup.
+                text = BeautifulSoup(text, "html.parser").get_text(" ", strip=True)
                 # Truncate very long comments
                 if len(text) > 500:
                     text = text[:497] + "..."
