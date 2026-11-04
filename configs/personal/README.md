@@ -1,7 +1,12 @@
-# 个人 AI 知识日报：无授权准备与安全 API 接入
+> 最新选择：已准备使用 GitHub Repository Secret `DEEPSEEK_API_KEY` 的手动测试工作流。
+> 真实调用仅在 GitHub Actions 执行，详见 [DeepSeek Actions 指南](DEEPSEEK_ACTIONS.md)。
+> 下面的通用 Cloud Secrets 方案作为备选保留；不会要求迁移 ChatGPT 登录资料。
 
-当前只准备环境、信息源、Profile 和测试。**不进行 ChatGPT 登录或凭据迁移，不开通付费服务，不执行模型请求。**
-不要提供登录文件、Cookie 或登录令牌。模型服务商、模型与计费方案仍待用户确认。
+# 个人 AI 知识日报：DeepSeek Actions 与 Cloud 备用方案
+
+已选择通过 GitHub Actions 使用已有 DeepSeek Repository Secret 进行有上限的真实测试，
+执行和结果要求见上方指南。**不进行 ChatGPT 登录或凭据迁移，不开通额外服务。**
+不要提供登录文件、Cookie 或登录令牌。下方 Cloud Secrets 方案仅作未启用的备选。
 
 ## 已配置的阅读规则
 
@@ -78,7 +83,7 @@ uv sync --frozen --extra dev
 ChatGPT 订阅并不自动提供 API Key 或 API 余额；不要提交任何 ChatGPT 登录材料。
 若选择 Anthropic、Gemini 等非兼容协议，需另行修改项目支持的 `ai.provider`，再配置相应目的地。
 
-没有确定服务商之前，本次不添加特定模型 Secret 要求或 API 域名，也不执行认证探测或推理。
+Cloud 备用方案尚未启用；不向 Codex Cloud 添加模型 Secret，也不在 Cloud 执行认证探测或推理。
 已停止使用旧的 `HORIZON_CHATGPT_*` 变量；如环境设置仍显示旧要求，可在设置中移除。
 没有删除或读取任何用户已有登录文件。
 

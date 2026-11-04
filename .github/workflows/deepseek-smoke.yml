@@ -1,0 +1,55 @@
+name: Horizon DeepSeek smoke test
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate_limit:
+        description: Maximum candidates sent to AI (1–5)
+        required: true
+        default: '5'
+        type: choice
+        options: ['1', '2', '3', '4', '5']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: horizon-deepseek-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Set up uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          version: '0.13.4'
+      - name: Install locked dependencies
+        run: uv sync --frozen --extra dev
+      - name: Run offline validation (no model Secret)
+        run: uv run --frozen --extra dev pytest tests configs/personal/test_config.py configs/personal/test_deepseek_smoke.py
+      - name: Run at most five real candidates
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          CANDIDATE_LIMIT: ${{ inputs.candidate_limit }}
+        run: |
+          uv run --frozen --extra dev python configs/personal/deepseek_smoke.py \
+            --limit "$CANDIDATE_LIMIT" --output "$RUNNER_TEMP/horizon-deepseek-smoke"
+      - name: Retain digest and sanitized diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: horizon-deepseek-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/horizon-deepseek-smoke/
+          if-no-files-found: warn
+          retention-days: 7
