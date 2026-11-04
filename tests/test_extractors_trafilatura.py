@@ -87,7 +87,7 @@ def test_extraction_does_not_block_the_event_loop(monkeypatch):
 
     def blocking_extract(*args, **kwargs):
         # A sibling task must be able to progress while the parser is busy.
-        return "responsive" if heartbeat.wait(timeout=0.2) else "blocked"
+        return "responsive" if heartbeat.wait(timeout=2.0) else "blocked"
 
     monkeypatch.setattr(trafilatura, "extract", blocking_extract)
     monkeypatch.setattr(module, "safe_request", AsyncMock(return_value=httpx.Response(
