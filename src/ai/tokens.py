@@ -6,7 +6,7 @@ Horizon run, so the orchestrator can print a summary at the end.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict
 
 
@@ -57,7 +57,7 @@ def get_usage_snapshot() -> TokenUsageSnapshot:
     return TokenUsageSnapshot(
         total_input_tokens=total_in,
         total_output_tokens=total_out,
-        per_provider=dict(_provider_usage),
+        per_provider={provider: replace(usage) for provider, usage in _provider_usage.items()},
     )
 
 
