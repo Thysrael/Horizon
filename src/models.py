@@ -271,6 +271,7 @@ class ExtractorType(str, Enum):
     TRAFILATURA = "trafilatura"
     FIRECRAWL = "firecrawl"
     OUTCRAWL = "outcrawl"
+    KEENABLE = "keenable"
 
 
 class TrafilaturaExtractorConfig(BaseModel):
@@ -291,8 +292,13 @@ class OutcrawlExtractorConfig(BaseModel):
     only_main_content: bool = True
 
 
+class KeenableExtractorConfig(BaseModel):
+    type: Literal[ExtractorType.KEENABLE] = ExtractorType.KEENABLE
+    api_key_env: str = "KEENABLE_API_KEY"
+
+
 ExtractorConfig = Annotated[
-    Union[TrafilaturaExtractorConfig, FirecrawlExtractorConfig, OutcrawlExtractorConfig],
+    Union[TrafilaturaExtractorConfig, FirecrawlExtractorConfig, OutcrawlExtractorConfig, KeenableExtractorConfig],
     Field(discriminator="type"),
 ]
 

@@ -7,12 +7,14 @@ from pydantic import TypeAdapter
 from src.extractors import (
     ExtractorRegistry,
     FirecrawlExtractor,
+    KeenableExtractor,
     OutcrawlExtractor,
     TrafilaturaExtractor,
 )
 from src.models import (
     ExtractorConfig,
     FirecrawlExtractorConfig,
+    KeenableExtractorConfig,
     OutcrawlExtractorConfig,
     TrafilaturaExtractorConfig,
 )
@@ -61,6 +63,22 @@ def test_outcrawl_config_parsed_from_json():
     assert isinstance(named, OutcrawlExtractor)
     assert named._config.api_key_env == "MY_KEY"
     assert named._config.only_main_content is False
+
+
+def test_default_keenable_registered():
+    registry = ExtractorRegistry({})
+    extractor = registry.get("keenable")
+    assert isinstance(extractor, KeenableExtractor)
+    assert extractor._config == KeenableExtractorConfig()
+
+
+def test_keenable_config_parsed_from_json():
+    extractors = TypeAdapter(Dict[str, ExtractorConfig]).validate_python(
+        {"kn": {"type": "keenable", "api_key_env": "MY_KEY"}}
+    )
+    named = ExtractorRegistry(extractors).get("kn")
+    assert isinstance(named, KeenableExtractor)
+    assert named._config.api_key_env == "MY_KEY"
 
 
 def test_unknown_name_returns_none():

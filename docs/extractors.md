@@ -119,6 +119,34 @@ Each extracted entry is one scrape request and uses Outcrawl credits.
 
 **Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and sets a 65-second HTTP timeout for the scrape request, since rendering a page can take longer than a plain fetch. Other requests keep the shared client's timeout settings. No automatic retries are added. Any HTTP error, timeout, unexpected response, or missing, non-string, or blank Markdown falls back to the feed content.
 
+### `keenable`
+
+**File**: `src/extractors/keenable.py`
+
+Uses the [Keenable](https://keenable.ai) fetch API to return the page's content as Markdown. It works without an API key through the keyless endpoint (`GET https://api.keenable.ai/v1/fetch/public?url=...`), so `"content_extractor": "keenable"` needs no setup. If the environment variable named by `api_key_env` (default `KEENABLE_API_KEY`) is set, the extractor calls `GET https://api.keenable.ai/v1/fetch` with that key instead; the key only raises the rate limits.
+
+```json
+{
+  "extractors": {
+    "keenable": {
+      "type": "keenable",
+      "api_key_env": "KEENABLE_API_KEY"
+    }
+  }
+}
+```
+
+**Config fields**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `type` | string | `"keenable"` | Extractor type identifier |
+| `api_key_env` | string | `"KEENABLE_API_KEY"` | Environment variable holding an optional Keenable API key |
+
+Each extracted entry is one fetch request. Requests carry an `X-Keenable-Title: Horizon` header, which the keyless endpoint requires to identify the calling application. Keyless use is limited per IP to 10 requests per second and 1,000 per hour. Entries are extracted one at a time, so the per-second limit is not reached; set a key if your sources extract more than 1,000 entries an hour.
+
+**Timeout and retry**: the extractor reuses the shared `httpx.AsyncClient` and inherits its timeout and connection settings. No automatic retries are added. Any HTTP error, timeout, unexpected response, or missing, non-string, or blank content falls back to the feed content.
+
 ## Adding a new extractor type
 
 1. Add an entry to `ExtractorType` in `src/models.py`.
