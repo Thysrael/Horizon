@@ -301,3 +301,21 @@ class TestStatic:
         assert OpenBBScraper._coerce_url(None) is None
         assert OpenBBScraper._coerce_url("  ") is None
         assert OpenBBScraper._coerce_url("http://x") == "http://x"
+
+
+@pytest.mark.parametrize("first,second,expected", [
+    ("markets", "technology", 2),
+    (["markets", "technology"], ["technology", "markets"], 2),
+    (" markets ", "markets", 1),
+    (None, "auto", 1),
+])
+def test_same_url_preserves_distinct_watchlist_profile_routes(first, second, expected):
+    obb = MagicMock()
+    obb.news.company.return_value = SimpleNamespace(results=[_news_row()])
+    config = _cfg(watchlists=[
+        OpenBBWatchlist(name="first", symbols=["NVDA"], profile=first),
+        OpenBBWatchlist(name="second", symbols=["NVDA"], profile=second),
+    ])
+    scraper = _make_scraper(config, obb)
+    result = asyncio.run(scraper.fetch(datetime.now(timezone.utc) - timedelta(days=1)))
+    assert len(result.items) == expected
