@@ -38,3 +38,20 @@ def test_github_reads_next_page_without_losing_new_items(source):
     assert requests[0].url.path == requests[1].url.path
     assert [r.url.params["page"] for r in requests] == ["1", "2"]
     assert all(r.url.params["per_page"] == "100" for r in requests)
+
+
+def test_empty_page_stops_even_with_stale_next_link():
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json=[], headers={
+            "Link": '<https://api.github.com/example?page=2>; rel="next"',
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await GitHubScraper([], client)._fetch_pages("https://api.github.com/example")
+
+    assert asyncio.run(run()) == []
+    assert len(requests) == 1
