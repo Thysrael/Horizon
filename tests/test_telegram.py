@@ -123,6 +123,8 @@ def test_canonical_link_uses_hosts_instead_of_telegram_text():
     message = BeautifulSoup('''
       <div data-post="example/1"><time datetime="2030-01-01T00:00:00Z"></time>
       <div class="tgme_widget_message_text js-message_text">Article
+        <a href="http://[broken">Malformed publisher link</a>
+        <a href="https://t.me/other/1">Channel link</a>
         <a href="https://telegram.me/other/2">Forwarded channel</a>
         <a href="https://example.org/t.me-analysis">Publisher article</a>
       </div></div>''', "html.parser").div
