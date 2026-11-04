@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from filelock import FileLock
+
 from .._file_utils import _atomic_write_text
 
 
@@ -44,10 +46,11 @@ class RunStore:
         run_dir = self._run_path(run_id)
         run_dir.mkdir(parents=True, exist_ok=True)
         meta_path = run_dir / "meta.json"
-        if not meta_path.exists():
-            self.write_json(
-                run_id, "meta.json", {"run_id": run_id, "created_at": self._utc_now()}
-            )
+        with self._metadata_lock(run_id):
+            if not meta_path.exists():
+                self._write_json(
+                    run_id, "meta.json", {"run_id": run_id, "created_at": self._utc_now()}
+                )
         return run_id
 
     def run_dir(self, run_id: str) -> Path:
@@ -96,14 +99,15 @@ class RunStore:
             for stage in stages
             for prefix in _META_PREFIXES.get(stage, ())
         )
-        meta = self.load_meta(run_id)
-        cleaned = {
-            key: value
-            for key, value in meta.items()
-            if not key.startswith(prefixes)
-        }
-        if cleaned != meta:
-            self.write_json(run_id, "meta.json", cleaned)
+        with self._metadata_lock(run_id):
+            meta = self.load_meta(run_id)
+            cleaned = {
+                key: value
+                for key, value in meta.items()
+                if not key.startswith(prefixes)
+            }
+            if cleaned != meta:
+                self._write_json(run_id, "meta.json", cleaned)
 
     def load_items(self, run_id: str, stage: str) -> list[dict[str, Any]]:
         return self.read_json(run_id, self._stage_file(stage))
@@ -121,11 +125,12 @@ class RunStore:
         return path.read_text(encoding="utf-8")
 
     def update_meta(self, run_id: str, updates: dict[str, Any]) -> dict[str, Any]:
-        meta = self.read_json(run_id, "meta.json")
-        meta.update(updates)
-        meta["updated_at"] = self._utc_now()
-        self.write_json(run_id, "meta.json", meta)
-        return meta
+        with self._metadata_lock(run_id):
+            meta = self.read_json(run_id, "meta.json")
+            meta.update(updates)
+            meta["updated_at"] = self._utc_now()
+            self._write_json(run_id, "meta.json", meta)
+            return meta
 
     def load_meta(self, run_id: str) -> dict[str, Any]:
         return self.read_json(run_id, "meta.json")
@@ -159,7 +164,16 @@ class RunStore:
         entries.sort(key=lambda x: x["updated_at"] or x["created_at"], reverse=True)
         return entries[: max(0, limit)]
 
+    def _metadata_lock(self, run_id: str) -> FileLock:
+        return FileLock(str(self.run_dir(run_id) / ".meta.lock"))
+
     def write_json(self, run_id: str, filename: str, payload: Any) -> Path:
+        if filename == "meta.json":
+            with self._metadata_lock(run_id):
+                return self._write_json(run_id, filename, payload)
+        return self._write_json(run_id, filename, payload)
+
+    def _write_json(self, run_id: str, filename: str, payload: Any) -> Path:
         path = self.run_dir(run_id) / filename
         _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2))
         return path
