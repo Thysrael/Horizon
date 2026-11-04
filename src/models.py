@@ -205,7 +205,7 @@ class AIConfig(BaseModel):
     throttle_sec: float = 0.0
     analysis_concurrency: int = 1
     enrichment_concurrency: int = 1
-    languages: List[str] = Field(default_factory=lambda: ["en"])
+    languages: List[str] = Field(default_factory=lambda: ["en"], min_length=1)
     # Azure OpenAI specific; required when provider == AZURE
     azure_endpoint_env: Optional[str] = None
     api_version: Optional[str] = None
@@ -242,6 +242,9 @@ class AIConfig(BaseModel):
         invalid = [language for language in languages if not language_tag.fullmatch(language)]
         if invalid:
             raise ValueError(f"invalid language code: {invalid[0]!r}")
+        language_keys = [language.replace("_", "-").casefold() for language in languages]
+        if len(language_keys) != len(set(language_keys)):
+            raise ValueError("output languages must be unique")
         return languages
 
 
