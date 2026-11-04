@@ -692,7 +692,7 @@ def test_poll_wall_clock_budget_cancels_a_blocked_request(monkeypatch):
     from unittest.mock import AsyncMock
     import src.scrapers.twitter as module
 
-    monkeypatch.setattr(module, "_MAX_WAIT", 0.01)
+    monkeypatch.setattr(module, "_MAX_WAIT", 0.05)
     cancelled = []
 
     async def blocked_request(*args, **kwargs):
