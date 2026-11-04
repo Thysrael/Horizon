@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from filelock import FileLock
 from pydantic import ValidationError
 
 from .._file_utils import _atomic_write_text
@@ -143,17 +144,19 @@ class StorageManager:
 
     def add_subscriber(self, email_addr: str):
         """Adds a new subscriber email."""
-        subscribers = self.load_subscribers()
-        if email_addr not in subscribers:
-            subscribers.append(email_addr)
-            self._save_subscribers(subscribers)
+        with FileLock(str(self.data_dir / "subscribers.json.lock")):
+            subscribers = self.load_subscribers()
+            if email_addr not in subscribers:
+                subscribers.append(email_addr)
+                self._save_subscribers(subscribers)
 
     def remove_subscriber(self, email_addr: str):
         """Removes a subscriber email."""
-        subscribers = self.load_subscribers()
-        if email_addr in subscribers:
-            subscribers.remove(email_addr)
-            self._save_subscribers(subscribers)
+        with FileLock(str(self.data_dir / "subscribers.json.lock")):
+            subscribers = self.load_subscribers()
+            if email_addr in subscribers:
+                subscribers.remove(email_addr)
+                self._save_subscribers(subscribers)
 
     def _save_subscribers(self, subscribers: list):
         """Helper to save subscribers list."""
