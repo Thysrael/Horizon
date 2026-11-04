@@ -18,7 +18,8 @@
 | GitHub API | `api.github.com` 在 CONNECT 阶段被代理以 403 拒绝 |
 | DeepSeek 官方文档 | `api-docs.deepseek.com` 在 CONNECT 阶段被代理以 403 拒绝 |
 | 远端默认分支 | 检查时仍为上游基线；只有 deploy-docs.yml 和禁用的旧日报工作流，没有新手动工作流 |
-| 真实 Actions 测试 | **尚未执行**；无 run ID、真实模型 Token、费用或新日报可报告 |
+| 手动触发尝试 | `gh workflow run ... -f candidate_limit=5` 失败：GitHub API 查询被代理拒绝（Forbidden） |
+| 真实 Actions 测试 | **尚未执行**；未成功创建 run，无真实模型 Token、费用或新日报可报告 |
 
 测试命令：
 
