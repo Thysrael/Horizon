@@ -673,7 +673,7 @@ def test_poll_timeout_includes_http_request_time(monkeypatch):
         timeouts.append(kwargs["timeout"])
         clock[0] += 6.0
         response = MagicMock()
-        response.json.return_value = {"data": {"status": "RUNNING"}}
+        response.json.return_value = {"data": {"status": "SUCCEEDED" if len(timeouts) == 2 else "RUNNING"}}
         return response
 
     async def sleep(delay):
