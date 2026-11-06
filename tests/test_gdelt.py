@@ -178,3 +178,17 @@ def test_non_json_body_returns_empty() -> None:
     scraper = GDELTScraper(config, client)
 
     assert asyncio.run(scraper.fetch(SINCE)).items == []
+
+
+def test_non_string_article_fields_do_not_discard_valid_siblings() -> None:
+    good = _articles_payload()["articles"][0]
+    payload = {"articles": [
+        {**good, "title": {"unexpected": "object"}},
+        {**good, "url": 42},
+        {**good, "seendate": ["20260628T120000Z"]},
+        good,
+    ]}
+    scraper = GDELTScraper(GDELTConfig(enabled=True, query="ai"), _mock_client(payload))
+    result = asyncio.run(scraper.fetch(SINCE))
+    assert result.status == "success"
+    assert [item.title for item in result.items] == [good["title"]]
