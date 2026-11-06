@@ -76,3 +76,33 @@ def test_returns_none_when_not_installed():
     with patch.dict(sys.modules, {"trafilatura": None}):
         result = asyncio.run(_extractor().extract(URL, client))
     assert result is None
+
+
+def test_extraction_does_not_block_the_event_loop(monkeypatch):
+    import threading
+    import src.extractors.trafilatura as module
+    import trafilatura
+
+    heartbeat = threading.Event()
+
+    def blocking_extract(*args, **kwargs):
+        # A sibling task must be able to progress while the parser is busy.
+        return "responsive" if heartbeat.wait(timeout=2.0) else "blocked"
+
+    monkeypatch.setattr(trafilatura, "extract", blocking_extract)
+    monkeypatch.setattr(module, "safe_request", AsyncMock(return_value=httpx.Response(
+        200, text="<html>article</html>", request=httpx.Request("GET", "https://example.com/article"),
+    )))
+
+    async def run():
+        async def tick():
+            await asyncio.sleep(0)
+            heartbeat.set()
+
+        task = asyncio.create_task(tick())
+        extractor = TrafilaturaExtractor(TrafilaturaExtractorConfig())
+        result = await extractor.extract("https://example.com/article", AsyncMock())
+        await task
+        return result
+
+    assert asyncio.run(run()) == "responsive"
