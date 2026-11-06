@@ -1,16 +1,27 @@
 """Hacker News scraper implementation."""
 
-import re
+from html import unescape
 from datetime import datetime, timezone
 from typing import List, Optional
 import asyncio
 import httpx
+from bs4 import BeautifulSoup
 
 from .base import BaseScraper, FetchResult
 from ..models import ContentItem, SourceType, HackerNewsConfig
 
 # Max top-level comments to fetch per story
 TOP_COMMENTS_LIMIT = 5
+
+
+def _html_text(value: str) -> str:
+    """Decode HN HTML while retaining paragraph, line, and code boundaries."""
+    soup = BeautifulSoup(value, "html.parser")
+    for br in soup.find_all("br"):
+        br.replace_with("\n")
+    for block in soup.find_all(("p", "div", "li", "pre", "blockquote")):
+        block.append("\n\n")
+    return soup.get_text().strip("\r\n")
 
 
 class HackerNewsScraper(BaseScraper):
@@ -74,7 +85,7 @@ class HackerNewsScraper(BaseScraper):
 
     def _parse_story(self, story: dict, comments: List[dict]) -> ContentItem:
         story_id = story["id"]
-        title = story.get("title", "")
+        title = unescape(story.get("title", ""))
         url = story.get("url", f"https://news.ycombinator.com/item?id={story_id}")
         author = story.get("by", "unknown")
         published_at = datetime.fromtimestamp(story["time"], tz=timezone.utc)
@@ -82,15 +93,15 @@ class HackerNewsScraper(BaseScraper):
         # Build content: original text + top comments
         parts = []
         if story.get("text"):
-            parts.append(story["text"])
+            parts.append(_html_text(story["text"]))
 
         if comments:
             parts.append("\n--- Top Comments ---")
             for c in comments:
                 commenter = c.get("by", "anon")
                 text = c.get("text", "")
-                # Strip HTML tags roughly
-                text = re.sub(r'<[^>]+>', ' ', text).strip()
+                # HN text is HTML; decode entities along with removing markup.
+                text = _html_text(text)
                 # Truncate very long comments
                 if len(text) > 500:
                     text = text[:497] + "..."
