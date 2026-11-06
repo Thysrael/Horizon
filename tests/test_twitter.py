@@ -744,3 +744,18 @@ def test_playwright_does_not_attribute_nested_quoted_tweets_to_timeline_owner(mo
     ))
     assert [item["tweet_id"] for item in items] == ["original"]
     assert items[0]["text"] == "Timeline owner comments on a quote"
+
+
+def test_self_replies_use_account_handle_not_display_name():
+    scraper = TwitterScraper(_make_config(), None)
+    raw = _tweet("original", screen_name="karpathy")
+    raw["user"]["name"] = "Andrej Karpathy"
+    item = scraper._parse_item(raw, datetime.now(timezone.utc) - timedelta(days=1))
+    lines = scraper._extract_reply_lines(item, [
+        _reply_row("self", handle="KARPATHY", text="Author follow-up", likes=100),
+        _reply_row("other", handle="alice", text="Independent discussion", likes=10),
+    ], 3)
+    assert item.author == "Andrej Karpathy"
+    assert len(lines) == 1
+    assert "alice" in lines[0]
+    assert "Author follow-up" not in lines[0]
