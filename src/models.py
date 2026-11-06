@@ -242,6 +242,9 @@ class AIConfig(BaseModel):
         invalid = [language for language in languages if not language_tag.fullmatch(language)]
         if invalid:
             raise ValueError(f"invalid language code: {invalid[0]!r}")
+        language_keys = [language.replace("_", "-").casefold() for language in languages]
+        if len(language_keys) != len(set(language_keys)):
+            raise ValueError("output languages must be unique")
         return languages
 
 
