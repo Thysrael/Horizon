@@ -253,6 +253,9 @@ class TwitterPlaywrightScraper(BaseScraper):
                             except (ValueError, TypeError):
                                 tweet["datetime"] = tweet["datetime_raw"]
                             graphql_tweets.append(tweet)
+                            # Nested quote/retweet records belong to other authors,
+                            # not separate posts by the requested timeline owner.
+                            return
                         for v in obj.values():
                             extract_tweets(v)
                     elif isinstance(obj, list):

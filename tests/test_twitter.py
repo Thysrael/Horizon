@@ -711,3 +711,36 @@ def test_poll_wall_clock_budget_cancels_a_blocked_request(monkeypatch):
         assert cancelled == [True]
 
     asyncio.run(run())
+
+
+def test_playwright_does_not_attribute_nested_quoted_tweets_to_timeline_owner(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    import src.scrapers.twitter_playwright as module
+
+    callbacks = {}
+    quoted = {"rest_id": "quoted", "legacy": {
+        "full_text": "Someone else's claim", "created_at": "Tue Jan 01 00:00:00 +0000 2030",
+    }}
+    payload = {"entries": [{"result": {"rest_id": "original", "legacy": {
+        "full_text": "Timeline owner comments on a quote", "created_at": "Tue Jan 01 00:00:00 +0000 2030",
+    }, "quoted_status_result": {"result": quoted}}}]}
+    page = SimpleNamespace(
+        on=lambda event, handler: callbacks.update({event: handler}),
+        route=AsyncMock(), close=AsyncMock(), evaluate=AsyncMock(return_value=""),
+    )
+
+    async def goto(*args, **kwargs):
+        await callbacks["response"](SimpleNamespace(
+            url="https://x.com/i/api/graphql/UserTweets", json=AsyncMock(return_value=payload),
+        ))
+
+    page.goto = goto
+    monkeypatch.setattr(module.asyncio, "sleep", AsyncMock())
+    scraper = TwitterPlaywrightScraper(_make_config())
+    items = asyncio.run(scraper._scrape_user(
+        SimpleNamespace(new_page=AsyncMock(return_value=page)), "owner",
+        datetime(2029, 1, 1, tzinfo=timezone.utc),
+    ))
+    assert [item["tweet_id"] for item in items] == ["original"]
+    assert items[0]["text"] == "Timeline owner comments on a quote"
