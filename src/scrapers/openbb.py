@@ -92,14 +92,19 @@ class OpenBBScraper(BaseScraper):
             return result
 
         since_utc = self._ensure_utc(since)
-        seen_urls: set[str] = set()
+        seen_urls: set[tuple[str, object]] = set()
         for watchlist in self.openbb_config.watchlists:
             if not watchlist.enabled or not watchlist.symbols:
                 continue
             await result.collect(watchlist.name, self._fetch_watchlist(watchlist, since_utc))
         unique = []
         for item in result.items:
-            url_key = str(item.url)
+            # Match cross-source deduplication: distinct editorial routes must survive.
+            if isinstance(item.profile, list):
+                route: object = tuple(profile.strip() for profile in item.profile)
+            else:
+                route = (item.profile or "auto").strip() or "auto"
+            url_key = (str(item.url), route)
             if url_key not in seen_urls:
                 seen_urls.add(url_key)
                 unique.append(item)
