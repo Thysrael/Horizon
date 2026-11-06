@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import time
 from datetime import datetime, timezone
 from html import unescape
 from typing import List, Optional
@@ -126,10 +127,13 @@ class TwitterScraper(BaseScraper):
 
     async def _wait_for_run(self, token: str, run_id: str) -> bool:
         url = f"{_APIFY_BASE}/actor-runs/{run_id}?token={token}"
-        elapsed = 0.0
-        while elapsed < _MAX_WAIT:
+        deadline = time.monotonic() + _MAX_WAIT
+        while (remaining := deadline - time.monotonic()) > 0:
             try:
-                resp = await self.client.get(url, timeout=10.0)
+                async with asyncio.timeout(remaining):
+                    resp = await self.client.get(url, timeout=min(10.0, remaining))
+                if time.monotonic() >= deadline:
+                    break
                 resp.raise_for_status()
                 status = resp.json()["data"]["status"]
                 if status == "SUCCEEDED":
@@ -139,8 +143,9 @@ class TwitterScraper(BaseScraper):
                     return False
             except Exception as exc:
                 logger.warning(f"Error polling Apify run {run_id}: {exc}")
-            await asyncio.sleep(_POLL_INTERVAL)
-            elapsed += _POLL_INTERVAL
+            remaining = deadline - time.monotonic()
+            if remaining > 0:
+                await asyncio.sleep(min(_POLL_INTERVAL, remaining))
         logger.warning(f"Apify run {run_id} timed out after {_MAX_WAIT}s.")
         return False
 
