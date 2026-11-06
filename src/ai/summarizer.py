@@ -2,6 +2,7 @@
 
 import html
 import re
+from datetime import datetime, timezone
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from urllib.parse import quote, urlsplit
@@ -213,6 +214,8 @@ class DailySummarizer:
         date: str,
         total_fetched: int,
         language: str = "en",
+        *,
+        trending_items: Optional[List[ContentItem]] = None,
     ) -> str:
         """Generate daily summary in Markdown format.
 
@@ -223,11 +226,21 @@ class DailySummarizer:
             date: Date string (YYYY-MM-DD)
             total_fetched: Total number of items fetched before filtering
             language: Output language, either "en" or "zh"
+            trending_items: Official daily ranking snapshot, outside news quotas
 
         Returns:
             str: Markdown formatted summary
         """
         labels = LABELS.get(language, LABELS["en"])
+
+        rankings = trending_items or [item for item in items if item.metadata.get("github_trending")]
+        if rankings:
+            news = [item for item in items if not item.metadata.get("github_trending")]
+            rendered = (
+                await self.generate_summary(news, date, total_fetched, language)
+                if news else f"# {labels['header']} - {date}\n"
+            )
+            return normalize_language(rendered + "\n" + self._format_trending(rankings, language), language)
 
         if not items:
             return self._generate_empty_summary(date, total_fetched, labels)
@@ -272,6 +285,33 @@ class DailySummarizer:
 
         toc = "\n\n".join(toc_sections) + "\n\n---\n\n"
         return normalize_language(header + toc + "".join(body_sections), language)
+
+    @staticmethod
+    def _format_trending(items: List[ContentItem], language: str) -> str:
+        ranked = sorted(items, key=lambda item: item.metadata["rank"])
+        observed = datetime.fromisoformat(
+            ranked[0].metadata.get("observed_at", ranked[0].published_at.isoformat())
+        ).astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+        if language == "zh":
+            title = f"GitHub 每日热门 Top {len(ranked)}"
+            note = f"榜单采集时间：{observed}。来自 GitHub 官方 daily 榜，不是项目发布时间。"
+        else:
+            title = f"GitHub Daily Trending Top {len(ranked)}"
+            note = f"Snapshot observed: {observed}. Official GitHub daily order; this is not a repository publication date."
+        lines = [f"## {title}", "", f"> {note}", ""]
+        for item in ranked:
+            name = _escape_markdown(item.title)
+            url = _safe_url(item.url)
+            link = f"[{name}]({url})" if url else name
+            stars = item.metadata.get("stars_today")
+            suffix = ""
+            if stars is not None:
+                suffix = f" · 今日新增 ⭐ {stars}" if language == "zh" else f" · +{stars} stars today"
+            lines.extend([f"{item.metadata['rank']}. {link}{suffix}"])
+            if item.content:
+                lines.extend(["", "   " + _escape_markdown(item.content)])
+            lines.append("")
+        return "\n".join(lines) + "\n"
 
     def generate_webhook_overview(
         self,

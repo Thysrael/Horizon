@@ -279,12 +279,15 @@ class HorizonOrchestrator:
                 self.console.print("[yellow]No new content found. Exiting.[/yellow]")
                 return
 
+            trending_items = [item for item in all_items if item.metadata.get("github_trending")]
+            news_items = [item for item in all_items if not item.metadata.get("github_trending")]
+
             # 3. Merge cross-source duplicates (same URL from different sources)
-            merged_items = self.merge_cross_source_duplicates(all_items)
-            if len(merged_items) < len(all_items):
+            merged_items = self.merge_cross_source_duplicates(news_items)
+            if len(merged_items) < len(news_items):
                 self.console.print(
                     f"{self.icons['merge']} Merged "
-                    f"{len(all_items) - len(merged_items)} cross-source duplicates "
+                    f"{len(news_items) - len(merged_items)} cross-source duplicates "
                     f"→ {len(merged_items)} unique items\n"
                 )
 
@@ -319,7 +322,10 @@ class HorizonOrchestrator:
                     profile_names=self.profiles.names,
                     profile_order=self.config.digest.profile_order,
                 )
-                summary = await summarizer.generate_summary(important_items, today, len(all_items), language=lang)
+                summary = await summarizer.generate_summary(
+                    important_items, today, len(all_items), language=lang,
+                    trending_items=trending_items,
+                )
 
                 # Save to data/summaries/
                 summary_path = self.storage.save_daily_summary(today, summary, language=lang)
@@ -1139,6 +1145,10 @@ class HorizonOrchestrator:
         Returns:
             List[ContentItem]: Analyzed items
         """
+        items = [item for item in items if not item.metadata.get("github_trending")]
+        if not items:
+            return []
+
         self.console.print(f"{self.icons['ai']} Analyzing content with AI...")
 
         ai_client = self.ai_client
