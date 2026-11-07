@@ -104,6 +104,7 @@ def test_temperature_rejection_is_retried_and_remembered(provider, override):
     "`temperature` is deprecated for this model.",
     "temperature may only be set to 1 when thinking is enabled",
     "invalid temperature: only 1 is allowed for this model.",
+    "temperature: Extra inputs are not permitted",
 ])
 def test_fixed_temperature_models_preserve_other_extra_fields(provider, message):
     bodies = []
