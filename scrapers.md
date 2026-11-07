@@ -158,8 +158,8 @@ Subreddits and users are fetched concurrently. Comments are sorted by score, lim
 }
 ```
 
-- `sort` — `hot`, `new`, `top`, or `rising` (subreddits); `hot` or `new` (users)
-- `time_filter` — for `top`/`rising` sorts: `hour`, `day`, `week`, `month`, `year`, `all`
+- `sort` — `hot`, `new`, `top`, `rising`, or `controversial` (subreddits); `hot` or `new` (users)
+- `time_filter` — for `top` and `controversial` sorts: `hour`, `day`, `week`, `month`, `year`, `all`
 - `min_score` — minimum post score (subreddits only)
 - `category` — optional tag for balanced digest grouping; set per subreddit or per user entry
 
