@@ -36,6 +36,13 @@ def print_banner():
     console.print(banner)
 
 
+def _positive_hours(value: str) -> int:
+    hours = int(value)
+    if hours <= 0:
+        raise argparse.ArgumentTypeError("hours must be greater than 0")
+    return hours
+
+
 def main():
     """Main CLI entry point."""
     configure_logging(console)
@@ -43,7 +50,7 @@ def main():
     icons = get_icons()
 
     parser = argparse.ArgumentParser(description="Horizon - AI-Driven Information Aggregation System")
-    parser.add_argument("--hours", type=int, help="Force fetch from last N hours")
+    parser.add_argument("--hours", type=_positive_hours, help="Force fetch from last N hours")
     add_data_dir_arguments(parser)
     add_log_level_argument(parser)
     args = parser.parse_args()
