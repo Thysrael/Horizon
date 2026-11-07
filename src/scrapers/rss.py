@@ -1,5 +1,6 @@
 """RSS feed scraper implementation."""
 
+import asyncio
 import calendar
 import hashlib
 import logging
@@ -19,6 +20,23 @@ logger = logging.getLogger(__name__)
 
 # Identify feed requests: some publishers reject httpx's default User-Agent.
 RSS_USER_AGENT = "Horizon/0.1.0 (+https://github.com/Thysrael/Horizon)"
+
+# Rate-limited feeds (e.g. Reddit RSS answers bursts with 429) are retried with
+# linear backoff, honouring a numeric Retry-After header up to the cap.
+RATE_LIMIT_RETRIES = 3
+RATE_LIMIT_BACKOFF_SEC = 15.0
+RATE_LIMIT_MAX_WAIT_SEC = 60.0
+
+
+def _rate_limit_delay(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before retry number ``attempt`` (1-based)."""
+    retry_after = response.headers.get("Retry-After", "")
+    try:
+        delay = float(retry_after)
+    except ValueError:
+        delay = RATE_LIMIT_BACKOFF_SEC * attempt
+    return max(0.0, min(delay, RATE_LIMIT_MAX_WAIT_SEC))
+
 
 class RSSScraper(BaseScraper):
     """Scraper for RSS/Atom feeds."""
@@ -86,11 +104,20 @@ class RSSScraper(BaseScraper):
             lambda m: os.environ.get(m.group(1), m.group(0)).strip(),
             str(source.url),
         )
-        response = await self.client.get(
-            feed_url,
-            follow_redirects=True,
-            headers={"User-Agent": RSS_USER_AGENT},
-        )
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            response = await self.client.get(
+                feed_url,
+                follow_redirects=True,
+                headers={"User-Agent": RSS_USER_AGENT},
+            )
+            if response.status_code != 429 or attempt == RATE_LIMIT_RETRIES:
+                break
+            delay = _rate_limit_delay(response, attempt + 1)
+            logger.info(
+                "RSS feed %s rate-limited (429); retrying in %.0fs (%d/%d)",
+                source.name, delay, attempt + 1, RATE_LIMIT_RETRIES,
+            )
+            await asyncio.sleep(delay)
         response.raise_for_status()
         feed = feedparser.parse(response.text)
         if feed.bozo and not feed.entries:
