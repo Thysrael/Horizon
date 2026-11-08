@@ -94,6 +94,8 @@ Two source types are supported:
 
 Fetches any Atom/RSS feed using the `feedparser` library. Tries multiple date fields (`published`, `updated`, `created`) with fallback parsing.
 
+Up to three feeds are processed concurrently. Feeds with the same configured hostname are processed serially, including rate-limit waits, so queued feeds from one host do not occupy the other concurrency slots. A feed waiting to retry keeps its slot while other active feeds continue; if all three are waiting, queued feeds wait too. Results retain configuration order, and a failed feed does not discard successful feeds.
+
 Feed requests identify Horizon through a `User-Agent` header because some publishers
 reject the HTTP client default. This header is scoped to feed requests and does
 not change the shared client or full-article extractor requests. HTTP errors such
