@@ -416,6 +416,23 @@ for validation and fallback rules.
 }
 ```
 
+To include GitHub's official daily Top 5, add an enabled entry:
+
+```json
+{"type": "trending", "enabled": true, "fetch_limit": 5}
+```
+
+`fetch_limit` defaults to 5 and accepts integers from 1 to 25 (the live page must
+contain at least that many rows). The example config keeps this source disabled
+until selected. This source uses the [public daily Trending page](https://github.com/trending?since=daily)
+and needs no API token. It displays a separate ranking section in saved summaries
+and full-summary delivery, preserving official order regardless of AI thresholds
+or digest news caps. Its UTC timestamp describes when the ranking was observed;
+it does not claim the projects were published within the news window. A
+Trending-only digest can be generated without calling a model. Compact webhook
+news overviews/item messages still list selected news; use full-summary delivery
+for the ranking section.
+
 ### Hacker News
 
 ```json

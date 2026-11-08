@@ -381,7 +381,8 @@ class HorizonPipelineService:
         if not items:
             raise HorizonMcpError(code="HZ_EMPTY_INPUT", message="No items available for scoring.")
 
-        self._bind_chatgpt_account(ctx, run_id)
+        if any(not item.metadata.get("github_trending") for item in items):
+            self._bind_chatgpt_account(ctx, run_id)
         orchestrator = self._orchestrator(ctx)
         scored_items = await orchestrator.analyze_items(items)
 
@@ -562,11 +563,18 @@ class HorizonPipelineService:
             profile_names=self._profiles(ctx).names,
             profile_order=ctx.config.digest.profile_order,
         )
+        trending_items = []
+        if self.run_store.has_stage(run_id, "raw"):
+            trending_items = [
+                item for item in dicts_to_items(self.run_store.load_items(run_id, "raw"))
+                if item.metadata.get("github_trending")
+            ]
         summary = await summarizer.generate_summary(
             items,
             date_str,
             total_fetched,
             language=language,
+            trending_items=trending_items,
         )
 
         run_summary_path = self.run_store.save_summary(run_id, language, summary)

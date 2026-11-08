@@ -58,8 +58,9 @@ Uses the [GitHub REST API](https://api.github.com):
 - `GET /users/{username}/events/public` — user activity events
 - `GET /repos/{owner}/{repo}/releases` — repository releases
 
-Two source types are supported:
+Three source types are supported:
 
+- **`trending`** — reads the [official daily Trending page](https://github.com/trending?since=daily), preserving its first `fetch_limit` rows in their original order (default 5). No API token is required.
 - **`user_events`** — tracks push, create, release, public, and watch events for a user
 - **`repo_releases`** — tracks new releases for a specific repository
 
@@ -87,6 +88,22 @@ Two source types are supported:
 - `category` — optional tag for balanced digest grouping; set per source entry
 
 **Authentication**: Set `GITHUB_TOKEN` in your environment for higher rate limits (5000 req/hr vs 60 without).
+
+For `trending`, the scraper uses the public HTML page rather than the REST API.
+Metadata includes `github_trending`, `rank`, `ranking_period`, `observed_at`,
+`stars_today` (when available), `language`, and `category`. The item's
+`published_at` is the timezone-aware UTC observation time, **not** the repository's
+creation or release date. `since` therefore does not filter ranking snapshots.
+An HTTP error, unrecognized page, missing top-ranked repository, or fewer rows
+than requested is reported through `FetchResult.failures`; a different ranking
+or stale snapshot is never silently substituted.
+
+Trending snapshots bypass AI scoring, topic deduplication, and ordinary news
+quotas. Both the CLI digest and MCP-generated summaries append a dedicated
+ranking section, retaining official order and labelling its UTC observation time.
+Descriptions are the original source text; no AI translation or enrichment is
+performed. Repository ages do not restrict inclusion in this section. Existing
+GitHub events/releases and OSS Insight star-gain rankings remain independent.
 
 ## RSS
 
