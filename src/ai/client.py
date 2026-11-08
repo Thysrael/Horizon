@@ -99,6 +99,8 @@ def _is_temperature_unsupported(message: str) -> bool:
         or "only the default" in lowered
         or "may only be set to 1" in lowered
         or "only 1 is allowed" in lowered
+        # Anthropic: "temperature: Extra inputs are not permitted"
+        or "extra inputs are not permitted" in lowered
     )
 
 
