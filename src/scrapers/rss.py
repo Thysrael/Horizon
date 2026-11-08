@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Identify feed requests: some publishers reject httpx's default User-Agent.
 RSS_USER_AGENT = "Horizon/0.1.0 (+https://github.com/Thysrael/Horizon)"
+MAX_CONCURRENT_FEEDS = 3
 
 # Rate-limited feeds (e.g. Reddit RSS answers bursts with 429) are retried with
 # linear backoff, honouring a numeric Retry-After header up to the cap.
@@ -67,20 +68,30 @@ class RSSScraper(BaseScraper):
             FetchResult: Items and per-feed failures
         """
         result = FetchResult()
-        sources = self.config["sources"]
+        sources = [source for source in self.config["sources"] if source.enabled]
+        slots = asyncio.Semaphore(MAX_CONCURRENT_FEEDS)
+        host_locks = {source.url.host: asyncio.Lock() for source in sources}
 
-        for source in sources:
-            if not source.enabled:
-                continue
+        async def fetch_source(source: RSSSourceConfig) -> FetchResult:
+            # Wait for the host before occupying a global slot, so queued feeds
+            # from one host cannot prevent other hosts from making progress.
+            async with host_locks[source.url.host], slots:
+                try:
+                    return await self._fetch_feed(source, since)
+                except Exception as exc:
+                    failure = FetchResult()
+                    failure.fail(source.name, exc)
+                    return failure
 
-            try:
-                feed_result = await self._fetch_feed(source, since)
-            except Exception as exc:
-                result.fail(source.name, exc)
-            else:
-                result.items.extend(feed_result.items)
-                result.failures.update(feed_result.failures)
-                result.successful += feed_result.successful
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(fetch_source(source)) for source in sources]
+
+        # Preserve configured feed order regardless of completion order.
+        for task in tasks:
+            feed_result = task.result()
+            result.items.extend(feed_result.items)
+            result.failures.update(feed_result.failures)
+            result.successful += feed_result.successful
 
         return result
 
