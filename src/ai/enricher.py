@@ -283,23 +283,27 @@ class ContentEnricher:
         if not any(allowed.values()):
             return []
 
+        def validate_tool_plan(plan: ToolPlan) -> None:
+            for request in plan.tool_requests[:MAX_TOOL_REQUESTS]:
+                if request.block_id not in allowed:
+                    raise ValueError(f"Tool request targets unknown block: {request.block_id}")
+                if request.tool not in allowed[request.block_id]:
+                    raise ValueError(
+                        f"Tool {request.tool} is not allowed for block {request.block_id}"
+                    )
+
         plan = await self._complete_model(
             ToolPlan,
             system=tool_planning_prompt(profile.definition.enrichment.blocks),
             user=item_context(item, profile, include_content=True),
             error_message="Invalid enrichment tool plan",
+            validator=validate_tool_plan,
         )
 
         results = []
         seen = set()
         history_requested = False
         for request in plan.tool_requests[:MAX_TOOL_REQUESTS]:
-            if request.block_id not in allowed:
-                raise ValueError(f"Tool request targets unknown block: {request.block_id}")
-            if request.tool not in allowed[request.block_id]:
-                raise ValueError(
-                    f"Tool {request.tool} is not allowed for block {request.block_id}"
-                )
             if request.tool == "history_search":
                 if history_requested:
                     continue

@@ -310,16 +310,25 @@ class HorizonOrchestrator:
             self.console.print("")
 
             # 6. Search related stories + enrich with background knowledge (2nd AI pass)
-            await self.enrich_items(important_items)
+            enrichment_result = await self.enrich_items(important_items)
+            if enrichment_result.status == "failure":
+                raise RuntimeError(
+                    f"Enrichment failed for all {len(important_items)} selected items: "
+                    + ", ".join(enrichment_result.failed_ids)
+                )
 
             # 7. Generate and save daily summaries for each configured language
             today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
             for lang in self.config.ai.languages:
+                language_items = [
+                    item for item in important_items
+                    if item.processing and lang in item.processing.artifacts
+                ]
                 summarizer = DailySummarizer(
                     profile_names=self.profiles.names,
                     profile_order=self.config.digest.profile_order,
                 )
-                summary = await summarizer.generate_summary(important_items, today, len(all_items), language=lang)
+                summary = await summarizer.generate_summary(language_items, today, len(all_items), language=lang)
 
                 # Save to data/summaries/
                 summary_path = self.storage.save_daily_summary(today, summary, language=lang)
@@ -381,7 +390,7 @@ class HorizonOrchestrator:
                 if self.webhook_notifier:
                     await self.webhook_notifier.send_daily_summary(
                         summary=summary,
-                        important_items=important_items,
+                        important_items=language_items,
                         all_items_count=len(all_items),
                         date=today,
                         lang=lang,

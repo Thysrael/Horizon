@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -169,7 +170,10 @@ def test_enrichment_generates_blocks_and_validated_sources():
 
 
 def test_enrichment_rejects_tool_on_unapproved_block():
+    requests = []
+
     async def complete(**kwargs):
+        requests.append(kwargs)
         return json.dumps(
             {
                 "tool_requests": [
@@ -183,15 +187,55 @@ def test_enrichment_rejects_tool_on_unapproved_block():
             }
         )
 
+    tools = SimpleNamespace(names=FakeTools.names, execute=AsyncMock())
     enricher = ContentEnricher(
         SimpleNamespace(complete=complete),
         PROFILES,
         ["zh"],
-        tools=FakeTools(),
+        tools=tools,
     )
 
-    with pytest.raises(ValueError, match="not allowed"):
+    with pytest.raises(ValueError, match="Invalid enrichment tool plan") as exc_info:
         asyncio.run(enricher._enrich_item(make_item()))
+
+    assert "not allowed for block summary" in str(exc_info.value.__cause__)
+    assert len(requests) == 2
+    assert "not allowed for block summary" in requests[1]["user"]
+    tools.execute.assert_not_awaited()
+
+
+@pytest.mark.parametrize("block_id,error", [
+    ("summary", "Tool web_search is not allowed for block summary"),
+    ("unknown", "Tool request targets unknown block: unknown"),
+])
+def test_enrichment_repairs_tool_permissions_before_executing(block_id, error):
+    allowed_request = {
+        "block_id": "background",
+        "tool": "web_search",
+        "arguments": {"query": "project architecture"},
+        "purpose": "Explain the existing architecture",
+    }
+    complete = AsyncMock(side_effect=[
+        json.dumps({"tool_requests": [
+            allowed_request,
+            {**allowed_request, "block_id": block_id},
+        ]}),
+        json.dumps({"tool_requests": [allowed_request]}),
+    ])
+    tools = FakeTools()
+    tools.execute = AsyncMock(wraps=tools.execute)
+    enricher = ContentEnricher(
+        SimpleNamespace(complete=complete), PROFILES, ["zh"], tools=tools,
+    )
+
+    results = asyncio.run(enricher._plan_and_execute_tools(make_item(), PROFILES.get("tech-news")))
+
+    assert complete.await_count == 2
+    assert error in complete.await_args_list[1].kwargs["user"]
+    # An invalid plan must not execute even its allowed requests before correction.
+    tools.execute.assert_awaited_once()
+    assert len(results) == 1
+    assert results[0].block_id == "background"
 
 
 def test_enrichment_rejects_malformed_tool_plan():
