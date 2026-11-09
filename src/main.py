@@ -14,6 +14,7 @@ from .console_icons import get_icons
 from .logging_config import configure_logging
 from .storage.manager import ConfigError, StorageManager
 from .orchestrator import HorizonOrchestrator
+from .collection_window import require_positive_hours
 from .models import AIProvider
 
 
@@ -36,11 +37,16 @@ def print_banner():
     console.print(banner)
 
 
-def _positive_hours(value: str) -> int:
-    hours = int(value)
-    if hours <= 0:
-        raise argparse.ArgumentTypeError("hours must be greater than 0")
-    return hours
+def _hours_override(value: str) -> int:
+    """Parse a CLI hour override and route it through the collection-window boundary."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid int value: {value!r}") from exc
+    try:
+        return require_positive_hours(parsed)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
 
 
 def main():
@@ -50,7 +56,7 @@ def main():
     icons = get_icons()
 
     parser = argparse.ArgumentParser(description="Horizon - AI-Driven Information Aggregation System")
-    parser.add_argument("--hours", type=_positive_hours, help="Force fetch from last N hours")
+    parser.add_argument("--hours", type=_hours_override, help="Force fetch from last N hours")
     add_data_dir_arguments(parser)
     add_log_level_argument(parser)
     args = parser.parse_args()
