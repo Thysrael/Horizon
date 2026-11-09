@@ -242,8 +242,8 @@ class HorizonOrchestrator:
         """Execute the complete workflow.
 
         Args:
-            force_hours: Optional override for time window in hours. Callers
-                pass this through require_positive_hours first.
+            force_hours: Hours already returned by collection_hours(). This
+                method does not check the window again.
         """
         self.console.print(
             f"[bold cyan]{self.icons['start']} Horizon - Starting aggregation...[/bold cyan]\n"

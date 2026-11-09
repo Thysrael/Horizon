@@ -6,8 +6,6 @@ import re
 from typing import Annotated, Literal, Optional, List, Dict, Any, NamedTuple, Union
 from pydantic import BaseModel, ConfigDict, HttpUrl, Field, field_validator, model_validator
 
-from .collection_window import PositiveHours
-
 
 class SourceType(str, Enum):
     """Supported information source types."""
@@ -590,7 +588,9 @@ class CollectionConfig(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    time_window_hours: PositiveHours = 24
+    # Positivity is collection_hours(), applied once before a run. This field
+    # stores the configured number and does not check it again.
+    time_window_hours: int = 24
 
 
 class DigestConfig(BaseModel):
