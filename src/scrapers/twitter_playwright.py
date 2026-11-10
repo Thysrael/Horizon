@@ -58,6 +58,29 @@ def _load_browser_cookies(file_path: str) -> list[dict]:
     return pw_cookies
 
 
+def _load_valid_cookie_sets(
+    cookie_files: list[Path], result: FetchResult
+) -> list[tuple[int, list[dict]]]:
+    """Load usable cookie files while retaining diagnostics for invalid files."""
+    valid_cookie_sets = []
+    for cookie_index, cookie_file in enumerate(cookie_files):
+        try:
+            cookies = _load_browser_cookies(str(cookie_file))
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            result.fail(
+                f"cookie_file_{cookie_index + 1}",
+                ValueError(f"Invalid cookie file ({type(exc).__name__})"),
+            )
+            logger.warning(
+                "Skipping invalid Twitter cookie file #%d (%s)",
+                cookie_index + 1,
+                type(exc).__name__,
+            )
+            continue
+        valid_cookie_sets.append((cookie_index, cookies))
+    return valid_cookie_sets
+
+
 class TwitterPlaywrightScraper(BaseScraper):
     """Fetch tweets via Playwright + Cookie using GraphQL interception (free alternative to Apify)."""
 
@@ -113,23 +136,7 @@ class TwitterPlaywrightScraper(BaseScraper):
         failed_users: list[tuple[str, int]] = []
         lock = asyncio.Lock()
 
-        valid_cookie_sets: list[tuple[int, list[dict]]] = []
-        for cookie_index, cf in enumerate(cookie_files):
-            try:
-                cookies = _load_browser_cookies(str(cf))
-            except (OSError, ValueError, KeyError, TypeError) as exc:
-                result.fail(
-                    f"cookie_file_{cookie_index + 1}",
-                    ValueError(f"Invalid cookie file ({type(exc).__name__})"),
-                )
-                logger.warning(
-                    "Skipping invalid Twitter cookie file #%d (%s)",
-                    cookie_index + 1,
-                    type(exc).__name__,
-                )
-                continue
-            valid_cookie_sets.append((cookie_index, cookies))
-
+        valid_cookie_sets = _load_valid_cookie_sets(cookie_files, result)
         if not valid_cookie_sets:
             return
 
