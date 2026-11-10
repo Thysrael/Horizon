@@ -9,6 +9,15 @@ from ..models import AIConfig
 from .prompts import RECOMMEND_SYSTEM, RECOMMEND_USER
 
 
+_SUPPORTED_SOURCE_TYPES = {
+    "rss",
+    "reddit_subreddit",
+    "github_user",
+    "github_repo",
+    "telegram",
+}
+
+
 async def get_ai_recommendations(
     ai_config: AIConfig,
     interests: str,
@@ -50,15 +59,28 @@ async def get_ai_recommendations(
         return []
 
     result = parse_json_response(response)
-    if result is None:
+    if not isinstance(result, dict):
         return []
 
-    sources = result.get("sources", [])
-    # Tag each source as AI-recommended
-    for src in sources:
-        src["origin"] = "ai"
+    sources = result.get("sources")
+    if not isinstance(sources, list):
+        return []
 
-    return sources
+    # Keep malformed model output from breaking the optional setup step.
+    recommendations = []
+    for src in sources:
+        if not isinstance(src, dict):
+            continue
+        source_type = src.get("type")
+        if not isinstance(source_type, str) or source_type not in _SUPPORTED_SOURCE_TYPES:
+            continue
+        if not isinstance(src.get("config"), dict):
+            continue
+        if not isinstance(src.get("description", ""), str):
+            continue
+        recommendations.append({**src, "origin": "ai"})
+
+    return recommendations
 
 
 def get_ai_recommendations_sync(
