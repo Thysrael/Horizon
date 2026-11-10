@@ -4,6 +4,7 @@ import asyncio
 import calendar
 import hashlib
 import logging
+import math
 import os
 import re
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ RSS_USER_AGENT = "Horizon/0.1.0 (+https://github.com/Thysrael/Horizon)"
 MAX_CONCURRENT_FEEDS = 3
 
 # Rate-limited feeds (e.g. Reddit RSS answers bursts with 429) are retried with
-# linear backoff, honouring a numeric Retry-After header up to the cap.
+# linear backoff, honouring numeric or HTTP-date Retry-After values up to the cap.
 RATE_LIMIT_RETRIES = 3
 RATE_LIMIT_BACKOFF_SEC = 15.0
 RATE_LIMIT_MAX_WAIT_SEC = 60.0
@@ -35,7 +36,15 @@ def _rate_limit_delay(response: httpx.Response, attempt: int) -> float:
     try:
         delay = float(retry_after)
     except ValueError:
-        delay = RATE_LIMIT_BACKOFF_SEC * attempt
+        try:
+            retry_at = parsedate_to_datetime(retry_after)
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=timezone.utc)
+            delay = math.ceil(
+                (retry_at - datetime.now(timezone.utc)).total_seconds()
+            )
+        except (TypeError, ValueError, OverflowError):
+            delay = RATE_LIMIT_BACKOFF_SEC * attempt
     return max(0.0, min(delay, RATE_LIMIT_MAX_WAIT_SEC))
 
 
