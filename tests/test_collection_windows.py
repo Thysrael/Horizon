@@ -4,6 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
 from src import main as cli
 from src.collection_window import collection_hours
@@ -28,6 +29,11 @@ def test_boundary_accepts_positive_collection_windows():
 def test_config_stores_a_nonpositive_window_without_checking():
     assert CollectionConfig(time_window_hours=0).time_window_hours == 0
     assert CollectionConfig(time_window_hours=-1).time_window_hours == -1
+
+
+def test_config_rejects_boolean_window_before_integer_coercion():
+    with pytest.raises(ValidationError, match="time_window_hours must be an integer"):
+        CollectionConfig.model_validate({"time_window_hours": True})
 
 
 @pytest.mark.parametrize("hours", ["0", "-1"])
