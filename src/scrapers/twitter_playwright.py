@@ -113,6 +113,26 @@ class TwitterPlaywrightScraper(BaseScraper):
         failed_users: list[tuple[str, int]] = []
         lock = asyncio.Lock()
 
+        valid_cookie_sets: list[tuple[int, list[dict]]] = []
+        for cookie_index, cf in enumerate(cookie_files):
+            try:
+                cookies = _load_browser_cookies(str(cf))
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                result.fail(
+                    f"cookie_file_{cookie_index + 1}",
+                    ValueError(f"Invalid cookie file ({type(exc).__name__})"),
+                )
+                logger.warning(
+                    "Skipping invalid Twitter cookie file #%d (%s)",
+                    cookie_index + 1,
+                    type(exc).__name__,
+                )
+                continue
+            valid_cookie_sets.append((cookie_index, cookies))
+
+        if not valid_cookie_sets:
+            return
+
         async with Stealth().use_async(async_playwright()) as p:  # type: ignore[union-attr]
             launch_kwargs: dict = {"headless": True}
             proxy = _get_proxy()
@@ -121,12 +141,12 @@ class TwitterPlaywrightScraper(BaseScraper):
             browser = await p.chromium.launch(**launch_kwargs)
 
             contexts = []
-            for i, cf in enumerate(cookie_files):
-                cookies = _load_browser_cookies(str(cf))
+            context_cookie_numbers: list[int] = []
+            for cookie_index, cookies in valid_cookie_sets:
                 ctx = await browser.new_context(
                     user_agent=(
                         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                        f"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/13{i}.0.0.0 Safari/537.36"
+                        f"AppleWebKit/537.36 (KHTML, like Gecko) Chrome/13{cookie_index}.0.0.0 Safari/537.36"
                     ),
                     viewport={"width": 1280, "height": 800},
                     locale="en-US",
@@ -136,6 +156,10 @@ class TwitterPlaywrightScraper(BaseScraper):
                 if cookies:
                     await ctx.add_cookies(cookies)
                 contexts.append(ctx)
+                context_cookie_numbers.append(cookie_index + 1)
+
+            if not contexts:
+                return
 
             # Warm-up each context by visiting x.com/home
             for i, ctx in enumerate(contexts):
@@ -143,9 +167,13 @@ class TwitterPlaywrightScraper(BaseScraper):
                 try:
                     await page.goto("https://x.com/home", wait_until="domcontentloaded", timeout=15000)
                     await asyncio.sleep(2)
-                    logger.info("Cookie #%d warm-up done", i + 1)
+                    logger.info("Cookie #%d warm-up done", context_cookie_numbers[i])
                 except Exception as exc:
-                    logger.warning("Cookie #%d warm-up failed: %s", i + 1, exc)
+                    logger.warning(
+                        "Cookie #%d warm-up failed: %s",
+                        context_cookie_numbers[i],
+                        type(exc).__name__,
+                    )
                 finally:
                     await page.close()
 
@@ -166,7 +194,11 @@ class TwitterPlaywrightScraper(BaseScraper):
                         await asyncio.sleep(30)
                         consecutive_failures = 0
 
-                    logger.info("Scraping @%s with cookie #%d...", username, context_idx + 1)
+                    logger.info(
+                        "Scraping @%s with cookie #%d...",
+                        username,
+                        context_cookie_numbers[context_idx],
+                    )
                     tweets = await self._scrape_user(ctx, username, since)
 
                     if tweets is not None:
