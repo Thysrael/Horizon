@@ -8,12 +8,14 @@ from src.extractors import (
     ExtractorRegistry,
     FirecrawlExtractor,
     OutcrawlExtractor,
+    SpecStreamExtractor,
     TrafilaturaExtractor,
 )
 from src.models import (
     ExtractorConfig,
     FirecrawlExtractorConfig,
     OutcrawlExtractorConfig,
+    SpecStreamExtractorConfig,
     TrafilaturaExtractorConfig,
 )
 
@@ -61,6 +63,22 @@ def test_outcrawl_config_parsed_from_json():
     assert isinstance(named, OutcrawlExtractor)
     assert named._config.api_key_env == "MY_KEY"
     assert named._config.only_main_content is False
+
+
+def test_default_specstream_registered():
+    registry = ExtractorRegistry({})
+    extractor = registry.get("specstream")
+    assert isinstance(extractor, SpecStreamExtractor)
+    assert extractor._config == SpecStreamExtractorConfig()
+
+
+def test_specstream_config_parsed_from_json():
+    extractors = TypeAdapter(Dict[str, ExtractorConfig]).validate_python(
+        {"ss": {"type": "specstream", "api_key_env": "MY_KEY"}}
+    )
+    named = ExtractorRegistry(extractors).get("ss")
+    assert isinstance(named, SpecStreamExtractor)
+    assert named._config.api_key_env == "MY_KEY"
 
 
 def test_unknown_name_returns_none():

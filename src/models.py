@@ -274,6 +274,7 @@ class ExtractorType(str, Enum):
     TRAFILATURA = "trafilatura"
     FIRECRAWL = "firecrawl"
     OUTCRAWL = "outcrawl"
+    SPECSTREAM = "specstream"
 
 
 class TrafilaturaExtractorConfig(BaseModel):
@@ -294,8 +295,18 @@ class OutcrawlExtractorConfig(BaseModel):
     only_main_content: bool = True
 
 
+class SpecStreamExtractorConfig(BaseModel):
+    type: Literal[ExtractorType.SPECSTREAM] = ExtractorType.SPECSTREAM
+    api_key_env: str = "SPECSTREAM_API_KEY"
+
+
 ExtractorConfig = Annotated[
-    Union[TrafilaturaExtractorConfig, FirecrawlExtractorConfig, OutcrawlExtractorConfig],
+    Union[
+        TrafilaturaExtractorConfig,
+        FirecrawlExtractorConfig,
+        OutcrawlExtractorConfig,
+        SpecStreamExtractorConfig,
+    ],
     Field(discriminator="type"),
 ]
 
