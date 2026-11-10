@@ -238,11 +238,12 @@ class HorizonOrchestrator:
         """Share one client and account selection across the run's AI stages."""
         return create_ai_client(self.config.ai)
 
-    async def run(self, force_hours: int = None) -> None:
+    async def run(self, force_hours: Optional[int] = None) -> None:
         """Execute the complete workflow.
 
         Args:
-            force_hours: Optional override for time window in hours
+            force_hours: Hours already returned by collection_hours(). This
+                method does not check the window again.
         """
         self.console.print(
             f"[bold cyan]{self.icons['start']} Horizon - Starting aggregation...[/bold cyan]\n"
@@ -437,13 +438,9 @@ class HorizonOrchestrator:
 
             raise
 
-    def _determine_time_window(self, force_hours: int = None) -> datetime:
-        if force_hours:
-            since = datetime.now(timezone.utc) - timedelta(hours=force_hours)
-        else:
-            hours = self.config.collection.time_window_hours
-            since = datetime.now(timezone.utc) - timedelta(hours=hours)
-        return since
+    def _determine_time_window(self, force_hours: Optional[int] = None) -> datetime:
+        hours = force_hours if force_hours is not None else self.config.collection.time_window_hours
+        return datetime.now(timezone.utc) - timedelta(hours=hours)
 
     async def fetch_all_sources(self, since: datetime) -> List[ContentItem]:
         """Fetch content from all configured sources.

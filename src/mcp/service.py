@@ -14,6 +14,7 @@ from rich.console import Console
 
 from ..ai.summarizer import DailySummarizer
 from ..ai.errors import AIProviderUnavailableError
+from ..collection_window import collection_hours
 from ..models import AIProvider, Config, ContentItem
 from ..orchestrator import HorizonOrchestrator
 from ..processing import ProfileRegistry
@@ -316,8 +317,10 @@ class HorizonPipelineService:
         config_path: str | None = None,
         sources: list[str] | None = None,
     ) -> dict[str, Any]:
-        if hours <= 0:
-            raise HorizonMcpError(code="HZ_INVALID_INPUT", message="hours must be greater than 0.")
+        try:
+            hours = collection_hours(hours)
+        except ValueError as exc:
+            raise HorizonMcpError(code="HZ_INVALID_INPUT", message=f"{exc}.") from exc
 
         ctx, selected_sources, unknown_sources = self._build_context(
             horizon_path=horizon_path,
