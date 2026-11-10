@@ -3,7 +3,10 @@
 import asyncio
 from datetime import datetime, timezone
 
+import httpx
 import pytest
+from anthropic import APIConnectionError as AnthropicConnectionError
+from openai import APIConnectionError as OpenAIConnectionError
 
 from src.ai.client import ChainedAIClient, _create_chained_client
 from src.models import AIConfig, AIProvider, AI_PROVIDER_DEFAULTS
@@ -82,6 +85,27 @@ def test_fallback_on_rate_limit():
     cfg1 = _make_config(AIProvider.OPENAI)
     cfg2 = _make_config(AIProvider.OLLAMA)
     client1 = _DummyClient(exc=Exception("429 rate limit exceeded"))
+    client2 = _DummyClient(result="fallback ok")
+
+    chained = ChainedAIClient([cfg1, cfg2], clients=[client1, client2])
+    result = asyncio.run(chained.complete("sys", "usr"))
+
+    assert result == "fallback ok"
+    assert len(client1.calls) == 1
+    assert len(client2.calls) == 1
+
+
+@pytest.mark.parametrize("provider_error", ["openai", "anthropic", "httpx"])
+def test_fallback_on_transport_errors(provider_error):
+    request = httpx.Request("POST", "https://example.com/v1/chat/completions")
+    error = {
+        "openai": OpenAIConnectionError(request=request),
+        "anthropic": AnthropicConnectionError(request=request),
+        "httpx": httpx.ConnectError("connection refused", request=request),
+    }[provider_error]
+    cfg1 = _make_config(AIProvider.OPENAI)
+    cfg2 = _make_config(AIProvider.OLLAMA)
+    client1 = _DummyClient(exc=error)
     client2 = _DummyClient(result="fallback ok")
 
     chained = ChainedAIClient([cfg1, cfg2], clients=[client1, client2])
