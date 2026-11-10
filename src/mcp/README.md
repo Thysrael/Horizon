@@ -70,6 +70,9 @@ Each run writes artifacts under `data/mcp-runs/<run_id>/`:
 Fetch responses and run metadata include `fetch_status` and `fetch_report`.
 Source reports preserve named failures, including partial failures within a
 source type (for example, one unavailable RSS feed among several working feeds).
+`hz_fetch_items` creates a new run. A supplied `run_id` must be unused; a
+collision returns `HZ_RUN_ID_EXISTS` and leaves the existing run artifacts
+unchanged. Continue a staged run with the `run_id` returned by the fetch step.
 
 ## Design Principles
 

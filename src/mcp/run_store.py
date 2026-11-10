@@ -46,12 +46,10 @@ class RunStore:
     def create_run(self, run_id: str | None = None) -> str:
         run_id = run_id or self._make_run_id()
         run_dir = self._run_path(run_id)
-        run_dir.mkdir(parents=True, exist_ok=True)
-        meta_path = run_dir / "meta.json"
-        if not meta_path.exists():
-            self.write_json(
-                run_id, "meta.json", {"run_id": run_id, "created_at": self._utc_now()}
-            )
+        run_dir.mkdir(parents=True, exist_ok=False)
+        self.write_json(
+            run_id, "meta.json", {"run_id": run_id, "created_at": self._utc_now()}
+        )
         return run_id
 
     def run_dir(self, run_id: str) -> Path:
