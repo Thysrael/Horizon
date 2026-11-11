@@ -330,7 +330,19 @@ class HorizonPipelineService:
 
         orchestrator = self._orchestrator(ctx)
 
-        run_id = self.run_store.create_run(run_id)
+        try:
+            run_id = self.run_store.create_run(run_id)
+        except FileExistsError as exc:
+            raise HorizonMcpError(
+                code="HZ_RUN_ID_EXISTS",
+                message=(
+                    "The requested run_id already exists; provide a new run_id "
+                    "to start a fetch."
+                ),
+                details=(
+                    {"run_id": run_id} if run_id is not None else None
+                ),
+            ) from exc
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         raw_items = await orchestrator.fetch_all_sources(since)

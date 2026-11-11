@@ -220,6 +220,26 @@ def test_fetch_items_uses_public_orchestrator_api(tmp_path: Path, monkeypatch) -
     assert service.run_store.load_items(result["run_id"], "raw")[0]["id"] == "item-1"
 
 
+def test_fetch_items_reports_run_id_collision_without_replacing_existing_run(
+    tmp_path: Path, monkeypatch
+) -> None:
+    service = HorizonPipelineService(runs_root=tmp_path / "mcp-runs")
+    run_id = service.run_store.create_run("run-existing")
+    service.run_store.save_items(run_id, "raw", [{"id": "original"}])
+
+    monkeypatch.setattr(
+        service,
+        "_build_context",
+        lambda **kwargs: (SimpleNamespace(), ["rss"], []),
+    )
+    monkeypatch.setattr(service, "_orchestrator", lambda ctx: object())
+
+    with pytest.raises(HorizonMcpError, match="HZ_RUN_ID_EXISTS"):
+        asyncio.run(service.fetch_items(hours=6, run_id=run_id))
+
+    assert service.run_store.load_items(run_id, "raw") == [{"id": "original"}]
+
+
 def test_fetch_items_includes_fetch_report_in_response_and_metadata(
     tmp_path: Path, monkeypatch
 ) -> None:

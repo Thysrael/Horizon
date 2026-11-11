@@ -19,6 +19,23 @@ def test_create_run_writes_meta(tmp_path: Path) -> None:
     assert "created_at" in meta
 
 
+def test_create_run_rejects_existing_id_without_changing_artifacts(tmp_path: Path) -> None:
+    store = RunStore(tmp_path)
+    run_id = store.create_run("run-existing")
+    store.save_items(run_id, "raw", [{"title": "original"}])
+    store.save_items(run_id, "scored", [{"title": "scored"}])
+    store.save_summary(run_id, "en", "original summary")
+    original_meta = store.load_meta(run_id)
+
+    with pytest.raises(FileExistsError):
+        store.create_run(run_id)
+
+    assert store.load_items(run_id, "raw") == [{"title": "original"}]
+    assert store.load_items(run_id, "scored") == [{"title": "scored"}]
+    assert store.load_summary(run_id, "en") == "original summary"
+    assert store.load_meta(run_id) == original_meta
+
+
 def test_save_and_load_stage_items(tmp_path: Path) -> None:
     store = RunStore(tmp_path)
     run_id = store.create_run("run-fixed")
