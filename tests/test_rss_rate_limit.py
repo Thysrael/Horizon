@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 
 import httpx
 import pytest
@@ -59,6 +60,40 @@ def test_numeric_retry_after_is_honoured_and_capped(sleeps):
 
     assert result.status == "success"
     assert sleeps == [7.0, rss.RATE_LIMIT_MAX_WAIT_SEC]
+
+
+def test_http_date_retry_after_is_honoured(monkeypatch):
+    now = datetime(2026, 11, 2, 12, 0, 0, tzinfo=timezone.utc)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr(rss, "datetime", Clock)
+    retry_at = now + timedelta(seconds=45)
+    response = httpx.Response(
+        429, headers={"Retry-After": format_datetime(retry_at)}
+    )
+
+    assert rss._rate_limit_delay(response, attempt=1) == 45.0
+
+
+def test_past_http_date_retry_after_does_not_wait(monkeypatch):
+    now = datetime(2026, 11, 2, 12, 0, 0, tzinfo=timezone.utc)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now
+
+    monkeypatch.setattr(rss, "datetime", Clock)
+    retry_at = now - timedelta(seconds=45)
+    response = httpx.Response(
+        429, headers={"Retry-After": format_datetime(retry_at)}
+    )
+
+    assert rss._rate_limit_delay(response, attempt=1) == 0.0
 
 
 def test_feed_still_rate_limited_after_retries_is_reported_as_failure(sleeps):
