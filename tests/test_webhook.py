@@ -415,6 +415,16 @@ class TestWebhookRedaction:
             == "https://example.com/hook"
         )
 
+    def test_redact_url_hides_discord_webhook_token_in_path(self):
+        assert redact_url(
+            "https://discord.com/api/webhooks/123456789/secret-token?wait=true"
+        ) == "https://discord.com/api/webhooks/123456789/<redacted>"
+
+    def test_redact_url_hides_slack_incoming_webhook_path(self):
+        assert redact_url(
+            "https://hooks.slack.com/services/T000/B000/secret-token"
+        ) == "https://hooks.slack.com/services/<redacted>"
+
     def test_redact_headers_masks_sensitive_values(self):
         assert redact_headers({"Authorization": "Bearer secret", "X-Trace": "ok"}) == {
             "Authorization": "<redacted>",
