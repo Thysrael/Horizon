@@ -80,11 +80,22 @@ Supported formats:
 }
 ```
 
-You can also point to a custom secrets file with:
+To use a secrets file elsewhere, set `HORIZON_MCP_SECRETS_PATH` in the MCP
+server process environment. For a client config that supports per-server
+environment variables, add it to the Horizon server entry:
 
 ```json
 {
-  "HORIZON_MCP_SECRETS_PATH": "/absolute/path/to/mcp.secrets.json"
+  "mcpServers": {
+    "horizon": {
+      "command": "uv",
+      "args": ["run", "horizon-mcp"],
+      "cwd": "/absolute/path/to/Horizon",
+      "env": {
+        "HORIZON_MCP_SECRETS_PATH": "/absolute/path/to/mcp.secrets.json"
+      }
+    }
+  }
 }
 ```
 
