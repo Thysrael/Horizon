@@ -5,6 +5,7 @@ import html
 import imaplib
 import logging
 import os
+import re
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -23,6 +24,47 @@ from ..ai.markdown_utils import clean_app_summary_markdown
 from ..models import EmailConfig
 
 logger = logging.getLogger(__name__)
+
+# The summarizer HTML-escapes untrusted text and then Markdown-escapes it,
+# which turns "&#x27;" into "&\#x27;". These helpers undo that once for email.
+_ESCAPED_ENTITY_RE = re.compile(r"&\\#(x?[0-9A-Fa-f]+);")
+_CODE_SPAN_RE = re.compile(r"(`+)(.+?)\1", re.DOTALL)
+_MARKDOWN_BACKSLASH_RE = re.compile(r"\\([\\`*_{}\[\]()<>#!|+.-])")
+_LIST_ITEM = r"[ \t]*(?:\d+[.)]|[-*+])[ \t]"
+_LIST_AFTER_TEXT_RE = re.compile(rf"(?m)^((?!{_LIST_ITEM}).*\S.*)\n(?={_LIST_ITEM})")
+
+
+def _escape_email_text(value: str) -> str:
+    """Block raw HTML without escaping the summarizer's entities a second time.
+
+    Escaping < is enough to stop raw HTML. Existing entities such as &#x27;
+    are left for Markdown to pass through, and bare & is escaped by Markdown.
+    > is left alone so the app's own blockquotes still work; untrusted text
+    reaches here as &gt;, so it can't start one. Python-Markdown doesn't treat
+    \\| as an escape, so it is unescaped to avoid a stray backslash.
+    """
+    return value.replace("<", "&lt;").replace("\\|", "|")
+
+
+def _prepare_email_markdown(value: str) -> str:
+    """Make summary Markdown render cleanly, and safely, as email HTML.
+
+    Summary text is already HTML-escaped by the summarizer, so escaping it
+    again here showed entities such as &#x27; and &quot; in the email.
+    """
+    value = _ESCAPED_ENTITY_RE.sub(r"&#\1;", value)
+    parts = []
+    last = 0
+    for match in _CODE_SPAN_RE.finditer(value):
+        parts.append(_escape_email_text(value[last : match.start()]))
+        # Markdown escapes code span contents itself, and backslashes are
+        # literal there, so decode fully and let Markdown do the escaping.
+        code = html.unescape(_MARKDOWN_BACKSLASH_RE.sub(r"\1", match.group(2)))
+        parts.append(f"`` {code} ``" if "`" in code else f"`{code}`")
+        last = match.end()
+    parts.append(_escape_email_text(value[last:]))
+    # Python-Markdown needs a blank line before a list that follows text.
+    return _LIST_AFTER_TEXT_RE.sub(r"\1\n\n", "".join(parts))
 
 
 class EmailManager:
@@ -165,7 +207,7 @@ class EmailManager:
             return
 
         cleaned_summary = clean_app_summary_markdown(summary_md)
-        safe_summary = html.escape(cleaned_summary)
+        safe_summary = _prepare_email_markdown(cleaned_summary)
         html_content = (
             markdown.markdown(safe_summary)
             if markdown

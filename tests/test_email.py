@@ -140,6 +140,36 @@ def test_send_daily_summary_escapes_raw_html(monkeypatch):
     assert "&lt;img src=x" in html_body
 
 
+def test_send_daily_summary_does_not_double_escape_summary_text(monkeypatch):
+    from src.ai.summarizer import _escape_markdown
+
+    monkeypatch.setenv("EMAIL_PASSWORD", "secret")
+    monkeypatch.setattr("src.services.email.smtplib.SMTP_SSL", FakeSMTP)
+    FakeSMTP.instances = []
+
+    title = _escape_markdown("Anthropic's \"memory\" post: R&D <script>x</script>")
+    tag = _escape_markdown("AI R&D")
+    summary = (
+        f"> From 9 items\n\n**AI News**\n1. [{title}](#item-1)\n\n"
+        f"{_escape_markdown('> not a quote')}\n\n**Tags**: `#{tag}`"
+    )
+
+    manager = EmailManager(_email_config())
+    manager.send_daily_summary(summary, "Daily", ["user@example.com"])
+
+    html_part = FakeSMTP.instances[0].messages[0].get_payload()[1]
+    html_body = html_part.get_payload(decode=True).decode()
+    assert "&amp;#x27;" not in html_body
+    assert "&amp;quot;" not in html_body
+    assert "&amp;amp;" not in html_body
+    assert "Anthropic&#x27;s &quot;memory&quot; post: R&amp;D" in html_body
+    assert "<script>" not in html_body
+    assert "<blockquote>\n<p>From 9 items</p>\n</blockquote>" in html_body
+    assert "&gt; not a quote" in html_body
+    assert "<ol>" in html_body
+    assert "<code>#AI R&amp;D</code>" in html_body
+
+
 def test_send_daily_summary_cleans_app_generated_markdown_html(monkeypatch):
     monkeypatch.setenv("EMAIL_PASSWORD", "secret")
     monkeypatch.setattr("src.services.email.smtplib.SMTP_SSL", FakeSMTP)
