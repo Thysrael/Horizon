@@ -1,213 +1,81 @@
 {
   "ai": {
-    "provider": "deepseek",
-    "model": "deepseek-v4-flash",
-    "base_url": "https://api.deepseek.com",
-    "api_key_env": "DEEPSEEK_API_KEY",
+    "provider": "anthropic",
+     "model": "claude-haiku-5-5",
+    "api_key_env": "ANTHROPIC_API_KEY",
     "temperature": 0.3,
     "max_tokens": 8192,
     "throttle_sec": 1,
-    "languages": [
-      "zh",
-      "en"
-    ],
-    "analysis_concurrency": 5,
-    "enrichment_concurrency": 5
+    "languages": ["fr"],
+    "analysis_concurrency": 3,
+    "enrichment_concurrency": 3
   },
   "processing": {
     "profiles_dir": "profiles",
-    "default_profile": "tech-news",
+    "default_profile": "startup-news",
     "profile_settings": {
-      "tech-news": {
-        "threshold": 7.0,
-        "topic_dedup": true
-      },
-      "tech-blog": {
-        "threshold": 4.0,
-        "topic_dedup": false
-      },
-      "finance-news": {
-        "threshold": 7.0,
-        "topic_dedup": true
-      }
+      "startup-news": { "threshold": 6.5, "topic_dedup": true },
+      "tech-news": { "threshold": 7.5, "topic_dedup": true },
+      "tech-blog": { "threshold": 6.0, "topic_dedup": false }
     }
   },
   "sources": {
-    "github": [
-      {
-        "type": "user_events",
-        "username": "karpathy",
-        "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "type": "repo_releases",
-        "owner": "vllm-project",
-        "repo": "vllm",
-        "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "type": "repo_releases",
-        "owner": "sgl-project",
-        "repo": "sglang",
-        "enabled": true,
-        "profile": "tech-news"
-      },
-      {
-        "type": "repo_releases",
-        "owner": "triton-lang",
-        "repo": "triton",
-        "enabled": true,
-        "profile": "tech-news"
-      }
-    ],
     "hackernews": {
       "enabled": true,
       "fetch_top_stories": 30,
       "min_score": 150,
-      "profile": "tech-news"
+      "profile": ["tech-news", "startup-news"]
     },
     "rss": [
-      {
-        "name": "Simon Willison",
-        "url": "https://simonwillison.net/atom/everything/",
-        "enabled": true,
-        "category": "ai-tools",
-        "profile": "tech-news"
-      },
-      {
-        "name": "vLLM Blog",
-        "url": "https://vllm.ai/blog/rss.xml",
-        "enabled": true,
-        "category": "llm-inference",
-        "profile": "tech-blog",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "Sean Goedecke",
-        "url": "https://www.seangoedecke.com/rss.xml",
-        "enabled": true,
-        "category": "software-engineering",
-        "profile": "tech-blog",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "CNBC Finance",
-        "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=10000664",
-        "enabled": true,
-        "category": "finance",
-        "profile": "finance-news",
-        "content_extractor": "trafilatura"
-      },
-      {
-        "name": "GitHub Trending - Daily",
-        "url": "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml",
-        "enabled": true,
-        "category": "github-trending",
-        "profile": "tech-news"
-      },
-      {
-        "name": "Semianalysis",
-        "url": "https://newsletter.semianalysis.com/feed",
-        "enabled": true,
-        "category": "semiconductors",
-        "profile": "tech-news"
-      },
-      {
-        "name": "LWN.net",
-        "url": "https://lwn.net/headlines/full_text?key=${LWN_KEY}",
-        "enabled": true,
-        "category": "linux-kernel",
-        "profile": "tech-news"
-      }
+      { "name": "Maddyness", "url": "https://www.maddyness.com/feed/", "enabled": true, "category": "startups-fr", "profile": "startup-news" },
+      { "name": "FrenchWeb", "url": "https://www.frenchweb.fr/feed", "enabled": true, "category": "startups-fr", "profile": "startup-news" },
+      { "name": "L'Usine Digitale", "url": "https://www.usine-digitale.fr/rss", "enabled": true, "category": "tech-fr", "profile": ["tech-news", "startup-news"] },
+      { "name": "Sifted", "url": "https://sifted.eu/feed", "enabled": true, "category": "startups-eu", "profile": "startup-news" },
+      { "name": "EU-Startups", "url": "https://www.eu-startups.com/feed/", "enabled": true, "category": "startups-eu", "profile": "startup-news" },
+      { "name": "TechCrunch Startups", "url": "https://techcrunch.com/category/startups/feed/", "enabled": true, "category": "startups-us", "profile": "startup-news" },
+      { "name": "TechCrunch Venture", "url": "https://techcrunch.com/category/venture/feed/", "enabled": true, "category": "venture", "profile": "startup-news" },
+      { "name": "Product Hunt", "url": "https://www.producthunt.com/feed", "enabled": true, "category": "nouveaux-produits", "profile": "startup-news" },
+      { "name": "Lenny's Newsletter", "url": "https://www.lennysnewsletter.com/feed", "enabled": true, "category": "produit-growth", "profile": "tech-blog", "content_extractor": "trafilatura" },
+      { "name": "Stratechery", "url": "https://stratechery.com/feed/", "enabled": true, "category": "strategie", "profile": "tech-blog" },
+      { "name": "Simon Willison", "url": "https://simonwillison.net/atom/everything/", "enabled": true, "category": "ia", "profile": "tech-news" }
     ],
     "reddit": {
       "enabled": true,
       "subreddits": [
-        {
-          "subreddit": "MachineLearning",
-          "enabled": true,
-          "sort": "hot",
-          "time_filter": "day",
-          "fetch_limit": 10,
-          "min_score": 60,
-          "profile": "tech-news"
-        },
-        {
-          "subreddit": "LocalLLaMA",
-          "enabled": true,
-          "sort": "hot",
-          "time_filter": "day",
-          "fetch_limit": 10,
-          "min_score": 60,
-          "profile": "tech-news"
-        }
+        { "subreddit": "startups", "enabled": true, "sort": "hot", "time_filter": "day", "fetch_limit": 15, "min_score": 40, "profile": "startup-news" },
+        { "subreddit": "SaaS", "enabled": true, "sort": "hot", "time_filter": "day", "fetch_limit": 10, "min_score": 30, "profile": "startup-news" },
+        { "subreddit": "Entrepreneur", "enabled": true, "sort": "hot", "time_filter": "day", "fetch_limit": 10, "min_score": 80, "profile": "startup-news" },
+        { "subreddit": "artificial", "enabled": true, "sort": "hot", "time_filter": "day", "fetch_limit": 10, "min_score": 80, "profile": "tech-news" }
       ],
       "users": [],
-      "fetch_comments": 10
+      "fetch_comments": 5
     },
-    "telegram": {
+    "google_news": {
       "enabled": true,
-      "channels": [
-        {
-          "channel": "zaihuapd",
-          "enabled": true,
-          "fetch_limit": 20,
-          "profile": ["tech-news", "finance-news"]
-        }
-      ]
+      "query": "startup levée de fonds",
+      "language": "fr",
+      "country": "FR",
+      "ceid": null,
+      "max_results": 40,
+      "category": "levees-fr",
+      "profile": "startup-news"
+    },
+    "ossinsight": {
+      "enabled": true,
+      "period": "past_24_hours",
+      "languages": ["All"],
+      "keywords": ["agent", "llm", "ai"],
+      "min_stars": 50,
+      "max_items": 10,
+      "profile": "tech-news"
     }
   },
-  "collection": {
-    "time_window_hours": 24
-  },
+  "collection": { "time_window_hours": 24 },
   "digest": {
-    "max_items": null,
-    "profile_order": [
-      "tech-news",
-      "tech-blog",
-      "finance-news"
-    ],
+    "max_items": 25,
+    "profile_order": ["startup-news", "tech-news", "tech-blog"],
     "category_groups": {},
     "default_group": "other",
     "default_group_limit": null
-  },
-  "webhook": {
-    "enabled": true,
-    "url_env": "HORIZON_WEBHOOK_URL",
-    "delivery": "summary_and_items",
-    "overview_position": "last",
-    "platform": "feishu",
-    "layout": "collapsible",
-    "fallback_layout": "markdown",
-    "languages": [
-      "zh"
-    ],
-    "request_body": {
-      "msg_type": "interactive",
-      "card": {
-        "schema": "2.0",
-        "config": {
-          "wide_screen_mode": true
-        },
-        "header": {
-          "title": {
-            "tag": "plain_text",
-            "content": "#{message_title}"
-          },
-          "template": "blue"
-        },
-        "body": {
-          "elements": [
-            {
-              "tag": "markdown",
-              "content": "#{summary}"
-            }
-          ]
-        }
-      }
-    },
-    "headers": ""
   }
 }
