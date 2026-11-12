@@ -1,0 +1,18 @@
+{
+  "id": "startup-news",
+  "name": "Startups & Innovation",
+  "display_names": {
+    "fr": "Startups & innovation"
+  },
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      { "id": "summary", "type": "section", "tools": [], "primary": true },
+      { "id": "background", "type": "section", "tools": ["history_search", "web_search"] },
+      { "id": "impact", "type": "section", "tools": ["web_search"], "optional": true },
+      { "id": "community_discussion", "type": "section", "tools": [], "optional": true }
+    ]
+  }
+}
