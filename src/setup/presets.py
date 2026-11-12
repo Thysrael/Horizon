@@ -7,6 +7,7 @@ and transformed internally to the preset format that match_domains() expects.
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -20,6 +21,19 @@ API_BASE_URL = os.environ.get(
 )
 PRESETS_ENDPOINT = f"{API_BASE_URL}/api/presets"
 REQUEST_TIMEOUT = 10  # seconds
+
+
+def _matches_input_term(term: str, tokens: set, input_lower: str) -> bool:
+    """Match a preset term without treating short ASCII tags as substrings."""
+    normalized = term.lower()
+    if normalized in tokens:
+        return True
+    if normalized.isascii() and normalized.isalpha() and len(normalized) <= 2:
+        return re.search(
+            rf"(?<![a-z0-9]){re.escape(normalized)}(?![a-z0-9])",
+            input_lower,
+        ) is not None
+    return normalized in input_lower
 
 
 def fetch_presets() -> Optional[Dict]:
@@ -162,12 +176,12 @@ def match_domains(
         total_keywords = len(domain_keywords) or 1
 
         for kw in domain_keywords:
-            if kw in tokens or kw in input_lower:
+            if _matches_input_term(kw, tokens, input_lower):
                 score += 1.0
 
         for source in domain.get("sources", []):
             for tag in source.get("tags", []):
-                if tag.lower() in tokens or tag.lower() in input_lower:
+                if _matches_input_term(tag, tokens, input_lower):
                     score += 0.3
 
         normalized = min(score / total_keywords, 1.0)
@@ -204,12 +218,10 @@ def collect_sources_from_domains(
 
 def _tag_matches_input(tag: str, tokens: set, input_lower: str) -> bool:
     """Check if a tag (or any of its aliases) matches the user input."""
-    tag_lower = tag.lower()
-    if tag_lower in tokens or tag_lower in input_lower:
+    if _matches_input_term(tag, tokens, input_lower):
         return True
     for alias in get_tag_aliases(tag):
-        alias_lower = alias.lower()
-        if alias_lower in tokens or alias_lower in input_lower:
+        if _matches_input_term(alias, tokens, input_lower):
             return True
     return False
 
@@ -247,7 +259,7 @@ def match_sources(
 
         category_score = sum(
             1.0 for kw in domain_keywords
-            if kw in tokens or kw in input_lower
+            if _matches_input_term(kw, tokens, input_lower)
         )
 
         for src in domain.get("sources", []):
