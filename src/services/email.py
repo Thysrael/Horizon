@@ -46,10 +46,13 @@ class EmailManager:
         if not self.config.enabled or not self.config.imap_enabled:
             return
 
+        mail = None
+        mailbox_selected = False
         try:
             mail = imaplib.IMAP4_SSL(self.config.imap_server, self.config.imap_port)
             mail.login(self.config.email_address, self.pwd)
-            mail.select("INBOX")
+            status, _ = mail.select("INBOX")
+            mailbox_selected = status == "OK"
 
             keyword = self.config.subscribe_keyword
             search_crit = f'(UNSEEN SUBJECT "{keyword}")'
@@ -135,11 +138,23 @@ class EmailManager:
                                     else:
                                         logger.info(f"Not subscribed: {email_addr}")
 
-            mail.close()
-            mail.logout()
-
         except Exception as e:
             logger.error(f"Error checking subscriptions: {e}")
+        finally:
+            if mail is not None:
+                if mailbox_selected:
+                    try:
+                        mail.close()
+                    except Exception as e:
+                        logger.debug(
+                            "Could not close IMAP mailbox (%s)", type(e).__name__
+                        )
+                try:
+                    mail.logout()
+                except Exception as e:
+                    logger.debug(
+                        "Could not log out of IMAP connection (%s)", type(e).__name__
+                    )
 
     def _open_smtp(self) -> smtplib.SMTP:
         """Open an implicit TLS or STARTTLS SMTP connection."""
