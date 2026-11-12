@@ -1,12 +1,13 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 
 from src.models import RedditConfig, RedditSubredditConfig, RedditUserConfig
-from src.scrapers.reddit import REDDIT_HEADERS, RedditScraper
+from src.scrapers.reddit import REDDIT_HEADERS, RedditScraper, _retry_after_seconds
 
 
 def _make_config(fetch_comments: int = 1, profile: str | None = None) -> RedditConfig:
@@ -75,6 +76,56 @@ def _listing_payload() -> dict:
             ]
         }
     }
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("7", 7),
+        ("not a date", 5),
+        (None, 5),
+    ],
+)
+def test_retry_after_delta_and_invalid_fallback(value, expected):
+    assert _retry_after_seconds(value) == expected
+
+
+def test_retry_after_http_date_rounds_up_and_expired_date_is_zero():
+    now = datetime(2026, 1, 5, 0, 0, 0, tzinfo=timezone.utc)
+    assert _retry_after_seconds(
+        format_datetime(now + timedelta(seconds=1), usegmt=True), now
+    ) == 1
+    assert _retry_after_seconds(
+        format_datetime(now - timedelta(seconds=1), usegmt=True), now
+    ) == 0
+
+
+def test_reddit_429_http_date_retries_once(monkeypatch):
+    requests = []
+    now = datetime.now(timezone.utc)
+    retry_at = now + timedelta(seconds=5)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if len(requests) == 1:
+            return httpx.Response(
+                429,
+                headers={"Retry-After": format_datetime(retry_at, usegmt=True)},
+            )
+        return httpx.Response(200, json={"ok": True})
+
+    sleep = AsyncMock()
+    monkeypatch.setattr("src.scrapers.reddit.asyncio.sleep", sleep)
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    scraper = RedditScraper(_make_config(fetch_comments=0), client)
+
+    response = asyncio.run(scraper._reddit_get("https://www.reddit.com/test", {}))
+    asyncio.run(client.aclose())
+
+    assert response == {"ok": True}
+    assert len(requests) == 2
+    sleep.assert_awaited_once()
+    assert sleep.await_args.args[0] in {4, 5}
 
 
 def _old_listing_html() -> str:

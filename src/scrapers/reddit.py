@@ -3,6 +3,7 @@
 import asyncio
 import calendar
 import logging
+import math
 import re
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -39,6 +40,27 @@ REDDIT_HEADERS = {
     "Referer": f"{REDDIT_BASE}/",
 }
 MAX_COMMENT_CONCURRENCY = 2
+
+
+def _retry_after_seconds(value: Optional[str], now: Optional[datetime] = None) -> int:
+    """Parse Retry-After delta-seconds or HTTP-date, defaulting to five seconds."""
+    if not value:
+        return 5
+    try:
+        return max(0, int(value))
+    except ValueError:
+        pass
+
+    try:
+        retry_at = parsedate_to_datetime(value)
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        return max(0, math.ceil((retry_at - current).total_seconds()))
+    except (TypeError, ValueError, OverflowError):
+        return 5
 
 
 class RedditBlockedError(Exception):
@@ -559,7 +581,7 @@ class RedditScraper(BaseScraper):
             url, params=params, headers=REDDIT_HEADERS, follow_redirects=True,
         )
         if response.status_code == 429:
-            retry_after = int(response.headers.get("Retry-After", 5))
+            retry_after = _retry_after_seconds(response.headers.get("Retry-After"))
             logger.warning("Reddit rate limited, retrying after %ds", retry_after)
             await asyncio.sleep(retry_after)
             response = await self.client.get(
