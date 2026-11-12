@@ -606,6 +606,15 @@ class CollectionConfig(BaseModel):
     # stores the configured number and does not check it again.
     time_window_hours: int = 24
 
+    @field_validator("time_window_hours", mode="before")
+    @classmethod
+    def reject_boolean_time_window(cls, value: Any) -> Any:
+        # Pydantic's lax int conversion accepts bool as 0/1, so reject it before
+        # collection_hours() can only see the coerced integer.
+        if isinstance(value, bool):
+            raise ValueError("time_window_hours must be an integer, not a boolean")
+        return value
+
 
 class DigestConfig(BaseModel):
     """Controls grouping and limits in the final digest."""
