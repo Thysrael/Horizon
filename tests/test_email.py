@@ -1,9 +1,12 @@
+import imaplib
 from email.mime.multipart import MIMEMultipart
+from unittest.mock import Mock
 
 import pytest
 
 from src.models import EmailConfig
 from src.services.email import EmailManager
+from src.storage.manager import StorageManager
 
 
 class FakeSMTP:
@@ -217,3 +220,50 @@ def test_check_subscriptions_skips_imap_when_disabled(monkeypatch):
     manager.check_subscriptions(storage_manager=object())
 
     assert FakeIMAP.instances == []
+
+
+@pytest.mark.parametrize("include_subscription", [False, True])
+def test_check_subscriptions_handles_unsubscribe_before_fetch_marks_seen(
+    monkeypatch: pytest.MonkeyPatch, include_subscription: bool
+) -> None:
+    monkeypatch.setenv("EMAIL_PASSWORD", "secret")
+    subjects = {b"1": ("UNSUBSCRIBE", "leaving@example.com")}
+    if include_subscription:
+        subjects[b"2"] = ("SUBSCRIBE", "joining@example.com")
+    seen: set[bytes] = set()
+
+    def search(charset: None, criteria: str) -> tuple[str, list[bytes]]:
+        keyword = criteria.split('"')[1]
+        ids = [
+            message_id
+            for message_id, (subject, _) in subjects.items()
+            if message_id not in seen and keyword in subject
+        ]
+        return "OK", [b" ".join(ids)]
+
+    def fetch(message_id: bytes, query: str) -> tuple[str, list[tuple[bytes, bytes]]]:
+        if query == "(RFC822)":
+            seen.add(message_id)
+        subject, sender = subjects[message_id]
+        message = f"From: {sender}\r\nSubject: {subject}\r\n\r\n".encode()
+        return "OK", [(message_id, message)]
+
+    mail = Mock(spec=imaplib.IMAP4_SSL)
+    mail.search.side_effect = search
+    mail.fetch.side_effect = fetch
+    monkeypatch.setattr("src.services.email.imaplib.IMAP4_SSL", Mock(return_value=mail))
+    storage = Mock(spec=StorageManager)
+    storage.load_subscribers.return_value = ["leaving@example.com"]
+    manager = EmailManager(_email_config())
+    reply = Mock()
+    monkeypatch.setattr(manager, "_send_reply", reply)
+
+    manager.check_subscriptions(storage)
+    manager.check_subscriptions(storage)
+
+    storage.remove_subscriber.assert_called_once_with("leaving@example.com")
+    if include_subscription:
+        storage.add_subscriber.assert_called_once_with("joining@example.com")
+    else:
+        storage.add_subscriber.assert_not_called()
+    assert reply.call_count == 1 + int(include_subscription)

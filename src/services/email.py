@@ -56,6 +56,11 @@ class EmailManager:
 
             status, messages = mail.search(None, search_crit)
 
+            # Find both request types before RFC822 fetches mark overlapping matches as seen.
+            unsub_keyword = self.config.unsubscribe_keyword
+            search_crit_unsub = f'(UNSEEN SUBJECT "{unsub_keyword}")'
+            unsub_status, unsub_messages = mail.search(None, search_crit_unsub)
+
             if status == "OK" and messages[0]:
                 email_ids = messages[0].split()
                 subscribers = storage_manager.load_subscribers()
@@ -93,13 +98,8 @@ class EmailManager:
                                     else:
                                         logger.info(f"Already subscribed: {email_addr}")
 
-            unsub_keyword = self.config.unsubscribe_keyword
-            search_crit_unsub = f'(UNSEEN SUBJECT "{unsub_keyword}")'
-
-            status, messages = mail.search(None, search_crit_unsub)
-
-            if status == "OK" and messages[0]:
-                email_ids = messages[0].split()
+            if unsub_status == "OK" and unsub_messages[0]:
+                email_ids = unsub_messages[0].split()
                 subscribers = storage_manager.load_subscribers()
 
                 for e_id in email_ids:
