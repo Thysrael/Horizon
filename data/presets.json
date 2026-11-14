@@ -54,6 +54,13 @@
           "description_zh": "新智元 — AI 资讯、模型发布与行业洞察（微信公众号）",
           "tags": ["ai", "news", "chinese"],
           "config": { "name": "新智元", "url": "https://wechat2rss.xlab.app/feed/ede30346413ea70dbef5d485ea5cbb95cca446e7.xml", "category": "ai-news" }
+        },
+        {
+          "type": "rss",
+          "description": "AIHOT Daily — Chinese daily briefing on AI models, products, industry and research",
+          "description_zh": "AIHOT 日报 — 每日整理模型、产品、行业动态和研究论文",
+          "tags": ["ai", "news", "chinese"],
+          "config": { "name": "AIHOT 日报", "url": "https://aihot.news/feed/daily.xml", "category": "ai-news" }
         }
       ]
     },
