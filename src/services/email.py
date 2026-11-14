@@ -9,6 +9,7 @@ import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.policy import default
 from email.utils import parseaddr
 from typing import List
 
@@ -64,7 +65,7 @@ class EmailManager:
                     _, msg_data = mail.fetch(e_id, "(RFC822)")
                     for response_part in msg_data:
                         if isinstance(response_part, tuple):
-                            msg = email.message_from_bytes(response_part[1])
+                            msg = email.message_from_bytes(response_part[1], policy=default)
 
                             subject = str(msg.get("Subject") or "").strip()
                             if subject.upper() != keyword.upper():
@@ -106,7 +107,7 @@ class EmailManager:
                     _, msg_data = mail.fetch(e_id, "(RFC822)")
                     for response_part in msg_data:
                         if isinstance(response_part, tuple):
-                            msg = email.message_from_bytes(response_part[1])
+                            msg = email.message_from_bytes(response_part[1], policy=default)
 
                             subject = str(msg.get("Subject") or "").strip()
                             if subject.upper() != unsub_keyword.upper():
