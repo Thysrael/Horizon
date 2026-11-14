@@ -1,9 +1,13 @@
+import base64
+import imaplib
 from email.mime.multipart import MIMEMultipart
+from unittest.mock import Mock
 
 import pytest
 
 from src.models import EmailConfig
 from src.services.email import EmailManager
+from src.storage.manager import StorageManager
 
 
 class FakeSMTP:
@@ -217,3 +221,53 @@ def test_check_subscriptions_skips_imap_when_disabled(monkeypatch):
     manager.check_subscriptions(storage_manager=object())
 
     assert FakeIMAP.instances == []
+
+
+@pytest.mark.parametrize("keyword", ["SUBSCRIBE", "UNSUBSCRIBE"])
+@pytest.mark.parametrize(
+    ("subject", "matches"),
+    [
+        ("{keyword}", True),
+        ("=?utf-8?q?{keyword}?=", True),
+        ("=?utf-8?b?{encoded_keyword}?=", True),
+        ("=?utf-8?q?{first_half}?=\r\n =?utf-8?q?{second_half}?=", True),
+        ("Re: {keyword}", False),
+        ("=?utf-8?q?Re=3A_{keyword}?=", False),
+    ],
+)
+def test_check_subscriptions_matches_decoded_subject(
+    monkeypatch: pytest.MonkeyPatch, keyword: str, subject: str, matches: bool
+) -> None:
+    monkeypatch.setenv("EMAIL_PASSWORD", "secret")
+    encoded_keyword = base64.b64encode(keyword.encode()).decode()
+    midpoint = len(keyword) // 2
+    subject = subject.format(
+        keyword=keyword,
+        encoded_keyword=encoded_keyword,
+        first_half=keyword[:midpoint],
+        second_half=keyword[midpoint:],
+    )
+    raw_message = f"From: user@example.com\r\nSubject: {subject}\r\n\r\n".encode()
+    mail = Mock(spec=imaplib.IMAP4_SSL)
+    mail.search.side_effect = [
+        ("OK", [b"1" if keyword == "SUBSCRIBE" else b""]),
+        ("OK", [b"1" if keyword == "UNSUBSCRIBE" else b""]),
+    ]
+    mail.fetch.return_value = ("OK", [(b"1 (RFC822)", raw_message)])
+    monkeypatch.setattr("src.services.email.imaplib.IMAP4_SSL", Mock(return_value=mail))
+    storage = Mock(spec=StorageManager)
+    storage.load_subscribers.return_value = (
+        [] if keyword == "SUBSCRIBE" else ["user@example.com"]
+    )
+    manager = EmailManager(_email_config())
+    monkeypatch.setattr(manager, "_send_reply", Mock())
+
+    manager.check_subscriptions(storage)
+
+    operation = (
+        storage.add_subscriber if keyword == "SUBSCRIBE" else storage.remove_subscriber
+    )
+    if matches:
+        operation.assert_called_once_with("user@example.com")
+    else:
+        operation.assert_not_called()
