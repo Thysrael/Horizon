@@ -368,6 +368,9 @@ def merge_configs(new_config: Config, existing_config: Config) -> Config:
     merged.sources.rss = _merge_source_list(
         new_config.sources.rss, existing_config.sources.rss, lambda source: str(source.url)
     )
+    merged.sources.podcast = _merge_source_list(
+        new_config.sources.podcast, existing_config.sources.podcast, lambda source: str(source.url)
+    )
     merged.sources.reddit.subreddits = _merge_source_list(
         new_config.sources.reddit.subreddits,
         existing_config.sources.reddit.subreddits,
@@ -523,6 +526,7 @@ def _count_sources(config: Config) -> int:
     if config.sources.hackernews.enabled:
         count += 1
     count += len([s for s in config.sources.rss if s.enabled])
+    count += len([s for s in config.sources.podcast if s.enabled])
     if config.sources.reddit.enabled:
         count += len([s for s in config.sources.reddit.subreddits if s.enabled])
         count += len([s for s in config.sources.reddit.users if s.enabled])

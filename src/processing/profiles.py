@@ -13,12 +13,22 @@ if TYPE_CHECKING:
 BUILTIN_PROFILES_DIR = Path(__file__).resolve().parents[1] / "_builtin_profiles"
 
 
+class LongFormContent(BaseModel):
+    """Bounded full-content evidence extraction before scoring and enrichment."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_chars: int = Field(default=12000, ge=1000, le=32000)
+    max_chunks: int = Field(default=24, ge=1, le=64)
+
+
 class ProfileContent(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     analysis_max_chars: int = Field(default=1000, ge=500, le=100_000)
     enrichment_max_chars: int = Field(default=8000, ge=500, le=100_000)
     sampling: Literal["prefix", "head-middle-tail"] = "prefix"
+    long_form: Optional[LongFormContent] = None
 
 
 class ProfileBlock(BaseModel):

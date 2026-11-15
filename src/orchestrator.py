@@ -21,6 +21,7 @@ from .scrapers.base import BaseScraper
 from .scrapers.github import GitHubScraper
 from .scrapers.hackernews import HackerNewsScraper
 from .scrapers.rss import RSSScraper
+from .scrapers.podcast import PodcastScraper
 from .scrapers.reddit import RedditScraper
 from .scrapers.telegram import TelegramScraper
 from .scrapers.twitter import TwitterScraper
@@ -476,6 +477,11 @@ class HorizonOrchestrator:
                     ExtractorRegistry(self.config.extractors),
                 )
                 tasks.append(self._fetch_with_progress("RSS Feeds", rss_scraper, since))
+
+            # Podcasts with publicly available transcripts
+            if self.config.sources.podcast:
+                podcast_scraper = PodcastScraper(self.config.sources.podcast, client)
+                tasks.append(self._fetch_with_progress("Podcasts", podcast_scraper, since))
 
             # Reddit
             if self.config.sources.reddit.enabled:

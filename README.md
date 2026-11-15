@@ -312,6 +312,7 @@ Schedule Horizon with **GitHub Actions** using the [daily workflow template](.gi
 |--------|----------------|----------|
 | **Hacker News** | Top stories by score | Yes (top N comments) |
 | **RSS / Atom** | Any RSS or Atom feed | — |
+| **Podcasts** | RSS episodes with public transcript links | — |
 | **Reddit** | Subreddits + user posts | Yes (top N comments) |
 | **Telegram** | Public channel messages | — |
 | **Twitter / X** | User timelines + keyword searches (Apify) | Yes (top N replies) |
@@ -355,6 +356,7 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 | [Scoring](docs/scoring.md) | How Horizon evaluates and ranks news items |
 | [Scrapers](docs/scrapers.md) | Source scraper details and extension notes |
 | [Extractors](docs/extractors.md) | Full article extraction for RSS sources |
+| [Podcasts](docs/podcasts.md) | Public transcript collection and whole-episode summaries |
 | [MCP Tools](src/mcp/README.md) | Tool reference for MCP-compatible clients |
 | [Agent Skill](docs/agent-skill.md) | Use an AI assistant to configure, run, customize, schedule, and extend Horizon |
 
