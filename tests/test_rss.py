@@ -30,6 +30,8 @@ _SINCE = datetime(2026, 4, 24, 0, 0, tzinfo=timezone.utc)
 def _make_feed_client(feed_text: str) -> AsyncMock:
     response = MagicMock()
     response.text = feed_text
+    response.content = feed_text.encode("utf-8")
+    response.headers = {}
     response.raise_for_status.return_value = None
     client = AsyncMock()
     client.get.return_value = response
@@ -128,7 +130,7 @@ def test_invalid_entry_url_keeps_siblings_and_reports_warning(caplog) -> None:
 def test_invalid_entry_tags_keep_siblings(monkeypatch, caplog) -> None:
     parsed = feedparser.parse(_THREE_ENTRIES)
     parsed.entries[1]["tags"] = [object()]
-    monkeypatch.setattr("src.scrapers.rss.feedparser.parse", lambda _: parsed)
+    monkeypatch.setattr("src.scrapers.rss.feedparser.parse", lambda _, **kwargs: parsed)
     client = _make_feed_client(_THREE_ENTRIES)
     source = RSSSourceConfig(name="Test", url="https://example.com/feed.xml")
 
@@ -194,7 +196,7 @@ def test_http_error_remains_a_feed_failure() -> None:
 @pytest.mark.parametrize("parse_raises", [False, True], ids=["bozo", "exception"])
 def test_parser_error_remains_a_feed_failure(monkeypatch, parse_raises) -> None:
     if parse_raises:
-        def parse(_):
+        def parse(_, **kwargs):
             raise ValueError("Parser failed")
         monkeypatch.setattr("src.scrapers.rss.feedparser.parse", parse)
     client = _make_feed_client("not an RSS feed")
