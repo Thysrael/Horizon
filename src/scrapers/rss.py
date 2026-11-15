@@ -139,8 +139,10 @@ class RSSScraper(BaseScraper):
             )
             await asyncio.sleep(delay)
         response.raise_for_status()
-        feed = feedparser.parse(response.text)
-        if feed.bozo and not feed.entries:
+        feed = feedparser.parse(response.content, response_headers=dict(response.headers))
+        if feed.bozo and not feed.entries and not isinstance(
+            feed.bozo_exception, feedparser.NonXMLContentType
+        ):
             raise ValueError("Invalid RSS/Atom feed")
 
         for ordinal, entry in enumerate(feed.entries, start=1):
