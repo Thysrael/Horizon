@@ -319,3 +319,26 @@ def test_same_url_preserves_distinct_watchlist_profile_routes(first, second, exp
     scraper = _make_scraper(config, obb)
     result = asyncio.run(scraper.fetch(datetime.now(timezone.utc) - timedelta(days=1)))
     assert len(result.items) == expected
+
+
+@pytest.mark.parametrize("invalid_field", ["url", "body", "author", "title"])
+@pytest.mark.parametrize("invalid_first", [True, False])
+def test_fetch_skips_invalid_row_without_losing_valid_news(
+    invalid_field: str, invalid_first: bool
+) -> None:
+    valid = _news_row()
+    invalid = _news_row(url="https://example.com/invalid")
+    setattr(invalid, invalid_field, 123)
+    if invalid_field == "url":
+        invalid.url = "not a URL"
+    obb = MagicMock()
+    rows = [invalid, valid] if invalid_first else [valid, invalid]
+    obb.news.company.return_value = SimpleNamespace(results=rows)
+    scraper = _make_scraper(_cfg(), obb)
+    try:
+        result = asyncio.run(scraper.fetch(datetime.now(timezone.utc) - timedelta(days=1)))
+        assert result.status == "success"
+        assert len(result.items) == 1
+        assert result.items[0].title == valid.title
+    finally:
+        asyncio.run(scraper.client.aclose())
