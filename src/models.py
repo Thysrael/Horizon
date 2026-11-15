@@ -13,6 +13,7 @@ class SourceType(str, Enum):
     GITHUB = "github"
     HACKERNEWS = "hackernews"
     RSS = "rss"
+    PODCAST = "podcast"
     REDDIT = "reddit"
     TELEGRAM = "telegram"
     TWITTER = "twitter"
@@ -34,6 +35,7 @@ SOURCE_REGISTRY = {
     SourceType.GITHUB.value: SourceDefinition("github", config_is_list=True),
     SourceType.HACKERNEWS.value: SourceDefinition("hackernews"),
     SourceType.RSS.value: SourceDefinition("rss", config_is_list=True),
+    SourceType.PODCAST.value: SourceDefinition("podcast", config_is_list=True),
     SourceType.REDDIT.value: SourceDefinition("reddit", item_fields=("subreddits", "users")),
     SourceType.TELEGRAM.value: SourceDefinition("telegram", item_fields=("channels",)),
     SourceType.TWITTER.value: SourceDefinition("twitter", item_fields=("users", "keywords")),
@@ -322,6 +324,18 @@ class RSSSourceConfig(BaseModel):
     profile: ProfileRoute = None
 
 
+class PodcastSourceConfig(BaseModel):
+    """Opt-in podcast RSS feeds with publisher-declared public transcripts."""
+
+    name: str
+    url: HttpUrl
+    enabled: bool = True
+    category: Optional[str] = None
+    profile: ProfileRoute = "podcast"
+    max_items: int = Field(default=10, ge=1, le=100)
+    max_transcript_chars: int = Field(default=200_000, ge=1000, le=500_000)
+
+
 class RedditSubredditConfig(BaseModel):
     """Configuration for monitoring a specific subreddit."""
 
@@ -505,6 +519,7 @@ class SourcesConfig(BaseModel):
     github: List[GitHubSourceConfig] = Field(default_factory=list)
     hackernews: HackerNewsConfig = Field(default_factory=HackerNewsConfig)
     rss: List[RSSSourceConfig] = Field(default_factory=list)
+    podcast: List[PodcastSourceConfig] = Field(default_factory=list)
     reddit: RedditConfig = Field(default_factory=RedditConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     twitter: Optional[TwitterConfig] = None

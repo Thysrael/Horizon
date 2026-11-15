@@ -15,6 +15,7 @@ from .classifier import ContentClassifier
 from .prompting.analysis import analysis_system_prompt, analysis_user_prompt
 from .utils import gather_ai_tasks, parse_json_response
 from .errors import AIProviderUnavailableError
+from .longform import LongFormError, prepare_content
 from ..models import ContentAnalysis, ContentItem
 from ..processing.content import select_content, split_content
 from ..processing.profiles import ProfileRegistry
@@ -86,7 +87,7 @@ class ContentAnalyzer:
         return analyzed_items
 
     @retry(
-        retry=retry_if_exception_type(Exception) & retry_if_not_exception_type(AIProviderUnavailableError),
+        retry=retry_if_exception_type(Exception) & retry_if_not_exception_type((AIProviderUnavailableError, LongFormError)),
         stop=stop_after_attempt(3),
         wait=wait_exponential(min=2, max=10)
     )
@@ -100,11 +101,18 @@ class ContentAnalyzer:
         if item.processing:
             item.processing.artifacts.clear()
 
-        content_parts = split_content(item.content)
-        selected_content = select_content(
-            content_parts.main,
-            profile.definition.content.analysis_max_chars,
-            profile.definition.content.sampling,
+        # Long-form profiles read every chunk; transcript text must not be split
+        # on the comment delimiter or silently sampled like an ordinary article.
+        long_form = profile.definition.content.long_form is not None
+        content_parts = split_content(None if long_form else item.content)
+        selected_content = (
+            await prepare_content(item, profile, self.client)
+            if long_form
+            else select_content(
+                content_parts.main,
+                profile.definition.content.analysis_max_chars,
+                profile.definition.content.sampling,
+            )
         )
         content_section = f"Content: {selected_content}" if selected_content else ""
 

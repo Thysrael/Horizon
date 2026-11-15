@@ -302,6 +302,7 @@ docker compose run --rm horizon [OPTIONS]
 |--------|---------|---------|
 | **Hacker News** | 按分数排序的热门文章 | 支持（前 N 条评论） |
 | **RSS / Atom** | 任意 RSS 或 Atom 订阅源 | — |
+| **播客** | RSS 中明确提供公开文字稿的单集 | — |
 | **Reddit** | Subreddit 帖子 + 用户动态 | 支持（前 N 条评论） |
 | **Telegram** | 公开频道消息 | — |
 | **Twitter / X** | 用户推文 + 关键词搜索（Apify） | 支持（前 N 条回复） |
@@ -333,6 +334,7 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 | [评分机制](docs/scoring.md) | Horizon 如何评估和排序新闻 |
 | [抓取器](docs/scrapers.md) | 信息源抓取器说明和扩展细节 |
 | [内容提取器](docs/extractors.md) | RSS 信息源的全文提取 |
+| [播客](docs/podcasts.md) | 公开文字稿采集与整集内容摘要 |
 | [MCP 工具](src/mcp/README.md) | MCP 客户端可调用的工具说明 |
 | [Agent Skill](docs/agent-skill.md) | 让 AI 助手配置、运行、定制、定时投递和扩展 Horizon |
 

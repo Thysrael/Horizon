@@ -1,6 +1,7 @@
 """Prompt construction for profile-driven content enrichment."""
 
 from ...models import ContentItem
+from ..longform import prepared_content
 from ...processing.content import select_content, split_content
 from ...processing.profiles import LoadedProfile, ProfileBlock
 from ...processing.tools import ToolResult
@@ -152,13 +153,14 @@ def item_context(
     include_content: bool,
 ) -> str:
     analysis = item.processing.analysis if item.processing else None
-    parts = split_content(item.content)
+    long_form = profile.definition.content.long_form is not None
+    parts = split_content(None if long_form else item.content)
     content = (
-        select_content(
+        (prepared_content(item, profile) if long_form else select_content(
             parts.main,
             profile.definition.content.enrichment_max_chars,
             profile.definition.content.sampling,
-        )
+        ))
         if include_content
         else ""
     )

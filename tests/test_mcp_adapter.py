@@ -171,6 +171,7 @@ def test_mcp_filter_and_reporting_support_every_registered_source() -> None:
                 "github": [{"type": "user_events", "username": "alice"}],
                 "hackernews": {"enabled": True},
                 "rss": [{"name": "Feed", "url": "https://example.com/feed"}],
+                "podcast": [{"name": "Interviews", "url": "https://example.com/podcast.xml"}],
                 "reddit": {"enabled": True, "subreddits": [{"subreddit": "python"}]},
                 "telegram": {"enabled": True, "channels": [{"channel": "updates"}]},
                 "twitter": {"enabled": True, "users": ["openai"]},

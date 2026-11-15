@@ -22,6 +22,7 @@ rather than process the item with all of them.
 | `tech-blog` | Engineering deep dives, tutorials, investigations, and retrospectives | Background, solution, and takeaways |
 | `finance-news` | Markets, macroeconomics, company finance, and economically material policy | Summary and background; direct impact when useful |
 | `ai-creator` | AI developments with potential for content creation | Summary; timely hooks, content angles, and community discussion when useful |
+| `podcast` | Podcast interviews and discussions with substantial transcript evidence | A substantial reading summary with attributed viewpoints, reasoning, examples, and qualifications |
 
 Start with a built-in profile, then adjust its prompts or blocks to match your reading needs.
 
@@ -187,6 +188,12 @@ default; set `optional` to `true` when they may be omitted.
 | `tools` | Tools allowed for this block. Declare it on every block; use `[]` when none are allowed. |
 | `optional` | Whether output may omit the block. Defaults to `false`. |
 | `primary` | Render this required block directly below the item title without a block heading. At most one block may be primary. Defaults to `false`. |
+
+Profiles can opt into bounded whole-document processing with
+`content.long_form`, rather than prefix or head-middle-tail sampling. The
+`podcast` profile uses this to extract evidence from every transcript chunk
+before analysis and enrichment. See [Podcasts](podcasts.md#whole-transcript-processing)
+for the fields, coverage behavior, and cost implications.
 
 Prompt paths cannot escape their profile directory. Unknown fields are rejected
 in profile JSON.

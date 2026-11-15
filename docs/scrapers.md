@@ -119,6 +119,19 @@ source configuration.
 
 **Extracted data**: title, URL, author, content (from `summary`/`description`/`content` fields, or full article text if an extractor is configured), feed name, category, and entry tags.
 
+## Podcasts
+
+**File**: `src/scrapers/podcast.py`
+
+The opt-in `sources.podcast` list collects RSS episodes that declare public
+`podcast:transcript` links. It retains the full extracted transcript for the
+`podcast` profile's bounded long-form processing. Episodes without a usable
+transcript produce diagnostics instead of falling back to show notes. No audio
+download or transcription service is used.
+
+See [Podcasts](podcasts.md) for configuration, supported formats, resource limits,
+and examples of feeds that publish transcript links.
+
 ## Reddit
 
 **File**: `src/scrapers/reddit.py`

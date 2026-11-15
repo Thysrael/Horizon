@@ -21,6 +21,7 @@ from tenacity import retry, retry_if_exception_type, retry_if_not_exception_type
 from .client import AIClient
 from .errors import AIProviderUnavailableError
 from .localization import normalize_language
+from .longform import prepare_content
 from .prompting.enrichment import (
     MAX_TOOL_REQUESTS,
     artifact_prompt,
@@ -225,8 +226,20 @@ class ContentEnricher:
         profile = self.profiles.get(item.processing.classification.profile)
         for language in self.languages:
             item.processing.artifacts.pop(language, None)
+        if profile.definition.content.long_form is not None:
+            await prepare_content(item, profile, self.client)
         tool_results = await self._plan_and_execute_tools(item, profile)
         sources = self._sources_from_tool_results(tool_results)
+        podcast = item.metadata.get("podcast")
+        transcript_url = podcast.get("transcript_url") if isinstance(podcast, dict) else None
+        if (
+            profile.definition.content.long_form is not None
+            and isinstance(transcript_url, str)
+            and transcript_url.startswith(("https://", "http://"))
+        ):
+            sources["transcript"] = ArtifactSource(
+                id="transcript", title="Episode transcript", url=transcript_url
+            )
 
         artifacts = {}
         for language in self.languages:
@@ -235,6 +248,9 @@ class ContentEnricher:
             )
             self._expand_request_source_refs(generated.blocks, tool_results)
             self._validate_blocks(generated.blocks, profile, tool_results)
+            if "transcript" in sources:
+                for block in generated.blocks:
+                    block.source_refs.append("transcript")
             generated.title = normalize_language(generated.title, language)
             for block in generated.blocks:
                 block.title = normalize_language(block.title, language)

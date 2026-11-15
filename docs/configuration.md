@@ -73,7 +73,8 @@ and webhook message content are unchanged.
 Profiles define how to evaluate and present content; the runtime configuration
 defines what you collect, how much you keep, and where it goes. Use `tech-news`
 for events and context, `tech-blog` for engineering lessons, `finance-news` for
-market developments, or `ai-creator` for content ideas.
+market developments, `ai-creator` for content ideas, or `podcast` for substantial
+episode summaries grounded in public transcripts.
 
 The `processing` section controls profile discovery and the fallback used when
 automatic matching cannot select a profile:
@@ -386,6 +387,9 @@ Source entries also accept `profile`:
 | `"auto"` or omitted | Let AI choose one of all loaded profiles |
 | `["tech-news", "finance-news"]` | Let AI choose one profile from this candidate list |
 
+Podcast feed entries default to `"podcast"` so that complete transcripts use
+long-form processing; other source types retain the routing defaults above.
+
 An unknown profile ID is an error. For nested sources, set the field on the
 item-producing entry, such as an RSS feed, Reddit subreddit or user, Telegram
 channel, or OpenBB watchlist. See [Source Routing](profiles.md#source-routing)
@@ -448,6 +452,15 @@ for validation and fallback rules.
   }
 }
 ```
+
+### Podcasts
+
+Use the opt-in `sources.podcast` list for RSS episodes with publisher-declared
+public transcript links. Each entry requires `name` and `url`, defaults to the
+`podcast` profile, and can set `max_items` and `max_transcript_chars` to bound
+collection. The existing AI provider generates the summary; there is no audio
+transcription dependency. See [Podcasts](podcasts.md) for a complete configuration
+fragment, supported transcript formats, and model-processing limits.
 
 ### Reddit
 
