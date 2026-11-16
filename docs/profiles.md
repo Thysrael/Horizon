@@ -22,6 +22,7 @@ rather than process the item with all of them.
 | `tech-blog` | Engineering deep dives, tutorials, investigations, and retrospectives | Background, solution, and takeaways |
 | `finance-news` | Markets, macroeconomics, company finance, and economically material policy | Summary and background; direct impact when useful |
 | `ai-creator` | AI developments with potential for content creation | Summary; timely hooks, content angles, and community discussion when useful |
+| `flightsim-news` | Consumer flight simulation: simulators, add-ons, hardware, online networks, and their communities | Concrete changes and necessary background, with what it means for simmers and community discussion when useful |
 
 Start with a built-in profile, then adjust its prompts or blocks to match your reading needs.
 
