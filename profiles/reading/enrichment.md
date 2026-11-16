@@ -4,7 +4,7 @@ Write a concise recommendation for a personal reading list in natural Chinese.
 The reader will decide whether to save the original article to Notion.
 Preserve the author's position, uncertainty, and original publication context.
 Do not invent facts, citations, measurements, or claims about what the reader has read.
-Keep the output short enough that five recommendations can be browsed quickly.
+Keep the output short enough that several recommendations can be browsed quickly.
 Distinguish missing article text from a complete but brief or shallow article.
 Use “正文缺失或被截断，无法可靠评价” in `about` only when there is evidence of
 missing or truncated source text, and explain that limitation in `reading_value`.

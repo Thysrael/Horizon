@@ -406,7 +406,6 @@
     }
   },
   "digest": {
-    "max_items": 5,
     "profile_order": [
       "reading"
     ]
