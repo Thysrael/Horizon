@@ -16,7 +16,7 @@ from typing import Any
 
 # Keep native method names and parameters: the service owns the API contract.
 OPERATIONS = (
-    "validate_config", "fetch_items", "score_items", "filter_items",
+    "validate_config", "fetch_items", "score_items", "score_urls", "filter_items",
     "enrich_items", "generate_summary", "run_pipeline", "list_runs",
     "get_run_meta", "get_run_stage", "get_run_summary",
 )

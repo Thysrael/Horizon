@@ -11,6 +11,7 @@ The MCP layer does not reimplement Horizon business logic. It reuses the existin
 | `hz_validate_config` | Validate Horizon config and required environment variables |
 | `hz_fetch_items` | Fetch and deduplicate content into the `raw` stage |
 | `hz_score_items` | Score items from a stage into `scored` |
+| `hz_score_urls` | Score article URLs with a profile's analysis prompt, without publishing a digest |
 | `hz_filter_items` | Filter scored items into `filtered` |
 | `hz_enrich_items` | Enrich filtered items into `enriched` |
 | `hz_generate_summary` | Generate markdown from a stage |
@@ -55,6 +56,39 @@ contain Python source. A missing explicit path is an error.
 The default config is `<workspace>/data/config.json`. Relative Profile paths are
 resolved from the workspace. To use another Horizon code revision, launch the
 server with that revision's environment.
+
+## Score article URLs
+
+`hz_score_urls` scores one or more arbitrary article URLs with the same extractor and profile analysis path used for digest items. It does not filter, enrich, select a digest, or write `data/summaries` or the daily Pages site.
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `urls` | | Non-empty list of article URLs |
+| `profile` | `reading` | Profile id. Scoring uses `profiles/<profile>/analysis.md` |
+| `horizon_path` | discovered checkout | Workspace for config, profiles, and credentials |
+| `config_path` | `<workspace>/data/config.json` | Horizon config, including the AI client |
+
+For each URL the tool fetches the page with the trafilatura extractor, builds a content item for the requested profile, and runs the existing analyzer. The result list keeps input order. Each entry has `url`, `title` when the page provides one, `score` from 0 to 10, `reason`, `summary`, `tags`, and `error`. A fetch or analysis failure is recorded on that URL and the rest of the batch still runs.
+
+DevBot and other MCP clients call the tool by name. Example arguments:
+
+```json
+{
+  "urls": ["https://example.com/essay", "https://example.com/notes"],
+  "profile": "reading",
+  "config_path": "data/reading.json"
+}
+```
+
+The same work is available from the CLI, which prints the service result as JSON:
+
+```bash
+uv run horizon score --urls https://example.com/essay --config data/reading.json
+```
+
+Model credentials stay in the Horizon process environment. For this reading setup that is `DEEPSEEK_API_KEY`, named by the config's `api_key_env`. Callers do not pass the key as a tool argument. A successful response can still contain per-URL errors; only a bad request, unknown profile, or unavailable AI provider fails the whole call.
+
+URL scoring writes an ephemeral run under `data/mcp-runs/<run_id>/` (`meta.json` and, when any page was analyzed, `scored_items.json`) for debugging. Those artifacts are not the published daily digest.
 
 ## Run Artifacts
 

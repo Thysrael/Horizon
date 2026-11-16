@@ -2,6 +2,7 @@
 
 import argparse
 import asyncio
+import json
 import shlex
 import sys
 from pathlib import Path
@@ -12,6 +13,8 @@ from rich.console import Console
 from ._cli import add_data_dir_arguments, add_log_level_argument
 from .console_icons import get_icons
 from .logging_config import configure_logging
+from .mcp.errors import HorizonMcpError
+from .mcp.service import HorizonPipelineService
 from .storage.manager import ConfigError, StorageManager
 from .orchestrator import HorizonOrchestrator
 from .collection_window import collection_hours
@@ -37,6 +40,72 @@ def print_banner():
     console.print(banner)
 
 
+def score_main(argv: list[str] | None = None) -> None:
+    """Score article URLs and print JSON without publishing a digest."""
+
+    parser = argparse.ArgumentParser(
+        prog="horizon score",
+        description=(
+            "Score one or more article URLs with the same profile analysis path "
+            "Horizon uses for digests. Prints JSON to stdout. Does not filter, "
+            "enrich, or publish a daily digest. API keys such as DEEPSEEK_API_KEY "
+            "stay in the Horizon process environment and are not accepted as arguments."
+        ),
+    )
+    parser.add_argument(
+        "--urls",
+        nargs="+",
+        required=True,
+        metavar="URL",
+        help="Article URLs to score",
+    )
+    parser.add_argument(
+        "--profile",
+        default="reading",
+        help="Processing profile id whose analysis.md scores the articles (default: reading)",
+    )
+    add_data_dir_arguments(parser)
+    add_log_level_argument(parser)
+    args = parser.parse_args(argv)
+
+    configure_logging(console, level=args.log_level)
+    load_dotenv()
+    config_path = args.config or str(Path(args.data_dir) / "config.json")
+
+    async def _score():
+        service = HorizonPipelineService(console=console)
+        return await service.score_urls(
+            urls=args.urls,
+            profile=args.profile,
+            config_path=config_path,
+        )
+
+    try:
+        payload = asyncio.run(_score())
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except HorizonMcpError as exc:
+        payload = {
+            "ok": False,
+            "error": {"code": exc.code, "message": exc.message, "details": exc.details},
+        }
+        _print_json(payload)
+        sys.exit(1)
+    except Exception as exc:
+        payload = {
+            "ok": False,
+            "error": {"code": "HZ_INTERNAL_ERROR", "message": str(exc)},
+        }
+        _print_json(payload)
+        sys.exit(1)
+
+    _print_json(payload)
+
+
+def _print_json(payload: dict) -> None:
+    sys.stdout.write(json.dumps(payload, ensure_ascii=False, indent=2) + "\n")
+
+
 def _hours_argument(value: str) -> int:
     """Parse the CLI override. Positivity is checked later, once, with the config value."""
     try:
@@ -47,11 +116,18 @@ def _hours_argument(value: str) -> int:
 
 def main():
     """Main CLI entry point."""
+    if len(sys.argv) > 1 and sys.argv[1] == "score":
+        score_main(sys.argv[2:])
+        return
+
     configure_logging(console)
     print_banner()
     icons = get_icons()
 
-    parser = argparse.ArgumentParser(description="Horizon - AI-Driven Information Aggregation System")
+    parser = argparse.ArgumentParser(
+        description="Horizon - AI-Driven Information Aggregation System",
+        epilog="Score article URLs without publishing a digest: horizon score --help",
+    )
     parser.add_argument("--hours", type=_hours_argument, help="Force fetch from last N hours")
     add_data_dir_arguments(parser)
     add_log_level_argument(parser)

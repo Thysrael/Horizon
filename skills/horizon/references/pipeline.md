@@ -59,6 +59,7 @@ when switching interfaces.
 | --- | --- | --- |
 | `fetch_items` | `{"hours":24,"sources":["rss","hackernews"]}` | `run_id`, `fetched`, `fetch_status`, `fetch_report` |
 | `score_items` | `{"run_id":"RUN_ID"}` | `score_distribution`, including `unscored` |
+| `score_urls` | `{"urls":["https://example.com/article"],"profile":"reading"}` | Per-URL `score`, `reason`, `summary`, and `error`. Does not publish a digest |
 | `filter_items` | `{"run_id":"RUN_ID","threshold":7.0}` | `kept`, dedup/removal counts, group counts |
 | `enrich_items` | `{"run_id":"RUN_ID"}` | `status`, `failed`, `failed_ids`, artifact presence |
 | `generate_summary` | `{"run_id":"RUN_ID","language":"zh","source_stage":"enriched"}` | `summary_path`, `items_used`, source stage |
@@ -68,6 +69,11 @@ when switching interfaces.
 Replace `RUN_ID` with the returned value. Use the configured per-Profile
 thresholds when no one-off override is requested. Filtering may invoke AI topic
 deduplication or discussion expansion; it is not necessarily an offline stage.
+
+`score_urls` is not a digest stage. It analyzes the given article URLs with
+the requested profile (`reading` by default) and does not filter, enrich, or
+write a published summary. Keep API keys such as `DEEPSEEK_API_KEY` in the
+Horizon process environment.
 
 ## Interpret failures and continue
 

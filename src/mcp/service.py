@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 from dataclasses import dataclass
@@ -10,12 +11,16 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+import httpx
+from pydantic import ValidationError
 from rich.console import Console
 
 from ..ai.summarizer import DailySummarizer
 from ..ai.errors import AIProviderUnavailableError
 from ..collection_window import collection_hours
-from ..models import AIProvider, Config, ContentItem
+from ..extractors import ExtractorRegistry
+from ..extractors.trafilatura import TrafilaturaExtractor
+from ..models import AIProvider, Config, ContentItem, ExtractorType, SourceType
 from ..orchestrator import HorizonOrchestrator
 from ..processing import ProfileRegistry
 from .errors import HorizonMcpError
@@ -85,6 +90,70 @@ def _redact_config(value: Any, key: str = "") -> Any:
 
 def _default_runs_root() -> Path:
     return Path(__file__).resolve().parents[2] / "data" / "mcp-runs"
+
+
+def _blank_url_score(url: str, error: str, title: str | None = None) -> dict[str, Any]:
+    return {
+        "url": url,
+        "title": title,
+        "score": None,
+        "reason": None,
+        "summary": None,
+        "tags": [],
+        "error": error,
+    }
+
+
+def _analysis_url_score(url: str, title: str | None, item: ContentItem) -> dict[str, Any]:
+    analysis = item.processing.analysis if item.processing else None
+    if analysis is None or analysis.score is None:
+        reason = analysis.reason if analysis else None
+        summary = analysis.summary if analysis else None
+        return {
+            "url": url,
+            "title": title,
+            "score": None,
+            "reason": reason,
+            "summary": summary,
+            "tags": list(analysis.tags) if analysis else [],
+            "error": reason or "analysis produced no result",
+        }
+    return {
+        "url": url,
+        "title": title,
+        "score": analysis.score,
+        "reason": analysis.reason,
+        "summary": analysis.summary,
+        "tags": list(analysis.tags),
+        "error": None,
+    }
+
+
+def _content_item_for_url(
+    index: int,
+    url: str,
+    content: str,
+    title: str | None,
+    profile: str,
+) -> ContentItem:
+    """Build the same item shape the reading digest analyzes after extraction.
+
+    Digest articles are RSS items whose feed excerpt has been replaced by
+    trafilatura text. Arbitrary URLs use that shape so the profile analyzer
+    sees source ``rss`` and the extracted article.
+    """
+
+    digest = hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+    return ContentItem(
+        id=f"url:article:{index}:{digest}",
+        source_type=SourceType.RSS,
+        title=title or url,
+        url=url,
+        content=content,
+        published_at=datetime.now(timezone.utc),
+        profile=profile,
+        metadata={"content_origin": "web"},
+    )
 
 
 @dataclass
@@ -419,6 +488,126 @@ class HorizonPipelineService:
             "selected": len(selected),
             "score_distribution": self._score_distribution(scored_items),
             "artifact": str((self.run_store.run_dir(run_id) / "scored_items.json").resolve()),
+            "meta": meta,
+        }
+
+    async def score_urls(
+        self,
+        urls: list[str],
+        profile: str = "reading",
+        horizon_path: str | None = None,
+        config_path: str | None = None,
+    ) -> dict[str, Any]:
+        """Score article URLs with one profile's existing analysis prompt.
+
+        Fetches each page with the trafilatura extractor used for RSS articles,
+        then runs ``analyze_items``. Per-URL fetch and analysis failures stay
+        on that URL. This does not filter, enrich, select a digest, or write
+        published summaries.
+        """
+
+        if isinstance(urls, str) or not isinstance(urls, (list, tuple)) or len(urls) == 0:
+            raise HorizonMcpError(
+                code="HZ_INVALID_INPUT",
+                message="urls must be a non-empty list of URL strings.",
+            )
+        profile_id = profile.strip() if isinstance(profile, str) else ""
+        if not profile_id:
+            raise HorizonMcpError(
+                code="HZ_INVALID_INPUT",
+                message="profile must be a non-empty profile id.",
+            )
+
+        ctx, _, _ = self._build_context(
+            horizon_path=horizon_path,
+            config_path=config_path,
+            sources=None,
+        )
+        try:
+            self._profiles(ctx).get(profile_id)
+        except ValueError as exc:
+            raise HorizonMcpError(
+                code="HZ_INVALID_INPUT",
+                message=str(exc),
+                details={"profile": profile_id},
+            ) from exc
+
+        extractor = ExtractorRegistry(ctx.config.extractors).get(ExtractorType.TRAFILATURA.value)
+        if not isinstance(extractor, TrafilaturaExtractor):
+            raise HorizonMcpError(
+                code="HZ_CONFIG_INVALID",
+                message="The trafilatura article extractor is not available.",
+            )
+
+        run_id = self.run_store.create_run()
+        results: list[dict[str, Any] | None] = [None] * len(urls)
+        pending: list[tuple[int, str, str | None, ContentItem]] = []
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for index, raw_url in enumerate(urls):
+                if not isinstance(raw_url, str) or not raw_url.strip():
+                    shown = raw_url.strip() if isinstance(raw_url, str) else ""
+                    results[index] = _blank_url_score(shown, "URL is empty")
+                    continue
+                url = raw_url.strip()
+                article = await extractor.extract_article(url, client)
+                if article.error or not article.content:
+                    results[index] = _blank_url_score(
+                        url,
+                        article.error or "no article content extracted",
+                        article.title,
+                    )
+                    continue
+                try:
+                    item = _content_item_for_url(
+                        index, url, article.content, article.title, profile_id
+                    )
+                except ValidationError as exc:
+                    message = exc.errors(include_url=False)[0]["msg"]
+                    results[index] = _blank_url_score(
+                        url, f"invalid article URL: {message}", article.title
+                    )
+                    continue
+                pending.append((index, url, article.title, item))
+
+        analyzed: list[ContentItem] = []
+        if pending:
+            self._bind_chatgpt_account(ctx, run_id)
+            analyzed = await self._orchestrator(ctx).analyze_items(
+                [item for _, _, _, item in pending]
+            )
+            for (index, url, title, _), item in zip(pending, analyzed, strict=True):
+                results[index] = _analysis_url_score(url, title, item)
+
+        scored_results = [result for result in results if result is not None]
+        artifact = None
+        if analyzed:
+            artifact_path = self.run_store.save_items(
+                run_id, "scored", items_to_dicts(analyzed)
+            )
+            artifact = str(artifact_path.resolve())
+
+        failed = sum(1 for result in scored_results if result["error"])
+        meta = self.run_store.update_meta(
+            run_id,
+            {
+                "horizon_path": str(ctx.horizon_path),
+                "config_path": str(ctx.config_path),
+                "profile": profile_id,
+                "url_score_count": len(scored_results),
+                "url_score_failed": failed,
+                "scored_count": len(scored_results) - failed,
+                "url_scores": scored_results,
+            },
+        )
+        return {
+            "profile": profile_id,
+            "count": len(scored_results),
+            "scored": len(scored_results) - failed,
+            "failed": failed,
+            "results": scored_results,
+            "run_id": run_id,
+            "artifact": artifact,
             "meta": meta,
         }
 

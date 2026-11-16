@@ -302,6 +302,14 @@ docker compose run --rm horizon [OPTIONS]
 
 `--data-dir` changes the state directory, including summaries, subscribers, and the default config location; `--config` changes only the config file. The generated report is saved to `data/summaries/` (or `<data-dir>/summaries/` if `--data-dir` is set). See [Configuration Paths](docs/configuration.md#configuration-paths) for combining both flags and initializing a custom config location.
 
+To score article URLs without fetching sources or publishing a digest:
+
+```bash
+uv run horizon score --urls https://example.com/article
+```
+
+`--profile` defaults to `reading` and uses that profile's `analysis.md`. The command prints JSON to stdout. `-d`, `-c`, and `-l` match the table above. Model keys such as `DEEPSEEK_API_KEY` stay in the environment.
+
 ### 4. Automate (Optional)
 
 Schedule Horizon with **GitHub Actions** using the [daily workflow template](.github/workflows/daily-summary.yml.disabled). The template is disabled in this repository; configure it for your deployment and rename it to `daily-summary.yml` to enable it.

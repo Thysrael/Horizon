@@ -124,3 +124,9 @@ For every configured language, Horizon produces a localized title, section
 blocks, and references when tool sources are cited. The renderer groups these
 artifacts by profile and builds the Markdown briefing without a final AI call.
 See [Processing Profiles](profiles.md) for the complete schema and output behavior.
+
+## Score URLs outside the digest
+
+`hz_score_urls` and `horizon score --urls URL [URL ...]` run this same analysis path for arbitrary article URLs. The default profile is `reading`, so the score comes from `profiles/reading/analysis.md` unless another profile id is requested. Each URL is fetched with the trafilatura extractor, turned into a content item, and passed to the existing analyzer.
+
+The command prints JSON and stops after analysis. It does not apply digest thresholds, topic deduplication, enrichment, or summary publishing. `DEEPSEEK_API_KEY`, or whichever variable `api_key_env` names, remains in the Horizon process environment.

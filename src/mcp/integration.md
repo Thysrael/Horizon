@@ -99,6 +99,27 @@ environment variables, add it to the Horizon server entry:
 }
 ```
 
+## Score URLs
+
+`hz_score_urls` scores article URLs without running the digest pipeline. Pass `urls` and, optionally, `profile` (`reading` by default), `horizon_path`, and `config_path`.
+
+```json
+{
+  "urls": ["https://example.com/essay"],
+  "profile": "reading"
+}
+```
+
+The response `data.results` entries include `url`, `title`, `score`, `reason`, `summary`, `tags`, and `error`. Fetch failures stay on the affected URL. The tool does not write the daily summary or Pages site.
+
+Keep API keys in the Horizon process environment or an MCP secrets file. `DEEPSEEK_API_KEY` is the reading config's key and is not a tool argument.
+
+The CLI prints the same service payload:
+
+```bash
+uv run horizon score --urls https://example.com/essay --config data/reading.json
+```
+
 ## Smoke Check
 
 Run the local smoke check from the repository root:

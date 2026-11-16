@@ -210,6 +210,35 @@ async def hz_score_items(
 
 
 @mcp.tool()
+async def hz_score_urls(
+    urls: list[str],
+    profile: str = "reading",
+    horizon_path: str | None = None,
+    config_path: str | None = None,
+) -> dict[str, Any]:
+    """Score article URLs with a profile's existing analysis prompt.
+
+    Fetches each URL with the trafilatura extractor used for RSS articles,
+    builds content items for ``profile`` (default ``reading``), and runs the
+    digest analyzer against ``profiles/<profile>/analysis.md``. Returns one
+    result per URL with title, score, reason, summary, and any fetch or
+    analysis error. Does not filter, enrich, select a digest, or write
+    published summaries. API keys such as ``DEEPSEEK_API_KEY`` are read from
+    the Horizon process environment, not from tool arguments.
+    """
+
+    return await _run_tool(
+        "hz_score_urls",
+        lambda: service.score_urls(
+            urls=urls,
+            profile=profile,
+            horizon_path=horizon_path,
+            config_path=config_path,
+        ),
+    )
+
+
+@mcp.tool()
 async def hz_filter_items(
     run_id: str,
     threshold: float | None = None,

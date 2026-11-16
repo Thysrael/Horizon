@@ -1087,6 +1087,6 @@ Horizon includes an MCP server for AI assistants and MCP-compatible clients.
 uv run horizon-mcp
 ```
 
-Available tools include `hz_validate_config`, `hz_fetch_items`, `hz_score_items`, `hz_filter_items`, `hz_enrich_items`, `hz_generate_summary`, and `hz_run_pipeline`.
+Available tools include `hz_validate_config`, `hz_fetch_items`, `hz_score_items`, `hz_score_urls`, `hz_filter_items`, `hz_enrich_items`, `hz_generate_summary`, and `hz_run_pipeline`. `hz_score_urls` scores arbitrary article URLs with a profile's analysis prompt and does not publish a digest. API keys such as `DEEPSEEK_API_KEY` stay in the Horizon process environment.
 
 See [`src/mcp/README.md`](../src/mcp/README.md) for the full tool reference and [`src/mcp/integration.md`](../src/mcp/integration.md) for client setup.
