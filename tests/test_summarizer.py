@@ -469,3 +469,15 @@ def test_generate_summary_preserves_normal_http_links():
     assert "[Important Item 1](https://example.com/items/1)" in result
     assert "[Discussion](https://example.com/discuss?id=1#comments)" in result
     assert 'href="https://docs.example.com/path?q=one&amp;lang=en"' in result
+
+
+def test_summary_discloses_rss_fallback_without_claiming_full_article():
+    item = _make_item(1)
+    item.metadata['content_origin'] = 'rss_fallback'
+    text = _run_async(DailySummarizer().generate_summary([item], '2026-10-27', 1, language='zh'))
+    assert 'RSS 内容（网页获取失败）' in text
+    assert '网页正文提取' not in text
+    item.metadata['content_origin'] = 'web'
+    text = _run_async(DailySummarizer().generate_summary([item], '2026-10-27', 1, language='zh'))
+    assert '网页正文提取' in text
+    assert '网页获取失败' not in text

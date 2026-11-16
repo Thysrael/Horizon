@@ -155,15 +155,18 @@ class RSSScraper(BaseScraper):
                 entry_id = entry.get("id", entry.get("link", ""))
                 entry_hash = hashlib.sha256(str(entry_id).encode("utf-8")).hexdigest()[:16]
                 content = self._extract_content(entry)
+                content_origin = "rss"
 
                 if source.content_extractor and self._extractors:
                     extractor = self._extractors.get(source.content_extractor)
                     if extractor:
+                        content_origin = "rss_fallback"
                         url = entry.get("link", "")
                         if url:
                             full = await extractor.extract(url, self.client)
                             if full:
                                 content = full
+                                content_origin = "web"
 
                 result.items.append(ContentItem(
                     id=self._generate_id("rss", feed_id, entry_hash),
@@ -176,6 +179,7 @@ class RSSScraper(BaseScraper):
                     profile=source.profile,
                     metadata={
                         "feed_name": source.name,
+                        "content_origin": content_origin,
                         "category": source.category,
                         "tags": [tag.term for tag in entry.get("tags", [])],
                     },

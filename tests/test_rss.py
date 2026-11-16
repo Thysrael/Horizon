@@ -86,6 +86,7 @@ def test_content_extractor_replaces_feed_content() -> None:
 
     assert len(items) == 1
     assert items[0].content == "Full article text from extractor."
+    assert items[0].metadata["content_origin"] == "web"
     extractor.extract.assert_awaited_once_with("https://example.com/item-1", client)
 
 
@@ -276,6 +277,7 @@ def test_content_extractor_falls_back_on_none() -> None:
 
     assert len(items) == 1
     assert items[0].content == "Short summary from feed."
+    assert items[0].metadata["content_origin"] == "rss_fallback"
 
 
 def test_unknown_extractor_name_ignored() -> None:

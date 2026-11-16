@@ -409,6 +409,14 @@ class DailySummarizer:
                 day = item.published_at.strftime("%d").lstrip("0")
                 source_parts.append(item.published_at.strftime(f"%b {day}, %H:%M"))
         source_line = " \u00b7 ".join(source_parts)  # ·
+        content_origins = {
+            "web": ("网页正文提取", "Extracted article text"),
+            "rss_fallback": ("RSS 内容（网页获取失败）", "RSS content (page extraction failed)"),
+            "rss": ("RSS 内容", "RSS content"),
+        }
+        origin = content_origins.get(meta.get("content_origin"))
+        if origin:
+            source_line += " · " + origin[0 if language == "zh" else 1]
 
         discussion_url = meta.get("discussion_url")
         if discussion_url:
