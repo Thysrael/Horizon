@@ -63,3 +63,6 @@ logs/*.log
 todo.txt
 .ruff_cache
 .pytest_cache
+public/
+.reading-history/
+data/last-run.json

@@ -1,0 +1,20 @@
+{
+  "id": "reading",
+  "name": "Lasting Reads",
+  "display_names": {"zh": "本期值得读"},
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "content": {
+    "analysis_max_chars": 100000,
+    "enrichment_max_chars": 100000,
+    "sampling": "head-middle-tail"
+  },
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      {"id": "about", "type": "section", "tools": [], "primary": true},
+      {"id": "reading_value", "type": "section", "tools": []},
+      {"id": "return_to", "type": "section", "tools": []}
+    ]
+  }
+}

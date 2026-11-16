@@ -1,0 +1,92 @@
+name: Reading list
+
+on:
+  schedule:
+    # 00:50 UTC is 08:50 Asia/Shanghai. GitHub may delay the run.
+    - cron: '50 0 * * *'
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: Fetch and recommend new articles
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/build_reading_site.py'
+      - 'data/reading.json'
+      - 'profiles/reading/**'
+      - '.github/workflows/reading.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reading-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TZ: Asia/Shanghai
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: .reading-history
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Restore published history
+        run: |
+          mkdir -p data/summaries
+          if [ -d .reading-history/summaries ]; then
+            cp .reading-history/summaries/*.md data/summaries/
+          fi
+          if [ -f .reading-history/last-run.json ]; then
+            cp .reading-history/last-run.json data/last-run.json
+          fi
+      - name: Generate recommendations with Horizon
+        id: generate
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh)
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          test -n "$DEEPSEEK_API_KEY" || { echo 'DEEPSEEK_API_KEY is missing'; exit 1; }
+          uv run python - <<'PY'
+          import datetime, json, math, pathlib, subprocess
+          now = datetime.datetime.now(datetime.timezone.utc)
+          state = pathlib.Path('data/last-run.json')
+          hours = 168
+          if state.exists():
+              last = datetime.datetime.fromisoformat(json.loads(state.read_text())['completed_at'])
+              hours = max(1, math.ceil((now-last).total_seconds()/3600))
+          today = now.strftime('%Y-%m-%d')
+          summary = pathlib.Path(f'data/summaries/horizon-{today}-zh.md')
+          previous = summary.read_text() if summary.exists() else None
+          subprocess.run(['uv','run','horizon','--config','data/reading.json','--hours',str(hours)],check=True)
+          empty_marker = '但没有达到重要性阈值的条目。'
+          if summary.exists() and empty_marker in summary.read_text():
+              if previous and empty_marker not in previous:
+                  summary.write_text(previous)
+              else:
+                  summary.unlink()
+              print('No eligible articles; keep the existing reading lists')
+          elif not summary.exists() or summary.stat().st_mtime < now.timestamp():
+              print('No new digest was generated; keep the published reading list unchanged')
+          state.write_text(json.dumps({'completed_at':now.isoformat()},indent=2)+'\n')
+          PY
+      - name: Build reading website
+        run: uv run python scripts/build_reading_site.py
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          publish_branch: gh-pages
+          cname: horizon.fullstackjam.com
