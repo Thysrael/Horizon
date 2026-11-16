@@ -236,6 +236,37 @@ def test_profile_without_threshold_bypasses_score_filter() -> None:
     assert orchestrator.passes_profile_filter(make_item("item", 1.0, "ai"))
 
 
+def test_profile_without_threshold_rejects_failed_analysis() -> None:
+    orchestrator = make_orchestrator(DigestConfig())
+    orchestrator.config.processing.profile_settings = {}
+    item = make_item("failed", 1.0, "ai")
+    item.processing.analysis = ContentAnalysis(score=None, reason="Analysis failed", summary=item.title)
+
+    assert not orchestrator.passes_profile_filter(item)
+
+
+@pytest.mark.parametrize("scores,expected", [
+    ([5.0, 7.0, 3.0, 6.0, 4.0, 2.0], []),
+    ([7.4, 7.5, 7.6], [7.6, 7.5]),
+    ([9.1, 8.2, 7.6, 7.8, 9.4, 8.8], [9.4, 9.1, 8.8, 8.2, 7.8]),
+    ([8.0, 7.7], [8.0, 7.7]),
+])
+def test_reading_config_selects_up_to_five_above_baseline_without_category_caps(scores, expected) -> None:
+    config = Config.model_validate_json(
+        (Path(__file__).resolve().parents[1] / "data/reading.json").read_text()
+    )
+    orchestrator = make_orchestrator(config.digest)
+    orchestrator.config = config
+    orchestrator.profiles = ProfileRegistry.load(
+        Path(__file__).resolve().parents[1] / "profiles", "reading"
+    )
+    items = [make_item(str(index), score, "engineering", profile="reading") for index, score in enumerate(scores)]
+
+    result = asyncio.run(orchestrator.filter_items(items, log=False))
+
+    assert [item.processing.analysis.score for item in result.items] == expected
+
+
 def test_rejects_settings_for_unknown_profile() -> None:
     config = Config(
         ai=AIConfig(
@@ -256,6 +287,7 @@ def test_rejects_settings_for_unknown_profile() -> None:
 
 
 def test_appends_profiles_missing_from_configured_order() -> None:
+    configured_order = ["tech-blog", "tech-news"]
     config = Config(
         ai=AIConfig(
             provider="openai",
@@ -263,17 +295,14 @@ def test_appends_profiles_missing_from_configured_order() -> None:
             api_key_env="TEST_API_KEY",
         ),
         sources=SourcesConfig(),
-        digest=DigestConfig(profile_order=["tech-news", "tech-blog"]),
+        digest=DigestConfig(profile_order=list(configured_order)),
     )
 
-    HorizonOrchestrator(config, SimpleNamespace())
+    orchestrator = HorizonOrchestrator(config, SimpleNamespace())
 
-    assert config.digest.profile_order == [
-        "tech-news",
-        "tech-blog",
-        "ai-creator",
-        "finance-news",
-    ]
+    assert config.digest.profile_order[:len(configured_order)] == configured_order
+    assert set(config.digest.profile_order) == orchestrator.profiles.ids
+    assert len(config.digest.profile_order) == len(orchestrator.profiles.ids)
 
 
 def test_rejects_unknown_profile_order() -> None:
