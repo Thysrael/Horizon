@@ -1,0 +1,264 @@
+name: Sync upstream
+
+on:
+  schedule:
+    # 01:00 UTC on the 1st of each month.
+    - cron: '0 1 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch upstream and prepare sync branch
+        id: prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git remote add upstream https://github.com/Thysrael/Horizon.git
+          git fetch upstream main
+
+          if git merge-base --is-ancestor upstream/main origin/main; then
+            echo "Already up to date with Thysrael/Horizon main"
+            echo "status=uptodate" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          date="$(date -u +%Y%m%d)"
+          case "$date" in
+            [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+            *)
+              echo "unexpected date: ${date}" >&2
+              exit 1
+              ;;
+          esac
+          branch="sync/upstream-${date}"
+          case "$branch" in
+            sync/upstream-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+            *)
+              echo "refusing unexpected branch name: ${branch}" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "date=${date}"
+            echo "branch=${branch}"
+          } >> "$GITHUB_OUTPUT"
+
+          gh auth setup-git
+          set +e
+          git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null
+          ls_status=$?
+          set -e
+          if [ "$ls_status" -eq 0 ]; then
+            echo "Remote branch ${branch} already exists; not merging again"
+            echo "status=existing" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$ls_status" -ne 2 ]; then
+            echo "git ls-remote failed: ${ls_status}" >&2
+            exit "$ls_status"
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch" origin/main
+          if [ "$(git rev-parse --abbrev-ref HEAD)" != "$branch" ]; then
+            echo "refusing to prepare $(git rev-parse --abbrev-ref HEAD)" >&2
+            exit 1
+          fi
+
+          if git merge --no-ff --no-edit -m "Merge upstream Thysrael/Horizon main (${date})" upstream/main; then
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+              echo "Merge produced no new commits"
+              echo "status=uptodate" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "status=merged" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          conflicted="$(git diff --name-only --diff-filter=U)"
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git merge --abort
+          fi
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then
+            echo "refusing to continue: HEAD is not origin/main after a failed merge" >&2
+            exit 1
+          fi
+          if [ -n "$(git diff --name-only --diff-filter=U)" ]; then
+            echo "merge abort left conflicts in the worktree" >&2
+            exit 1
+          fi
+
+          {
+            echo "# Upstream sync conflict ${date}"
+            echo
+            echo "Merging https://github.com/Thysrael/Horizon main into this fork's main conflicted."
+            echo "This branch records the conflict and does not contain the upstream merge."
+            echo
+            echo "Conflicted paths:"
+            echo
+            if [ -n "$conflicted" ]; then
+              printf '%s\n' "$conflicted"
+            else
+              echo "(merge failed without a file list; see the workflow log)"
+            fi
+            echo
+            echo "This workflow does not push to main."
+          } > UPSTREAM_SYNC_CONFLICT.md
+          git add UPSTREAM_SYNC_CONFLICT.md
+          git commit -m "Record upstream sync conflict ${date}"
+          {
+            echo "status=conflict"
+            echo "conflicted<<EOF"
+            if [ -n "$conflicted" ]; then
+              printf '%s\n' "$conflicted"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        if: steps.prepare.outputs.status == 'merged'
+        uses: astral-sh/setup-uv@v6
+
+      - name: Run pytest
+        id: test
+        if: steps.prepare.outputs.status == 'merged'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra dev
+          uv run pytest
+
+      - name: Push sync branch and open pull request
+        if: steps.prepare.outputs.status == 'merged' || steps.prepare.outputs.status == 'conflict' || steps.prepare.outputs.status == 'existing'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATUS: ${{ steps.prepare.outputs.status }}
+          BRANCH: ${{ steps.prepare.outputs.branch }}
+          SYNC_DATE: ${{ steps.prepare.outputs.date }}
+          CONFLICTED: ${{ steps.prepare.outputs.conflicted }}
+          TEST_OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          set -euo pipefail
+          case "$BRANCH" in
+            sync/upstream-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+            *)
+              echo "refusing to push unexpected ref: ${BRANCH}" >&2
+              exit 1
+              ;;
+          esac
+          case "$SYNC_DATE" in
+            [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+            *)
+              echo "unexpected sync date: ${SYNC_DATE}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ "$STATUS" != "existing" ]; then
+            head_ref="$(git rev-parse --abbrev-ref HEAD)"
+            if [ "$head_ref" != "$BRANCH" ]; then
+              echo "refusing to push ${head_ref}; expected ${BRANCH}" >&2
+              exit 1
+            fi
+            if [ -n "$(git status --porcelain)" ]; then
+              echo "refusing to push a dirty worktree" >&2
+              git status --porcelain
+              exit 1
+            fi
+            gh auth setup-git
+            git push origin "HEAD:refs/heads/${BRANCH}"
+          fi
+
+          owner="${GITHUB_REPOSITORY%%/*}"
+          existing_url="$(gh pr list --base main --head "${owner}:${BRANCH}" --state open --json url --jq '.[].url')"
+          if [ -n "$existing_url" ]; then
+            echo "Pull request already open: ${existing_url}"
+          else
+            body_file="$(mktemp)"
+            case "$STATUS" in
+              conflict)
+                title="Upstream sync conflict ${SYNC_DATE}"
+                {
+                  echo "Merging [Thysrael/Horizon](https://github.com/Thysrael/Horizon) \`main\` into this fork's \`main\` conflicted."
+                  echo "This pull request only records the conflict on \`${BRANCH}\`. It does not contain the upstream merge, and it must not be merged as-is."
+                  echo
+                  echo "Conflicted paths:"
+                  echo
+                  echo '```'
+                  if [ -n "${CONFLICTED}" ]; then
+                    printf '%s\n' "$CONFLICTED"
+                  else
+                    echo "(merge failed without a file list; see the workflow log)"
+                  fi
+                  echo '```'
+                  echo
+                  echo "Resolve the conflicts on \`${BRANCH}\` and replace \`UPSTREAM_SYNC_CONFLICT.md\`."
+                  echo "This workflow does not push to \`main\`."
+                } > "$body_file"
+                ;;
+              existing)
+                title="Sync upstream Horizon (${SYNC_DATE})"
+                {
+                  echo "\`${BRANCH}\` already existed, so this run did not merge or run tests again."
+                  echo "\`main\` is still behind [Thysrael/Horizon](https://github.com/Thysrael/Horizon) \`main\`."
+                  echo
+                  echo "This workflow does not push to \`main\`."
+                } > "$body_file"
+                ;;
+              merged)
+                title="Sync upstream Horizon (${SYNC_DATE})"
+                case "$TEST_OUTCOME" in
+                  success)
+                    test_note="\`uv run pytest\` passed in this workflow run."
+                    ;;
+                  failure)
+                    test_note="\`uv run pytest\` failed in this workflow run. The branch was still pushed so the fork can be fixed in this pull request."
+                    ;;
+                  *)
+                    test_note="\`uv run pytest\` did not report success (outcome: ${TEST_OUTCOME})."
+                    ;;
+                esac
+                {
+                  echo "Merges [Thysrael/Horizon](https://github.com/Thysrael/Horizon) \`main\` into \`${BRANCH}\`."
+                  echo
+                  echo "$test_note"
+                  echo
+                  echo "This workflow does not push to \`main\`. Review this pull request and merge it to update the fork."
+                } > "$body_file"
+                ;;
+              *)
+                echo "unexpected status: ${STATUS}" >&2
+                exit 1
+                ;;
+            esac
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$body_file"
+          fi
+
+          if [ "$STATUS" = "merged" ] && [ "$TEST_OUTCOME" != "success" ]; then
+            echo "pytest did not succeed (outcome: ${TEST_OUTCOME})" >&2
+            exit 1
+          fi
+          if [ "$STATUS" = "conflict" ]; then
+            echo "Opened a pull request describing the merge conflict" >&2
+            exit 1
+          fi
