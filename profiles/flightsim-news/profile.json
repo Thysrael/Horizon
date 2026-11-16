@@ -1,0 +1,38 @@
+{
+  "id": "flightsim-news",
+  "name": "Flight Simulation News",
+  "display_names": {
+    "fr": "Actualité simulation de vol",
+    "zh": "飞行模拟新闻"
+  },
+  "match": "match.md",
+  "analysis": "analysis.md",
+  "enrichment": {
+    "prompt": "enrichment.md",
+    "blocks": [
+      {
+        "id": "summary",
+        "type": "section",
+        "tools": [],
+        "primary": true
+      },
+      {
+        "id": "background",
+        "type": "section",
+        "tools": ["history_search", "web_search"]
+      },
+      {
+        "id": "what_it_means_for_simmers",
+        "type": "section",
+        "tools": ["web_search"],
+        "optional": true
+      },
+      {
+        "id": "community_discussion",
+        "type": "section",
+        "tools": [],
+        "optional": true
+      }
+    ]
+  }
+}
