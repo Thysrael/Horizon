@@ -19,7 +19,7 @@ RSS 候选 → 提取原文 → 按长期阅读价值评分 → 达到 7.5 分�
 - `profiles/reading/`：跨领域、注重长期价值的评分与推荐文案规则。
 - `site/style.css`、`scripts/build_reading_site.py`：静态页面。
 - `.github/workflows/reading.yml`：抓取、生成摘要、构建网站并发布到 `gh-pages`。工作流不再发送阅读清单邮件。
-- 定时由 cron-job.org 每天 08:50（北京时间）调用 `workflow_dispatch` 触发，不套用节假日或调休表。GitHub Actions 自带的 `schedule` 已移除，见「定时触发」。
+- 定时由 cron-job.org 每天 08:00（北京时间）调用 `workflow_dispatch` 触发，不套用节假日或调休表。GitHub Actions 自带的 `schedule` 已移除，见「定时触发」。
 - GitHub Actions Secret `DEEPSEEK_API_KEY`：运行时提供，不能放进配置文件。
 
 `gh-pages` 保存网站和 `summaries/` Markdown 历史；每轮先恢复历史，再生成、构建和发布。
@@ -38,17 +38,17 @@ cron-job.org 任务配置：
 | --- | --- |
 | URL | `https://api.github.com/repos/fullstackjam/horizon/actions/workflows/reading.yml/dispatches` |
 | 方法 | `POST` |
-| 计划 | 每天 08:50，时区 `Asia/Shanghai` |
+| 计划 | 每天 08:00，时区 `Asia/Shanghai` |
 | 请求头 | `Accept: application/vnd.github+json`、`X-GitHub-Api-Version: 2026-03-10`、`Content-Type: application/json`、`Authorization: Bearer <token>` |
 | 请求体 | `{"ref":"main","inputs":{"refresh":true}}` |
 
-上述配置已于 2026-11-17 建好：任务标题 `horizon-reading-daily`，cron-job.org 任务 ID `8880835`。建好后用 `refresh=false` 的请求体跑过两次测试，cron-job.org 执行成功，GitHub 侧对应两条 `workflow_dispatch` 运行；随后把请求体改回 `refresh=true`，计划改回每天 08:50。注意 cron-job.org 的执行历史统一显示 `200 OK`，不区分 GitHub 返回的 204。
+上述配置已于 2026-11-17 建好：任务标题 `horizon-reading-daily`，cron-job.org 任务 ID `8880835`。建好后用 `refresh=false` 的请求体跑过两次测试，cron-job.org 执行成功，GitHub 侧对应两条 `workflow_dispatch` 运行；随后把请求体改回 `refresh=true`，计划改为每天 08:00（最初建在 08:50，当天按 8 点触发的要求改早）。注意 cron-job.org 的执行历史统一显示 `200 OK`，不区分 GitHub 返回的 204。
 
 token 用 fine-grained GitHub token 现建：GitHub 的 *Settings → Developer settings → Fine-grained personal access tokens*，Resource owner 选 `fullstackjam`，Repository access 只选 `fullstackjam/horizon`，Repository permissions 里把 `Actions` 设为 `Read and write`（`Metadata` 会自动带上只读）。有效期最长一年，到期后任务会静默失败，需要换新 token 并更新任务。token 只保存在密码库和 cron-job.org 的任务配置里，不放进仓库、URL 或任务名称；它能触发并读取该仓库的 Actions，泄露后要立即吊销重建。
 
 cron-job.org 侧除了上表的 URL、方法、计划、请求头和请求体，还要注意：
 
-- 时区选 `Asia/Shanghai`，否则 08:50 会按 UTC 解释。
+- 时区选 `Asia/Shanghai`，否则 08:00 会按 UTC 解释。
 - 打开失败邮件通知。连续失败 25 次后 cron-job.org 会自动停用任务，邮件是唯一的告警。
 - 打开「保存响应」，方便在执行历史里看状态码；历史只保留最近 50 次，响应头和正文保留 2 天。
 - 免费计划单次请求 30 秒超时，dispatch 通常 1 秒内返回，不受影响，但不要指望它等整个工作流跑完。

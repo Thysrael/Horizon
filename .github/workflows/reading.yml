@@ -2,7 +2,7 @@ name: Reading list
 
 on:
   # Daily generation is triggered by the cron-job.org job through this
-  # workflow_dispatch endpoint at 08:50 Asia/Shanghai. GitHub's own schedule
+  # workflow_dispatch endpoint at 08:00 Asia/Shanghai. GitHub's own schedule
   # trigger was removed because it started 6-7 hours late, so a second
   # daily trigger would regenerate the same day with a one-hour window.
   workflow_dispatch:
