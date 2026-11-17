@@ -19,7 +19,7 @@ RSS 候选 → 提取原文 → 按长期阅读价值评分 → 达到 7.5 分�
 - `profiles/reading/`：跨领域、注重长期价值的评分与推荐文案规则。
 - `site/style.css`、`scripts/build_reading_site.py`：静态页面。
 - `.github/workflows/reading.yml`：抓取、生成摘要、构建网站并发布到 `gh-pages`。工作流不再发送阅读清单邮件。
-- 定时由 GitHub Actions `schedule` 触发，cron 为 `50 0 * * *`（UTC 00:50，北京时间 08:50，每天）。不套用节假日或调休表。GitHub 可能延迟调度。cron-job.org 不再需要。
+- 定时由 cron-job.org 每天 08:50（北京时间）调用 `workflow_dispatch` 触发，不套用节假日或调休表。GitHub Actions 自带的 `schedule` 已移除，见「定时触发」。
 - GitHub Actions Secret `DEEPSEEK_API_KEY`：运行时提供，不能放进配置文件。
 
 `gh-pages` 保存网站和 `summaries/` Markdown 历史；每轮先恢复历史，再生成、构建和发布。
@@ -28,17 +28,35 @@ RSS 候选 → 提取原文 → 按长期阅读价值评分 → 达到 7.5 分�
 
 ## 定时触发
 
-GitHub Actions `schedule` 现在是定时触发，cron-job.org 不再需要。cron 为 `50 0 * * *`，即 UTC 00:50、北京时间每天 08:50。不套用节假日或调休表。GitHub 可能延迟实际开始时间，开始时间也受 runner 排队影响。
-定时运行会抓取并生成推荐，效果与手动运行且 `refresh=true` 相同。向 `main` 推送样式或配置仍只构建网页，不调用模型。
+定时由 cron-job.org 的每日任务调用 GitHub 的 `workflow_dispatch` 接口触发，不再依赖 GitHub Actions 的 `schedule`。
 
-生成和发布是否成功，查看 [Reading list 的运行记录](https://github.com/fullstackjam/horizon/actions/workflows/reading.yml)。
+原因是 `schedule` 的开始时间晚 6 小时以上。cron 原为 `50 0 * * *`（UTC 00:50，北京时间 08:50），2026-11-10 到 11-16 的实际开始时间落在 UTC 07:05–07:48，即北京时间 15:05–15:48。`reading.yml` 因此删掉了 `schedule`：如果外部触发和 GitHub 调度同时保留，同一天会跑两遍，第二遍只有约一小时的采集窗口，会把当天一期覆盖成更短的清单。
 
-手动 API 触发仍然可用，但不是定时所依赖的方式：
+cron-job.org 任务配置：
 
-1. 请求：`POST https://api.github.com/repos/fullstackjam/horizon/actions/workflows/reading.yml/dispatches`。
-2. 请求头：`Accept: application/vnd.github+json`、`Content-Type: application/json`、`Authorization: Bearer <dedicated-token>`。
-3. 请求体：`{"ref":"main","inputs":{"refresh":true}}`。
-4. 专用 fine-grained GitHub token 仅选择 `fullstackjam/horizon`，授予 `Actions: Read and write`；token 保存在密码库中，不放进仓库或 URL。
+| 项 | 值 |
+| --- | --- |
+| URL | `https://api.github.com/repos/fullstackjam/horizon/actions/workflows/reading.yml/dispatches` |
+| 方法 | `POST` |
+| 计划 | 每天 08:50，时区 `Asia/Shanghai` |
+| 请求头 | `Accept: application/vnd.github+json`、`Content-Type: application/json`、`Authorization: Bearer <token>` |
+| 请求体 | `{"ref":"main","inputs":{"refresh":true}}` |
+
+token 用 fine-grained GitHub token 现建：GitHub 的 *Settings → Developer settings → Fine-grained personal access tokens*，Resource owner 选 `fullstackjam`，Repository access 只选 `fullstackjam/horizon`，Repository permissions 里把 `Actions` 设为 `Read and write`（`Metadata` 会自动带上只读）。有效期最长一年，到期后任务会静默失败，需要换新 token 并更新任务。token 只保存在密码库和 cron-job.org 的任务配置里，不放进仓库、URL 或任务名称；它能触发并读取该仓库的 Actions，泄露后要立即吊销重建。
+
+cron-job.org 侧除了上表的 URL、方法、计划、请求头和请求体，还要注意：
+
+- 时区选 `Asia/Shanghai`，否则 08:50 会按 UTC 解释。
+- 打开失败邮件通知。连续失败 25 次后 cron-job.org 会自动停用任务，邮件是唯一的告警。
+- 打开「保存响应」，方便在执行历史里看状态码；历史只保留最近 50 次，响应头和正文保留 2 天。
+- 免费计划单次请求 30 秒超时，dispatch 通常 1 秒内返回，不受影响，但不要指望它等整个工作流跑完。
+- 免费计划失败不重试。GitHub 恰好不可用时，当天这一期就跳过。
+
+GitHub 接受请求时返回 `204 No Content`，cron-job.org 把非 2xx 记为失败。cron-job.org 的成功只说明请求被接收，不说明生成和发布完成；实际是否跑完、是否发布了新一期，看 [Reading list 的运行记录](https://github.com/fullstackjam/horizon/actions/workflows/reading.yml)。
+
+建好任务后先用 `refresh=false` 的请求体点一次 Test run：返回 `204`，且 Actions 里多出一条 `workflow_dispatch` 运行，说明配置正确。确认后再把请求体改回 `{"ref":"main","inputs":{"refresh":true}}` 保存。
+
+手动触发和定时走同一个入口：`refresh=true` 采集并生成推荐，`false` 只重新构建网页。向 `main` 推送样式或配置仍只构建网页，不调用模型。
 
 ## 本地运行
 

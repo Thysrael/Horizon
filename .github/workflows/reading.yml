@@ -1,9 +1,10 @@
 name: Reading list
 
 on:
-  schedule:
-    # 00:50 UTC is 08:50 Asia/Shanghai. GitHub may delay the run.
-    - cron: '50 0 * * *'
+  # Daily generation is triggered by the cron-job.org job through this
+  # workflow_dispatch endpoint at 08:50 Asia/Shanghai. GitHub's own schedule
+  # trigger was removed because it started 6-7 hours late, so a second
+  # daily trigger would regenerate the same day with a one-hour window.
   workflow_dispatch:
     inputs:
       refresh:
@@ -53,7 +54,7 @@ jobs:
           fi
       - name: Generate recommendations with Horizon
         id: generate
-        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh)
+        if: github.event_name == 'workflow_dispatch' && inputs.refresh
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
