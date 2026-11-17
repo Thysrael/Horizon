@@ -39,8 +39,10 @@ cron-job.org 任务配置：
 | URL | `https://api.github.com/repos/fullstackjam/horizon/actions/workflows/reading.yml/dispatches` |
 | 方法 | `POST` |
 | 计划 | 每天 08:50，时区 `Asia/Shanghai` |
-| 请求头 | `Accept: application/vnd.github+json`、`Content-Type: application/json`、`Authorization: Bearer <token>` |
+| 请求头 | `Accept: application/vnd.github+json`、`X-GitHub-Api-Version: 2026-03-10`、`Content-Type: application/json`、`Authorization: Bearer <token>` |
 | 请求体 | `{"ref":"main","inputs":{"refresh":true}}` |
+
+上述配置已于 2026-11-17 建好：任务标题 `horizon-reading-daily`，cron-job.org 任务 ID `8880835`。建好后用 `refresh=false` 的请求体跑过两次测试，cron-job.org 执行成功，GitHub 侧对应两条 `workflow_dispatch` 运行；随后把请求体改回 `refresh=true`，计划改回每天 08:50。注意 cron-job.org 的执行历史统一显示 `200 OK`，不区分 GitHub 返回的 204。
 
 token 用 fine-grained GitHub token 现建：GitHub 的 *Settings → Developer settings → Fine-grained personal access tokens*，Resource owner 选 `fullstackjam`，Repository access 只选 `fullstackjam/horizon`，Repository permissions 里把 `Actions` 设为 `Read and write`（`Metadata` 会自动带上只读）。有效期最长一年，到期后任务会静默失败，需要换新 token 并更新任务。token 只保存在密码库和 cron-job.org 的任务配置里，不放进仓库、URL 或任务名称；它能触发并读取该仓库的 Actions，泄露后要立即吊销重建。
 
@@ -54,7 +56,7 @@ cron-job.org 侧除了上表的 URL、方法、计划、请求头和请求体，
 
 GitHub 接受请求时返回 `204 No Content`，cron-job.org 把非 2xx 记为失败。cron-job.org 的成功只说明请求被接收，不说明生成和发布完成；实际是否跑完、是否发布了新一期，看 [Reading list 的运行记录](https://github.com/fullstackjam/horizon/actions/workflows/reading.yml)。
 
-建好任务后先用 `refresh=false` 的请求体点一次 Test run：返回 `204`，且 Actions 里多出一条 `workflow_dispatch` 运行，说明配置正确。确认后再把请求体改回 `{"ref":"main","inputs":{"refresh":true}}` 保存。
+以后换 token 或改过请求头时照同样方法验证：把请求体临时改成 `refresh=false`，点 Test run，执行历史显示成功且 Actions 里多出一条 `workflow_dispatch` 运行，再把请求体改回 `{"ref":"main","inputs":{"refresh":true}}` 保存。
 
 手动触发和定时走同一个入口：`refresh=true` 采集并生成推荐，`false` 只重新构建网页。向 `main` 推送样式或配置仍只构建网页，不调用模型。
 
