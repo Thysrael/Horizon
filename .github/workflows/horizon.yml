@@ -1,4 +1,4 @@
-name: Reading list
+name: Horizon
 
 on:
   # Daily generation is triggered by the cron-job.org job through this
@@ -18,7 +18,7 @@ on:
       - 'scripts/build_reading_site.py'
       - 'data/reading.json'
       - 'profiles/reading/**'
-      - '.github/workflows/reading.yml'
+      - '.github/workflows/horizon.yml'
 
 permissions:
   contents: write
