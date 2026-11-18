@@ -106,3 +106,82 @@ def test_extraction_does_not_block_the_event_loop(monkeypatch):
         return result
 
     assert asyncio.run(run()) == "responsive"
+
+
+def test_concurrent_extract_calls_are_serialized(monkeypatch):
+    import threading
+    import time
+
+    import trafilatura
+    import src.extractors.trafilatura as module
+
+    current = 0
+    max_current = 0
+    counter_lock = threading.Lock()
+
+    def slow_extract(*args, **kwargs):
+        nonlocal current, max_current
+        with counter_lock:
+            current += 1
+            max_current = max(max_current, current)
+        time.sleep(0.05)
+        with counter_lock:
+            current -= 1
+        return "serialized"
+
+    monkeypatch.setattr(trafilatura, "extract", slow_extract)
+    monkeypatch.setattr(
+        module,
+        "safe_request",
+        AsyncMock(
+            return_value=httpx.Response(
+                200,
+                text="<html><body><p>Article text.</p></body></html>",
+                request=httpx.Request("GET", URL),
+            )
+        ),
+    )
+
+    async def run():
+        extractor = _extractor()
+        client = AsyncMock()
+        return await asyncio.gather(*[extractor.extract(URL, client) for _ in range(8)])
+
+    assert asyncio.run(run()) == ["serialized"] * 8
+    assert max_current == 1
+
+
+def test_concurrent_real_extract_returns_text(monkeypatch):
+    import trafilatura
+    import src.extractors.trafilatura as module
+
+    paragraphs = "".join(
+        f"<p>{'Useful background on the widget protocol. ' * 20}</p>"
+        for _ in range(8)
+    )
+    html = (
+        "<!DOCTYPE html><html><head><title>Widget notes</title></head>"
+        f"<body><article><h1>Widget notes</h1>{paragraphs}</article></body></html>"
+    )
+    monkeypatch.setattr(
+        module,
+        "safe_request",
+        AsyncMock(
+            return_value=httpx.Response(
+                200,
+                text=html,
+                request=httpx.Request("GET", URL),
+            )
+        ),
+    )
+
+    async def run():
+        extractor = _extractor()
+        client = AsyncMock()
+        return await asyncio.gather(*[extractor.extract(URL, client) for _ in range(8)])
+
+    results = asyncio.run(run())
+    assert len(results) == 8
+    assert all(isinstance(item, str) and "widget" in item.lower() for item in results)
+    # Sanity: the real parser ran, not a skipped install path.
+    assert trafilatura.extract(html)
