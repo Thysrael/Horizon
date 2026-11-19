@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 # trafilatura 2.1.x–2.3.1 share one module-level lxml HTMLParser across
 # threads. Concurrent extract() calls can abort the process (SIGSEGV /
-# SIGABRT). Serialize only the parse; HTTP stays concurrent. See
+# SIGABRT). Serialize extraction; HTTP stays concurrent. This is a temporary
+# mitigation, not a guarantee against all native crashes. See
 # https://github.com/adbar/trafilatura/issues/925
 _EXTRACT_LOCK = threading.Lock()
 
