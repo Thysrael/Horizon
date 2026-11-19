@@ -76,7 +76,7 @@ exception; the synthetic real-HTML unit test is only a smoke test.
 
 The earlier reported 40-run experiment's original harness, input bytes and raw
 logs were unavailable for this follow-up. Its numbers are not reconstructed here
-and have been removed from the PR's auditable evidence. This is a new experiment
+and should not be treated as audited evidence. This is a new experiment
 with different, explicitly fixed inputs, not a recreation of that historical run.
 
 As checked for this follow-up, trafilatura's parser-per-call change
