@@ -420,6 +420,11 @@ class TestWebhookRedaction:
             "https://discord.com/api/webhooks/123456789/secret-token?wait=true"
         ) == "https://discord.com/api/webhooks/123456789/<redacted>"
 
+    def test_redact_url_hides_versioned_discord_webhook_token_in_path(self):
+        assert redact_url(
+            "https://discord.com/api/v10/webhooks/123456789/secret-token?wait=true"
+        ) == "https://discord.com/api/v10/webhooks/123456789/<redacted>"
+
     def test_redact_url_hides_slack_incoming_webhook_path(self):
         assert redact_url(
             "https://hooks.slack.com/services/T000/B000/secret-token"

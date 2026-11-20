@@ -243,7 +243,7 @@ def redact_url(url: str) -> str:
         (".discord.com", ".discordapp.com")
     ):
         path = re.sub(
-            r"(?i)(/api/webhooks/\d+/)[^/]+",
+            r"(?i)(/api/(?:v\d+/)?webhooks/\d+/)[^/]+",
             r"\1<redacted>",
             path,
         )
