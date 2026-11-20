@@ -165,9 +165,6 @@ class TwitterPlaywrightScraper(BaseScraper):
                 contexts.append(ctx)
                 context_cookie_numbers.append(cookie_index + 1)
 
-            if not contexts:
-                return
-
             # Warm-up each context by visiting x.com/home
             for i, ctx in enumerate(contexts):
                 page = await ctx.new_page()
