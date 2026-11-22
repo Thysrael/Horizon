@@ -1,0 +1,294 @@
+{
+  "environment": {
+    "python": "3.13.5",
+    "system": "Linux",
+    "machine": "x86_64",
+    "trafilatura": "2.1.0",
+    "lxml": "6.1.1",
+    "libxml2": [
+      2,
+      14,
+      6
+    ]
+  },
+  "parameters": {
+    "runs": 12,
+    "workers": 8,
+    "iterations": 3,
+    "timeout": 15
+  },
+  "fixtures": [
+    {
+      "file": "index.html",
+      "url": "https://docs.python.org/release/3.13.5/tutorial/index.html",
+      "sha256": "d789581740e261fb8a4338b39404dfb5fded8a2ab101870e53ab32504b109660",
+      "bytes": 35067
+    },
+    {
+      "file": "inputoutput.html",
+      "url": "https://docs.python.org/release/3.13.5/tutorial/inputoutput.html",
+      "sha256": "bd609b08687a4802154700f71b4d34de82ce78b19851a613bd43e636ac85d7ce",
+      "bytes": 76359
+    },
+    {
+      "file": "classes.html",
+      "url": "https://docs.python.org/release/3.13.5/tutorial/classes.html",
+      "sha256": "1ae5911421af1be1c9bc90643324c4462d8a28ff2a81a98f240951f416b3c56e",
+      "bytes": 104169
+    }
+  ],
+  "runs": [
+    {
+      "run": 1,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 1,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 1,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 2,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 2,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 2,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 3,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 3,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 3,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 4,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 4,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 4,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 5,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 5,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 5,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 6,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 6,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 6,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 7,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 7,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 7,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 8,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 8,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 8,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 9,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 9,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 9,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 10,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 10,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 10,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 11,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 11,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 11,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 12,
+      "mode": "concurrent",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 12,
+      "mode": "locked",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    },
+    {
+      "run": 12,
+      "mode": "serial",
+      "returncode": 0,
+      "stdout": "{\"calls\": 24, \"nonempty_results\": 24}\n",
+      "stderr": "<venv>/lib/python3.13/site-packages/urllib3/contrib/socks.py:50: DependencyWarning: SOCKS support in urllib3 requires the installation of optional dependencies: specifically, PySocks.  For more information, see https://urllib3.readthedocs.io/en/latest/advanced-usage.html#socks-proxies\n  warnings.warn(\n"
+    }
+  ]
+}

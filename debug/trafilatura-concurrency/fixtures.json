@@ -1,0 +1,20 @@
+[
+  {
+    "file": "index.html",
+    "url": "https://docs.python.org/release/3.13.5/tutorial/index.html",
+    "sha256": "d789581740e261fb8a4338b39404dfb5fded8a2ab101870e53ab32504b109660",
+    "bytes": 35067
+  },
+  {
+    "file": "inputoutput.html",
+    "url": "https://docs.python.org/release/3.13.5/tutorial/inputoutput.html",
+    "sha256": "bd609b08687a4802154700f71b4d34de82ce78b19851a613bd43e636ac85d7ce",
+    "bytes": 76359
+  },
+  {
+    "file": "classes.html",
+    "url": "https://docs.python.org/release/3.13.5/tutorial/classes.html",
+    "sha256": "1ae5911421af1be1c9bc90643324c4462d8a28ff2a81a98f240951f416b3c56e",
+    "bytes": 104169
+  }
+]
