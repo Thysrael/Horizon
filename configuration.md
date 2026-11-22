@@ -1005,6 +1005,8 @@ With this layout, Horizon sends one interactive card containing the overview and
 
 Use `horizon-webhook` to preview or send a test notification without running the full pipeline:
 
+Dry-run previews remove URL query strings and redact token-bearing Discord and Slack webhook paths.
+
 ```bash
 uv run horizon-webhook --dry-run
 ```
