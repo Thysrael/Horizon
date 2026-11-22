@@ -2,7 +2,8 @@
 
 import asyncio
 import logging
-from typing import Optional
+import threading
+from typing import Any, Optional
 
 import httpx
 
@@ -11,6 +12,13 @@ from ..models import TrafilaturaExtractorConfig
 from ..url_security import UnsafeURLError, safe_request
 
 logger = logging.getLogger(__name__)
+
+# trafilatura 2.1.x–2.3.1 share one module-level lxml HTMLParser across
+# threads. Concurrent extract() calls can abort the process (SIGSEGV /
+# SIGABRT). Serialize extraction; HTTP stays concurrent. This is a temporary
+# mitigation, not a guarantee against all native crashes. See
+# https://github.com/adbar/trafilatura/issues/925
+_EXTRACT_LOCK = threading.Lock()
 
 ARTICLE_HEADERS = {
     "User-Agent": (
@@ -21,6 +29,21 @@ ARTICLE_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,*/*",
     "Accept-Language": "en-US,en;q=0.9",
 }
+
+
+def _extract_text(
+    trafilatura_module: Any,
+    html: str,
+    favor_precision: bool,
+    favor_recall: bool,
+) -> Optional[str]:
+    """Run trafilatura.extract under a process-wide lock."""
+    with _EXTRACT_LOCK:
+        return trafilatura_module.extract(
+            html,
+            favor_precision=favor_precision,
+            favor_recall=favor_recall,
+        ) or None
 
 
 class TrafilaturaExtractor(BaseExtractor):
@@ -43,11 +66,12 @@ class TrafilaturaExtractor(BaseExtractor):
 
         try:
             return await asyncio.to_thread(
-                trafilatura.extract,
+                _extract_text,
+                trafilatura,
                 response.text,
-                favor_precision=self._config.favor_precision,
-                favor_recall=self._config.favor_recall,
-            ) or None
+                self._config.favor_precision,
+                self._config.favor_recall,
+            )
         except Exception as e:
             logger.warning("trafilatura extraction failed for %s: %s", url, e)
             return None
