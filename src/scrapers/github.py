@@ -118,9 +118,17 @@ class GitHubScraper(BaseScraper):
 
         # Generate title and content based on event type
         if event_type == "PushEvent":
-            commits = event["payload"].get("commits", [])
-            title = f"{username} pushed {len(commits)} commit(s) to {repo_name}"
-            content = "\n".join([c.get("message", "") for c in commits[:3]])
+            payload = event["payload"]
+            commits = payload.get("commits") or []
+            if commits:
+                title = f"{username} pushed {len(commits)} commit(s) to {repo_name}"
+                content = "\n".join([c.get("message", "") for c in commits[:3]])
+            else:
+                # The public Events API no longer sends commits for PushEvent,
+                # so don't report "0 commit(s)".
+                ref = str(payload.get("ref") or "").removeprefix("refs/heads/")
+                title = f"{username} pushed to {repo_name}" + (f" ({ref})" if ref else "")
+                content = ""
         elif event_type == "CreateEvent":
             ref_type = event["payload"].get("ref_type", "repository")
             title = f"{username} created {ref_type} in {repo_name}"
