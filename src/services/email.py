@@ -63,10 +63,15 @@ if markdown is not None:
 
         def handleMatch(self, match, data):
             element, start, end = super().handleMatch(match, data)
-            if match.group(3):
-                code = html.unescape(
-                    _MARKDOWN_BACKSLASH_RE.sub(r"\1", match.group(3).strip())
+            # Read the code text from the element, not match.group(3):
+            # Python-Markdown 3.11 changed BACKTICK_RE and dropped that group.
+            if getattr(element, "tag", None) == "code" and element.text:
+                raw = (
+                    element.text.replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                    .replace("&amp;", "&")
                 )
+                code = html.unescape(_MARKDOWN_BACKSLASH_RE.sub(r"\1", raw))
                 element.text = markdown.util.AtomicString(markdown.util.code_escape(code))
             return element, start, end
 
