@@ -126,8 +126,6 @@ The command requires Node.js 22.20+. Then ask your assistant to install and conf
 
 ### 1. Install
 
-Local installation requires Python 3.11.5 or newer.
-
 **Option A: Local Installation**
 
 ```bash
