@@ -273,6 +273,7 @@ def test_appends_profiles_missing_from_configured_order() -> None:
         "tech-blog",
         "ai-creator",
         "finance-news",
+        "flightsim-news",
     ]
 
 
