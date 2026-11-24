@@ -16,7 +16,7 @@ Choose one of the installation methods below. You can install the skill first,
 then ask your assistant to install and configure Horizon. With shell and network
 access, the assistant can prepare a checkout and its Python environment using
 the [README](https://github.com/Thysrael/Horizon#quick-start). Running tasks needs
-Python 3.11+ and Horizon's dependencies. The skill and checkout may live at
+Python 3.11.5+ and Horizon's dependencies. The skill and checkout may live at
 different paths.
 
 ### Install with Skills CLI

@@ -127,6 +127,8 @@ npx skills add Thysrael/Horizon --skill horizon -g
 
 ### 1. インストール
 
+ローカルインストールには Python 3.11.5 以降が必要です。
+
 **オプションA: ローカルインストール**
 
 ```bash

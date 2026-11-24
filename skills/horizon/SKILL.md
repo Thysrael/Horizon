@@ -2,7 +2,7 @@
 name: horizon
 description: Install, configure, run, customize, schedule, and extend Horizon, the profile-driven news radar. Use for first-time Horizon installation, source selection and onboarding, generating or reading daily digests, tuning processing profiles and digest limits, setting up delivery and scheduled runs, diagnosing pipeline results, or contributing scrapers, extractors, profiles, and pipeline changes to this repository. Also use when a user wants to turn reading interests into a personal news radar using Horizon.
 license: MIT
-compatibility: Requires shell access. Execution needs a Horizon checkout and Python 3.11+ with its dependencies; the agent can set these up when installation is requested and network access is available. Fetching and AI processing use Horizon's configured services. Horizon MCP is optional.
+compatibility: Requires shell access. Execution needs a Horizon checkout and Python 3.11.5+ with its dependencies; the agent can set these up when installation is requested and network access is available. Fetching and AI processing use Horizon's configured services. Horizon MCP is optional.
 ---
 
 # Horizon
@@ -37,7 +37,7 @@ installation.
    chosen destination or a new `Horizon` directory in their working area; ask
    where to install if no destination is clear. Keep it separate from the installed
    skill directory and preserve any existing files at the destination.
-2. Check for Git and either uv or Python 3.11+ with pip. Set up missing prerequisites
+2. Check for Git and either uv or Python 3.11.5+ with pip. Set up missing prerequisites
    using their official platform-specific instructions where the environment
    permits it. If network or shell access is unavailable, report that concrete
    blocker and the next step the user needs to take.
