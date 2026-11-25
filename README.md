@@ -358,16 +358,6 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 | [MCP Tools](src/mcp/README.md) | Tool reference for MCP-compatible clients |
 | [Agent Skill](docs/agent-skill.md) | Use an AI assistant to configure, run, customize, schedule, and extend Horizon |
 
-## Project Status
-
-Horizon already supports the full daily briefing loop: multi-source collection, profile-driven analysis and enrichment, deduplication, comment summaries, bilingual generation, GitHub Pages publishing, email delivery, webhook delivery, WeChat delivery, Docker deployment, MCP integration, and the setup wizard.
-
-Planned improvements:
-
-- More source types, such as Discord
-- Publish releases on GitHub
-- Publish the package to PyPI for `pip install`
-
 ## Community
 
 Join the Horizon user and developer QQ group to share sources, profiles, and deployment tips.

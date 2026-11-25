@@ -336,16 +336,6 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 | [MCP 工具](src/mcp/README.md) | MCP 客户端可调用的工具说明 |
 | [Agent Skill](docs/agent-skill.md) | 让 AI 助手配置、运行、定制、定时投递和扩展 Horizon |
 
-## 项目状态
-
-Horizon 已经支持完整的日报流程：多源抓取、Profile 驱动的分析与内容生成、去重、评论摘要、双语生成、GitHub Pages 发布、邮件分发、Webhook 推送、微信推送、Docker 部署、MCP 集成和配置向导。
-
-计划中的改进：
-
-- 更多信息源类型，例如 Discord
-- 在 GitHub 上发布 Release
-- 发布到 PyPI，支持通过 `pip install` 安装
-
 ## 交流群
 
 欢迎加入 Horizon 用户与开发交流群，分享信息源、交流 Profile，或讨论部署和开发。
