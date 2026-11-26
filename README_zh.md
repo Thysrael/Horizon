@@ -336,6 +336,12 @@ Horizon 支持通过多种方式发布和分发生成的日报：
 | [MCP 工具](src/mcp/README.md) | MCP 客户端可调用的工具说明 |
 | [Agent Skill](docs/agent-skill.md) | 让 AI 助手配置、运行、定制、定时投递和扩展 Horizon |
 
+## 社区项目
+
+由 Horizon 用户围绕 Horizon 开发的项目，由各自作者维护。
+
+- [MastHead](https://github.com/ianewsfr-a11y/masthead)：Horizon 的本地 Web 控制台。可以创建和编辑领域，按阶段运行流水线，并查看每条新闻被保留、合并或丢弃的原因。
+
 ## 交流群
 
 欢迎加入 Horizon 用户与开发交流群，分享信息源、交流 Profile，或讨论部署和开发。

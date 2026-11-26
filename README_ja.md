@@ -353,6 +353,12 @@ Horizonは余暇に運営されているオープンソースプロジェクト�
 | [MCPツール](src/mcp/README.md) | MCP互換クライアント向けのツールリファレンス |
 | [Agent Skill](docs/agent-skill.md) | AIアシスタントによるHorizonの設定、実行、カスタマイズ、定期配信、拡張 |
 
+## コミュニティプロジェクト
+
+Horizon のユーザーが Horizon を中心に作ったプロジェクトです。各作者がメンテナンスしています。
+
+- [MastHead](https://github.com/ianewsfr-a11y/masthead)：Horizon のローカル Web コンソール。ドメインの作成と編集、パイプラインの段階的な実行、各記事が残された・統合された・除外された理由の確認ができます。
+
 ## コミュニティ
 
 Horizonのユーザー・開発者向けQQグループで、情報源やプロファイル、導入のヒントを共有しましょう。
