@@ -358,6 +358,12 @@ Horizon is an open-source project maintained in spare time. If you'd like to sup
 | [MCP Tools](src/mcp/README.md) | Tool reference for MCP-compatible clients |
 | [Agent Skill](docs/agent-skill.md) | Use an AI assistant to configure, run, customize, schedule, and extend Horizon |
 
+## Community Projects
+
+Projects built around Horizon by its users, maintained by their own authors.
+
+- [MastHead](https://github.com/ianewsfr-a11y/masthead): a local web console for Horizon. Create and edit domains, run the pipeline stage by stage, and see why each story was kept, merged or dropped.
+
 ## Community
 
 Join the Horizon user and developer QQ group to share sources, profiles, and deployment tips.
