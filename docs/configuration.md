@@ -143,6 +143,7 @@ Common API key variable names:
 | Aliyun DashScope | `DASHSCOPE_API_KEY` |
 | Doubao | `DOUBAO_API_KEY` |
 | DeepSeek | `DEEPSEEK_API_KEY` |
+| AI/ML API | `AIMLAPI_API_KEY` |
 
 **Anthropic Claude**:
 
@@ -276,6 +277,25 @@ request:
 ```
 
 Use the [DashScope compatible-mode](https://help.aliyun.com/zh/dashscope/developer-reference/use-dashscope-by-calling-openai-api) endpoint. Set `DASHSCOPE_API_KEY` in your `.env`. Optional: set `base_url` to override the default `https://dashscope.aliyuncs.com/compatible-mode/v1`.
+
+**AI/ML API** (OpenAI-compatible):
+
+```json
+{
+  "ai": {
+    "provider": "aimlapi",
+    "model": "openai/gpt-4.1-mini",
+    "api_key_env": "AIMLAPI_API_KEY",
+    "throttle_sec": 0
+  }
+}
+```
+
+[AI/ML API](https://aimlapi.com) serves models from many vendors behind one key and the
+endpoint `https://api.aimlapi.com/v1`. Create a key at
+[aimlapi.com/app/keys](https://aimlapi.com/app/keys) and set `AIMLAPI_API_KEY` in your `.env`.
+Any chat model ID from `https://api.aimlapi.com/v1/models` works as `model`. The provider
+only sends the key to `https://api.aimlapi.com`.
 
 **Ollama**:
 

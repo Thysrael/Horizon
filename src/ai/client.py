@@ -47,7 +47,29 @@ _DEFAULT_API_KEY_ENVS = {
     AIProvider.DOUBAO: "DOUBAO_API_KEY",
     AIProvider.MINIMAX: "MINIMAX_API_KEY",
     AIProvider.DEEPSEEK: "DEEPSEEK_API_KEY",
+    AIProvider.AIMLAPI: "AIMLAPI_API_KEY",
 }
+
+
+_AIMLAPI_HOST = "api.aimlapi.com"
+
+
+def _check_aimlapi_base_url(base_url: Optional[str]) -> None:
+    """Keep the AI/ML API key on the AI/ML API host.
+
+    The aimlapi provider reads AIMLAPI_API_KEY, so a custom base_url pointing
+    elsewhere would hand that key to another server.
+    """
+    url = httpx.URL(base_url or "")
+    if (
+        url.scheme != "https"
+        or url.host != _AIMLAPI_HOST
+        or url.port not in (None, 443)
+    ):
+        raise ValueError(
+            f"aimlapi provider only talks to https://{_AIMLAPI_HOST}; "
+            "use the openai provider with a custom base_url for other endpoints."
+        )
 
 
 def _resolve_api_key(config: AIConfig, *, fallback: Optional[str] = None) -> str:
@@ -269,6 +291,8 @@ class OpenAIClient(AIClient):
 
         kwargs = {"api_key": api_key}
         base_url = self._resolve_base_url(config)
+        if config.provider == AIProvider.AIMLAPI:
+            _check_aimlapi_base_url(base_url)
         if base_url:
             kwargs["base_url"] = base_url
 
@@ -609,6 +633,7 @@ def _create_single_client(config: AIConfig) -> AIClient:
         AIProvider.DOUBAO,
         AIProvider.MINIMAX,
         AIProvider.DEEPSEEK,
+        AIProvider.AIMLAPI,
         AIProvider.OLLAMA,
     }:
         return OpenAIClient(config)

@@ -58,8 +58,24 @@ def print_banner():
     console.print(banner)
 
 
-def configure_ai() -> Optional[AIConfig]:
+AIMLAPI_KEYS_URL = "https://aimlapi.com/app/keys"
+
+
+def _default_provider(existing: Optional[AIConfig] = None) -> AIProvider:
+    """Pick the provider pre-selected in the wizard.
+
+    An existing config keeps its provider.
+    """
+    if existing is not None:
+        return existing.provider
+    return AIProvider.OPENAI
+
+
+def configure_ai(existing: Optional[AIConfig] = None) -> Optional[AIConfig]:
     """Step 1: Configure AI provider.
+
+    Args:
+        existing: AI settings from an existing config.json, used as defaults.
 
     Returns:
         AIConfig if configured, None if user skips.
@@ -74,12 +90,19 @@ def configure_ai() -> Optional[AIConfig]:
     provider = Prompt.ask(
         "AI provider",
         choices=providers,
-        default="openai",
+        default=_default_provider(existing).value,
         console=console,
     )
     provider_enum = AIProvider(provider)
 
-    provider_defaults = AI_PROVIDER_DEFAULTS.get(provider_enum, {})
+    provider_defaults = dict(AI_PROVIDER_DEFAULTS.get(provider_enum, {}))
+    keep_base_url = ""
+    if existing is not None and existing.provider == provider_enum:
+        provider_defaults["model"] = existing.model
+        provider_defaults["api_key_env"] = existing.api_key_env
+        keep_base_url = existing.base_url or ""
+    if provider_enum == AIProvider.AIMLAPI:
+        console.print(f"Get an AI/ML API key: {AIMLAPI_KEYS_URL}", markup=False)
     chatgpt_account = None
     if provider_enum == AIProvider.OPENAI_CHATGPT:
         from ..ai.chatgpt_auth import ChatGPTAuth, MANAGE_USAGE_URL
@@ -110,7 +133,7 @@ def configure_ai() -> Optional[AIConfig]:
         base_url = Prompt.ask(
             "Ollama base URL (leave empty for http://localhost:11434)"
             if provider_enum == AIProvider.OLLAMA else "Base URL (leave empty for default)",
-            default="", console=console,
+            default=keep_base_url, console=console,
         )
         api_key_env = Prompt.ask(
             "API key environment variable name",
@@ -127,10 +150,20 @@ def configure_ai() -> Optional[AIConfig]:
 
     languages = Prompt.ask(
         "Output languages (comma-separated)",
-        default="zh,en",
+        default=",".join(existing.languages) if existing is not None else "zh,en",
         console=console,
     )
     lang_list = [l.strip() for l in languages.split(",") if l.strip()]
+
+    if existing is not None and existing.provider == provider_enum:
+        # Keep settings the wizard does not ask about (provider_chain, extra_body, ...).
+        return existing.model_copy(update={
+            "model": model,
+            "base_url": base_url or None,
+            "api_key_env": api_key_env,
+            "chatgpt_account": chatgpt_account,
+            "languages": lang_list,
+        })
 
     return AIConfig(
         provider=provider_enum,
@@ -142,6 +175,14 @@ def configure_ai() -> Optional[AIConfig]:
         max_tokens=8192,
         languages=lang_list,
     )
+
+
+def _existing_ai_config(storage: StorageManager) -> Optional[AIConfig]:
+    """Return the AI settings of an existing config, or None on a fresh setup."""
+    try:
+        return storage.load_config().ai
+    except (FileNotFoundError, ValueError, OSError):
+        return None
 
 
 def _ai_recommendations_available(ai_config: AIConfig) -> bool:
@@ -421,7 +462,7 @@ def main():
 
     # Step 1: AI configuration
     try:
-        ai_config = configure_ai()
+        ai_config = configure_ai(_existing_ai_config(storage))
     except (RuntimeError, ValueError, OSError) as exc:
         console.print(f"AI configuration failed: {exc}", markup=False)
         sys.exit(1)
