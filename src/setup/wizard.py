@@ -64,11 +64,16 @@ AIMLAPI_KEYS_URL = "https://aimlapi.com/app/keys"
 def _default_provider(existing: Optional[AIConfig] = None) -> AIProvider:
     """Pick the provider pre-selected in the wizard.
 
-    An existing config keeps its provider.
+    An existing config keeps its provider, and a provider whose API key is
+    already in the environment wins over the fresh-install default.
     """
     if existing is not None:
         return existing.provider
-    return AIProvider.OPENAI
+    for provider in (AIProvider.AIMLAPI, *AIProvider):
+        key_env = AI_PROVIDER_DEFAULTS.get(provider, {}).get("api_key_env")
+        if key_env and os.getenv(key_env):
+            return provider
+    return AIProvider.AIMLAPI
 
 
 def configure_ai(existing: Optional[AIConfig] = None) -> Optional[AIConfig]:

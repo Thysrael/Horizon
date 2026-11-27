@@ -161,6 +161,32 @@ def test_wizard_links_aimlapi_keys(monkeypatch):
     assert any("https://aimlapi.com/app/keys" in line for line in printed)
 
 
+def test_fresh_wizard_preselects_aimlapi_and_links_keys(monkeypatch):
+    _clear_provider_keys(monkeypatch)
+    asked, printed = _answer_with_defaults(monkeypatch)
+
+    config = wizard.configure_ai()
+
+    assert asked[0] == ("AI provider", "aimlapi")
+    assert config.provider == AIProvider.AIMLAPI
+    assert config.model == "openai/gpt-4.1-mini"
+    assert config.api_key_env == "AIMLAPI_API_KEY"
+    assert config.base_url is None
+    assert any("https://aimlapi.com/app/keys" in line for line in printed)
+
+
+def test_wizard_keeps_provider_whose_key_is_already_set(monkeypatch):
+    _clear_provider_keys(monkeypatch)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-deepseek-key")
+    asked, _ = _answer_with_defaults(monkeypatch)
+
+    config = wizard.configure_ai()
+
+    assert asked[0] == ("AI provider", "deepseek")
+    assert config.provider == AIProvider.DEEPSEEK
+    assert config.api_key_env == "DEEPSEEK_API_KEY"
+
+
 def test_rerunning_wizard_keeps_existing_ai_config(monkeypatch):
     _clear_provider_keys(monkeypatch)
     existing = AIConfig(

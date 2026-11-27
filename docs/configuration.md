@@ -295,7 +295,8 @@ Use the [DashScope compatible-mode](https://help.aliyun.com/zh/dashscope/develop
 endpoint `https://api.aimlapi.com/v1`. Create a key at
 [aimlapi.com/app/keys](https://aimlapi.com/app/keys) and set `AIMLAPI_API_KEY` in your `.env`.
 Any chat model ID from `https://api.aimlapi.com/v1/models` works as `model`. The provider
-only sends the key to `https://api.aimlapi.com`.
+only sends the key to `https://api.aimlapi.com`; `horizon-wizard` pre-selects it on a fresh
+setup when no other provider key is present.
 
 **Ollama**:
 
