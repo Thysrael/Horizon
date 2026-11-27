@@ -47,6 +47,7 @@ _DEFAULT_API_KEY_ENVS = {
     AIProvider.DOUBAO: "DOUBAO_API_KEY",
     AIProvider.MINIMAX: "MINIMAX_API_KEY",
     AIProvider.DEEPSEEK: "DEEPSEEK_API_KEY",
+    AIProvider.ATLASCLOUD: "ATLASCLOUD_API_KEY",
 }
 
 
@@ -609,6 +610,7 @@ def _create_single_client(config: AIConfig) -> AIClient:
         AIProvider.DOUBAO,
         AIProvider.MINIMAX,
         AIProvider.DEEPSEEK,
+        AIProvider.ATLASCLOUD,
         AIProvider.OLLAMA,
     }:
         return OpenAIClient(config)

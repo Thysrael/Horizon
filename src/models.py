@@ -130,6 +130,7 @@ class AIProvider(str, Enum):
     DOUBAO = "doubao"
     MINIMAX = "minimax"
     DEEPSEEK = "deepseek"
+    ATLASCLOUD = "atlascloud"
     OLLAMA = "ollama"
 
 
@@ -181,6 +182,11 @@ AI_PROVIDER_DEFAULTS = {
         "model": "deepseek-chat",
         "api_key_env": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com",
+    },
+    AIProvider.ATLASCLOUD: {
+        "model": "deepseek-ai/deepseek-v4-flash",
+        "api_key_env": "ATLASCLOUD_API_KEY",
+        "base_url": "https://api.atlascloud.ai/v1",
     },
     AIProvider.OLLAMA: {
         "model": "llama3.1",

@@ -406,3 +406,23 @@ class TestFactoryFunction:
 
     def test_deepseek_provider_enum(self):
         assert AIProvider.DEEPSEEK.value == "deepseek"
+
+    def test_atlascloud_provider_defaults(self):
+        defaults = AI_PROVIDER_DEFAULTS[AIProvider.ATLASCLOUD]
+        assert defaults["model"] == "deepseek-ai/deepseek-v4-flash"
+        assert defaults["api_key_env"] == "ATLASCLOUD_API_KEY"
+        assert defaults["base_url"] == "https://api.atlascloud.ai/v1"
+
+    def test_creates_openai_client_for_atlascloud(self, monkeypatch):
+        monkeypatch.setenv("ATLASCLOUD_API_KEY", "test-key")
+        config = _make_config(
+            provider=AIProvider.ATLASCLOUD,
+            model="deepseek-ai/deepseek-v4-flash",
+            api_key_env="ATLASCLOUD_API_KEY",
+        )
+        client = create_ai_client(config)
+        assert isinstance(client, OpenAIClient)
+        assert client.provider == "atlascloud"
+
+    def test_atlascloud_provider_enum(self):
+        assert AIProvider.ATLASCLOUD.value == "atlascloud"

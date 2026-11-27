@@ -143,6 +143,7 @@ Common API key variable names:
 | Aliyun DashScope | `DASHSCOPE_API_KEY` |
 | Doubao | `DOUBAO_API_KEY` |
 | DeepSeek | `DEEPSEEK_API_KEY` |
+| Atlas Cloud | `ATLASCLOUD_API_KEY` |
 
 **Anthropic Claude**:
 
@@ -276,6 +277,21 @@ request:
 ```
 
 Use the [DashScope compatible-mode](https://help.aliyun.com/zh/dashscope/developer-reference/use-dashscope-by-calling-openai-api) endpoint. Set `DASHSCOPE_API_KEY` in your `.env`. Optional: set `base_url` to override the default `https://dashscope.aliyuncs.com/compatible-mode/v1`.
+
+**Atlas Cloud** (OpenAI-compatible gateway):
+
+```json
+{
+  "ai": {
+    "provider": "atlascloud",
+    "model": "deepseek-ai/deepseek-v4-flash",
+    "api_key_env": "ATLASCLOUD_API_KEY",
+    "throttle_sec": 0
+  }
+}
+```
+
+Create a key in the [Atlas Cloud console](https://console.atlascloud.ai/api-keys) and set `ATLASCLOUD_API_KEY` in your `.env`. The default `base_url` is `https://api.atlascloud.ai/v1`. Model ids use the `vendor/model` form; list the current ones with `GET https://api.atlascloud.ai/v1/models`.
 
 **Ollama**:
 
