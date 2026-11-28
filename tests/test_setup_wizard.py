@@ -24,9 +24,10 @@ def _prepare_main(monkeypatch, load_presets_calls):
     monkeypatch.setattr(
         wizard,
         "configure_ai",
-        lambda: AIConfig(provider=AIProvider.OLLAMA, model="llama3.1", api_key_env=""),
+        lambda existing=None: AIConfig(provider=AIProvider.OLLAMA, model="llama3.1", api_key_env=""),
     )
     monkeypatch.setattr(wizard, "get_interests", lambda: "test interests")
+    monkeypatch.setattr(wizard, "_existing_ai_config", lambda storage: None)
     monkeypatch.setattr(wizard, "load_presets", fake_load_presets)
 
 

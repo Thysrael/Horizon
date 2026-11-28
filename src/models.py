@@ -130,6 +130,7 @@ class AIProvider(str, Enum):
     DOUBAO = "doubao"
     MINIMAX = "minimax"
     DEEPSEEK = "deepseek"
+    AIMLAPI = "aimlapi"
     OLLAMA = "ollama"
 
 
@@ -181,6 +182,11 @@ AI_PROVIDER_DEFAULTS = {
         "model": "deepseek-chat",
         "api_key_env": "DEEPSEEK_API_KEY",
         "base_url": "https://api.deepseek.com",
+    },
+    AIProvider.AIMLAPI: {
+        "model": "openai/gpt-4.1-mini",
+        "api_key_env": "AIMLAPI_API_KEY",
+        "base_url": "https://api.aimlapi.com/v1",
     },
     AIProvider.OLLAMA: {
         "model": "llama3.1",
